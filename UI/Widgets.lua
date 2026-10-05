@@ -22,7 +22,7 @@ function W.SetTitle(frame, text)
         frame.TitleContainer.TitleText:SetText(text)
     else
         if not frame._title then
-            frame._title = frame:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+            frame._title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             frame._title:SetPoint("TOP", 0, -5)
         end
         frame._title:SetText(text)
@@ -123,7 +123,7 @@ function W.Tooltip(frame, title, ...)
 end
 
 function W.SectionHeader(parent, text)
-    local title = parent:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+    local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetText(text)
     local line = parent:CreateTexture(nil, "ARTWORK")
     line:SetColorTexture(1, 0.82, 0, 0.22)
@@ -151,7 +151,7 @@ function W.ColumnHeader(parent, label, width, justify)
     m:SetTexture(TEX); m:SetTexCoord(0.078125, 0.90625, 0, 0.75)
     m:SetPoint("TOPLEFT", l, "TOPRIGHT"); m:SetPoint("BOTTOMRIGHT", r, "BOTTOMLEFT")
 
-    local text = b:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    local text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     text:SetJustifyH(justify or "LEFT")
     text:SetWordWrap(false)
     text:SetText(label)
@@ -209,7 +209,7 @@ function W.Pill(parent, height, padding)
     p.Icon:SetPoint("LEFT", 2, 0)
     p.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     p.Icon:Hide()
-    p.Text = p:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    p.Text = p:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     p.Text:SetPoint("CENTER", 0, 0)
 
     local function Fit(self)
@@ -578,7 +578,7 @@ function W.ScrollEditor(parent, maxLetters)
         end)
         frame:SetScript("OnMouseDown", function() box:SetFocus() end)
     end
-    box:SetFontObject("NootropicGM_GameFontHighlight")
+    box:SetFontObject("GameFontHighlight")
     if maxLetters then box:SetMaxLetters(maxLetters) end
     box:HookScript("OnEscapePressed", function(self) self:ClearFocus() end)
     frame:HookScript("OnSizeChanged", function(self, w) box:SetWidth(math.max(20, (w or self:GetWidth()) - 18)) end)

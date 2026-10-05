@@ -41,7 +41,7 @@ function MR:Build()
     icon:SetPoint("TOPLEFT", 10, -9)
     W.SetIcon(icon, "Interface\\Icons\\INV_Letter_15")
 
-    local title = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("LEFT", icon, "RIGHT", 6, 0)
     title:SetText("Recruiting")
 
@@ -56,7 +56,7 @@ function MR:Build()
     expand:SetPoint("RIGHT", close, "LEFT", 0, 0)
     expand:MatchLevel(close)
 
-    self.status = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    self.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.status:SetPoint("TOPLEFT", 12, -30)
     self.status:SetPoint("RIGHT", -12, 0)
     self.status:SetJustifyH("LEFT")

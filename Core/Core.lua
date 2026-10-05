@@ -260,7 +260,6 @@ ns:RegisterEvent("GUILD_ROSTER_UPDATE", function() ns.Debounce("officercheck", 0
 ns:RegisterEvent("PLAYER_GUILD_UPDATE", function() ns.Debounce("officercheck", 0.5, CheckOfficer) end)
 
 ns:RegisterEvent("PLAYER_LOGIN", function()
-    ns.Fonts:Apply()
     ns.Roster:Init()
     ns.Sync:Init()
     ns.Comm:Init()

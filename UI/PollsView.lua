@@ -15,7 +15,7 @@ local IW = PANEL_W - 28
 local OPTION_H = 38
 
 local function Para(parent, font, width)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NootropicGM_GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
     fs:SetJustifyH("LEFT")
     fs:SetJustifyV("TOP")
     if width then fs:SetWidth(width) end
@@ -24,7 +24,7 @@ local function Para(parent, font, width)
 end
 
 local function Label(parent, text, font)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NootropicGM_GameFontNormalSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormalSmall")
     fs:SetText(text)
     return fs
 end
@@ -33,7 +33,7 @@ local function Input(parent, width, maxLetters, numeric)
     local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     eb:SetSize(width, 20)
     eb:SetAutoFocus(false)
-    eb:SetFontObject("NootropicGM_GameFontHighlightSmall")
+    eb:SetFontObject("GameFontHighlightSmall")
     eb:SetMaxLetters(maxLetters)
     if numeric then eb:SetNumeric(true) end
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -67,9 +67,9 @@ function PV:Build(frame)
     self.page, self.frame = page, frame
     page:SetScript("OnShow", function() PV:Refresh() end)
 
-    self.summary = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+    self.summary = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     self.summary:SetPoint("TOPLEFT", frame, "TOPLEFT", 84, -38)
-    self.sub = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+    self.sub = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.sub:SetPoint("LEFT", self.summary, "RIGHT", 14, 0)
 
     local new = W.Button(page, "New Poll", 100, 22)
@@ -107,7 +107,7 @@ function PV:BuildList(page, inset)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.emptyText = box:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisable")
+    self.emptyText = box:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     self.emptyText:SetPoint("CENTER", 0, 20)
     self.emptyText:SetWidth(360)
 end
@@ -126,16 +126,16 @@ function PV:InitRow(row, p)
         row.Selected:SetVertexColor(1, 0.82, 0, 0.45)
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         row:GetHighlightTexture():SetAlpha(0.3)
-        row.Question = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+        row.Question = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         row.Question:SetPoint("TOPLEFT", 10, -7)
         row.Question:SetPoint("RIGHT", -90, 0)
         row.Question:SetJustifyH("LEFT")
         row.Question:SetWordWrap(false)
-        row.Votes = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+        row.Votes = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         row.Votes:SetPoint("TOPRIGHT", -10, -8)
-        row.Status = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+        row.Status = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         row.Status:SetPoint("TOPLEFT", row.Question, "BOTTOMLEFT", 0, -5)
-        row.Mine = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+        row.Mine = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.Mine:SetPoint("TOPRIGHT", row.Votes, "BOTTOMRIGHT", 0, -5)
         row:SetScript("OnClick", function(self) if self.poll then PV:Select(self.poll.id) end end)
     end
@@ -180,7 +180,7 @@ function PV:BuildPanel(page, inset)
     local ititle, iline = W.SectionHeader(info, "Guild Polls")
     ititle:SetPoint("TOPLEFT", 14, -12)
     iline:SetPoint("RIGHT", info, "RIGHT", -12, 0)
-    self.infoText = Para(info, "NootropicGM_GameFontHighlightSmall", IW)
+    self.infoText = Para(info, "GameFontHighlightSmall", IW)
     self.infoText:SetPoint("TOPLEFT", ititle, "BOTTOMLEFT", 0, -10)
 
     self:BuildDetail(panel)
@@ -197,9 +197,9 @@ function PV:BuildDetail(panel)
     title:SetPoint("TOPLEFT", 14, -12)
     line:SetPoint("RIGHT", d, "RIGHT", -12, 0)
 
-    self.dQuestion = Para(d, "NootropicGM_GameFontHighlight", IW)
+    self.dQuestion = Para(d, "GameFontHighlight", IW)
     self.dQuestion:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    self.dStatus = Para(d, "NootropicGM_GameFontHighlightSmall", IW)
+    self.dStatus = Para(d, "GameFontHighlightSmall", IW)
     self.dStatus:SetPoint("TOPLEFT", self.dQuestion, "BOTTOMLEFT", 0, -6)
 
     self.optionRows = {}
@@ -212,12 +212,12 @@ function PV:BuildDetail(panel)
         r.Check:SetSize(14, 14)
         r.Check:SetPoint("TOPLEFT", 2, -2)
         r.Check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
-        r.Text = r:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+        r.Text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         r.Text:SetPoint("TOPLEFT", 20, -3)
         r.Text:SetPoint("RIGHT", -70, 0)
         r.Text:SetJustifyH("LEFT")
         r.Text:SetWordWrap(false)
-        r.Count = r:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+        r.Count = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         r.Count:SetPoint("TOPRIGHT", -2, -3)
         local barBg = CreateFrame("Frame", nil, r, "BackdropTemplate")
         barBg:SetPoint("BOTTOMLEFT", 20, 2)
@@ -254,7 +254,7 @@ function PV:BuildDetail(panel)
         self.optionRows[i] = r
     end
 
-    self.dFooter = Para(d, "NootropicGM_GameFontDisableSmall", IW)
+    self.dFooter = Para(d, "GameFontDisableSmall", IW)
 
     local close = W.Button(d, "Close Voting", 120, 22)
     close:SetPoint("BOTTOMLEFT", 12, 12)
@@ -306,7 +306,7 @@ function PV:BuildCreate(panel)
     self.optBoxes = {}
     local prev = self.qBox
     for i = 1, P.MAX_OPTIONS do
-        local num = c:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+        local num = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         num:SetPoint("TOPLEFT", 16, -102 - (i - 1) * 24)
         num:SetText(i .. ".")
         local eb = Input(c, IW - 28, P.OPTION_MAX)
@@ -349,11 +349,11 @@ function PV:BuildCreate(panel)
     self.keepNum:SetPoint("TOPLEFT", 150, y)
     self.closeNum.nextBox = self.keepNum
     self.keepNum.nextBox = self.qBox
-    local days = c:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    local days = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     days:SetPoint("LEFT", self.keepNum, "RIGHT", 8, 0)
     days:SetText("days")
 
-    self.closeHint = c:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+    self.closeHint = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.closeHint:SetPoint("TOPLEFT", 14, y - 26)
     self.closeHint:SetPoint("RIGHT", -14, 0)
     self.closeHint:SetJustifyH("LEFT")
@@ -370,7 +370,7 @@ function PV:BuildCreate(panel)
         PV:Refresh()
     end)
 
-    self.createError = Para(c, "NootropicGM_GameFontHighlightSmall", IW)
+    self.createError = Para(c, "GameFontHighlightSmall", IW)
     self.createError:SetPoint("BOTTOMLEFT", create, "TOPLEFT", 2, 8)
     self.createError:SetTextColor(1, 0.35, 0.35)
 end

@@ -31,7 +31,6 @@ local DEFAULTS = {
         titleUseGuild = false,       -- window title: "<Guild> Guild Manager"
         showAddonCount = true,       -- "x using ... Guild Manager" at the bottom of the window
         whoWhisperButton = true,     -- recruitment whisper button on the game's /who results
-        fontDelta = 0,               -- text size: points added to the addon's fonts (-2 to +6)
         auditDays = 30,              -- audit history kept: 30, 60 or 90 days
         onlineOnly = false,
         sortKey = "rank",

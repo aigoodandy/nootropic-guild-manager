@@ -14,13 +14,13 @@ local ROW_H = 58
 local PANEL_W = 330
 
 local function Label(parent, text, font)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NootropicGM_GameFontNormalSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormalSmall")
     fs:SetText(text)
     return fs
 end
 
 local function Para(parent, font, width)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NootropicGM_GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
     fs:SetJustifyH("LEFT")
     fs:SetWidth(width)
     fs:SetSpacing(2)
@@ -42,9 +42,9 @@ function RW:Build(frame)
     -- Summary across the top (officers)
     self.avgStars = W.Stars(page, 16, false)
     self.avgStars:SetPoint("TOPLEFT", frame, "TOPLEFT", 84, -38)
-    self.summary = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+    self.summary = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     self.summary:SetPoint("LEFT", self.avgStars, "RIGHT", 10, 0)
-    self.breakdown = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+    self.breakdown = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.breakdown:SetPoint("LEFT", self.summary, "RIGHT", 14, 0)
 
     -- Officers: turn reviews on or off for the whole guild
@@ -52,9 +52,9 @@ function RW:Build(frame)
     cb:SetSize(24, 24)
     local label = cb.Text or cb.text
     if not label then
-        label = cb:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+        label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     end
-    label:SetFontObject("NootropicGM_GameFontHighlightSmall")
+    label:SetFontObject("GameFontHighlightSmall")
     label:ClearAllPoints()
     label:SetPoint("LEFT", cb, "RIGHT", 2, 1)
     label:SetText("Guildmates can review the guild")
@@ -103,7 +103,7 @@ function RW:BuildList(page, inset)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox, self.scrollBar = scrollBox, scrollBar
 
-    self.emptyText = box:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisable")
+    self.emptyText = box:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     self.emptyText:SetPoint("CENTER", 0, 20)
     self.emptyText:SetWidth(380)
 end
@@ -124,11 +124,11 @@ function RW:InitRow(row, r)
         row:GetHighlightTexture():SetAlpha(0.3)
         row.Stars = W.Stars(row, 12, false)
         row.Stars:SetPoint("TOPLEFT", 8, -6)
-        row.Date = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+        row.Date = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.Date:SetPoint("LEFT", row.Stars, "RIGHT", 10, 0)
-        row.Comments = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalSmall")
+        row.Comments = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         row.Comments:SetPoint("TOPRIGHT", -8, -6)
-        row.Text = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+        row.Text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         row.Text:SetPoint("TOPLEFT", 8, -24)
         row.Text:SetPoint("RIGHT", -8, 0)
         row.Text:SetJustifyH("LEFT")
@@ -176,7 +176,7 @@ function RW:BuildPanel(page, inset)
     title:SetPoint("TOPLEFT", 14, -12)
     line:SetPoint("RIGHT", w, "RIGHT", -12, 0)
 
-    self.intro = Para(w, "NootropicGM_GameFontHighlightSmall", IW)
+    self.intro = Para(w, "GameFontHighlightSmall", IW)
     self.intro:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
     self.intro:SetText("Tell the officers how the guild is doing. |cff40ff40Your review is anonymous|r: your name is never saved with it or shown to anyone, and it's dated by day only.")
 
@@ -187,13 +187,13 @@ function RW:BuildPanel(page, inset)
 
     local msgLabel = Label(w, "Your message")
     msgLabel:SetPoint("TOPLEFT", self.rateStars, "BOTTOMLEFT", 0, -12)
-    self.count = w:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+    self.count = w:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.count:SetPoint("RIGHT", w, "RIGHT", -14, 0)
     self.count:SetPoint("TOP", msgLabel, "TOP", 0, 0)
     local ef, box = W.ScrollEditor(w, ns.Reviews.TEXT_MAX)
     ef:SetPoint("TOPLEFT", msgLabel, "BOTTOMLEFT", 2, -6)
     ef:SetSize(IW - 4, 110)
-    box:SetFontObject("NootropicGM_GameFontHighlightSmall")
+    box:SetFontObject("GameFontHighlightSmall")
     box:SetWidth(IW - 22)
     box:HookScript("OnTextChanged", function() RW:RefreshWrite() end)
     self.textBox = box
@@ -203,10 +203,10 @@ function RW:BuildPanel(page, inset)
     submit:SetScript("OnClick", function() RW:OnSubmit() end)
     self.submitBtn = submit
 
-    self.writeStatus = Para(w, "NootropicGM_GameFontHighlightSmall", IW)
+    self.writeStatus = Para(w, "GameFontHighlightSmall", IW)
     self.writeStatus:SetPoint("TOPLEFT", submit, "BOTTOMLEFT", 2, -10)
 
-    self.rules = Para(w, "NootropicGM_GameFontDisableSmall", IW)
+    self.rules = Para(w, "GameFontDisableSmall", IW)
     self.rules:SetPoint("TOPLEFT", self.writeStatus, "BOTTOMLEFT", 0, -12)
     self.rules:SetText("Only officers can read reviews. They can comment on them, but nobody can change or delete a review. Reviews are kept for a year. You can write one review every 7 days.")
 
@@ -227,7 +227,7 @@ function RW:BuildPanel(page, inset)
 
     self.detailStars = W.Stars(d, 16, false)
     self.detailStars:SetPoint("TOPLEFT", dtitle, "BOTTOMLEFT", 0, -10)
-    self.detailDate = d:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+    self.detailDate = d:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.detailDate:SetPoint("LEFT", self.detailStars, "RIGHT", 10, 0)
 
     -- the review text and comments scroll
@@ -239,7 +239,7 @@ function RW:BuildPanel(page, inset)
     scroll:SetScrollChild(content)
     self.detailScroll, self.detailContent = scroll, content
 
-    self.detailText = Para(content, "NootropicGM_GameFontHighlight", IW - 22)
+    self.detailText = Para(content, "GameFontHighlight", IW - 22)
     self.detailText:SetPoint("TOPLEFT", 0, 0)
     self.commentsTitle = Label(content, "Officer comments")
     self.commentsTitle:SetPoint("TOPLEFT", self.detailText, "BOTTOMLEFT", 0, -14)
@@ -249,7 +249,7 @@ function RW:BuildPanel(page, inset)
     input:SetSize(IW - 66, 20)
     input:SetPoint("BOTTOMLEFT", 20, 14)
     input:SetAutoFocus(false)
-    input:SetFontObject("NootropicGM_GameFontHighlightSmall")
+    input:SetFontObject("GameFontHighlightSmall")
     input:SetMaxLetters(ns.Reviews.COMMENT_MAX)
     input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     input:SetScript("OnEnterPressed", function() RW:OnAddComment() end)
@@ -268,7 +268,7 @@ function RW:CommentRow(i)
     if row then return row end
     local c = self.detailContent
     row = CreateFrame("Frame", nil, c)
-    row.Text = Para(row, "NootropicGM_GameFontHighlightSmall", PANEL_W - 70)
+    row.Text = Para(row, "GameFontHighlightSmall", PANEL_W - 70)
     row.Text:SetPoint("TOPLEFT", 0, 0)
     row.Delete = CreateFrame("Button", nil, row)
     row.Delete:SetSize(14, 14)

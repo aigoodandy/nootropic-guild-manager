@@ -51,7 +51,7 @@ function MP:Build()
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.empty = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisable")
+    self.empty = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     self.empty:SetPoint("CENTER", scrollBox, "CENTER")
 end
 
@@ -63,9 +63,9 @@ function MP:InitRow(row, e)
         row.Icon = row:CreateTexture(nil, "ARTWORK")
         row.Icon:SetSize(16, 16)
         row.Icon:SetPoint("LEFT", 4, 0)
-        row.Name = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+        row.Name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         row.Name:SetPoint("LEFT", row.Icon, "RIGHT", 6, 0)
-        row.Info = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+        row.Info = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.Info:SetPoint("RIGHT", -6, 0)
         row:SetScript("OnClick", function(self) MP:Pick(self.entry.full) end)
     end

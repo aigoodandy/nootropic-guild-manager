@@ -55,7 +55,7 @@ end
 -- Small helpers
 ------------------------------------------------------------------------
 local function Label(parent, text, font)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NootropicGM_GameFontNormalSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormalSmall")
     fs:SetText(text)
     return fs
 end
@@ -64,7 +64,7 @@ local function InputBox(parent, width, maxLetters, numeric)
     local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     eb:SetSize(width, 20)
     eb:SetAutoFocus(false)
-    eb:SetFontObject("NootropicGM_GameFontHighlightSmall")
+    eb:SetFontObject("GameFontHighlightSmall")
     if maxLetters then eb:SetMaxLetters(maxLetters) end
     if numeric then eb:SetNumeric(true) end
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -127,7 +127,7 @@ function MV:Build()
     W.SetTitle(f, "Custom Recruitment Messages")
     self.frame = f
 
-    local intro = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    local intro = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     intro:SetPoint("TOPLEFT", 16, -32)
     intro:SetPoint("RIGHT", -16, 0)
     intro:SetJustifyH("LEFT")
@@ -164,7 +164,7 @@ function MV:BuildList(f)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.listEmpty = box:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+    self.listEmpty = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.listEmpty:SetPoint("CENTER")
     self.listEmpty:SetWidth(LIST_W - 30)
     self.listEmpty:SetText("No custom messages yet. Click New to make one.")
@@ -230,7 +230,7 @@ function MV:InitRow(row, item)
         row.Selected:SetVertexColor(1, 0.82, 0, 0.5)
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         row:GetHighlightTexture():SetAlpha(0.35)
-        row.Num = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalLarge")
+        row.Num = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         row.Num:SetPoint("LEFT", 4, 0)
         row.Num:SetWidth(20)
         row.On = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
@@ -240,12 +240,12 @@ function MV:InitRow(row, item)
             if row.rule then ns.Messages:Update(row.rule.id, "enabled", self:GetChecked() and true or false) end
         end)
         W.Tooltip(row.On, "Use this message", "Untick to keep it without using it.")
-        row.Name = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+        row.Name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         row.Name:SetPoint("TOPLEFT", 50, -4)
         row.Name:SetPoint("RIGHT", -4, 0)
         row.Name:SetJustifyH("LEFT")
         row.Name:SetWordWrap(false)
-        row.Info = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+        row.Info = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.Info:SetPoint("TOPLEFT", row.Name, "BOTTOMLEFT", 0, -2)
         row.Info:SetPoint("RIGHT", -4, 0)
         row.Info:SetJustifyH("LEFT")
@@ -272,7 +272,7 @@ function MV:BuildEditor(f)
     self.editor = e
     local EW = WIDTH - LIST_W - 40
 
-    self.noSelection = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisable")
+    self.noSelection = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     self.noSelection:SetPoint("CENTER", e, "CENTER")
     self.noSelection:SetText("Select a message on the left, or click New.")
 
@@ -355,7 +355,7 @@ function MV:BuildEditor(f)
     lvlLabel:SetPoint("TOPLEFT", 0, y - 4)
     self.minLevel = InputBox(e, 30, 2, true)
     self.minLevel:SetPoint("TOPLEFT", 54, y)
-    local to = Label(e, "to", "NootropicGM_GameFontHighlightSmall")
+    local to = Label(e, "to", "GameFontHighlightSmall")
     to:SetPoint("LEFT", self.minLevel, "RIGHT", 6, 0)
     self.maxLevel = InputBox(e, 30, 2, true)
     self.maxLevel:SetPoint("LEFT", to, "RIGHT", 10, 0)
@@ -389,12 +389,12 @@ function MV:BuildEditor(f)
     -- Message text
     local msgLabel = Label(e, "Message")
     msgLabel:SetPoint("TOPLEFT", 0, y)
-    self.count = e:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+    self.count = e:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.count:SetPoint("TOPRIGHT", e, "TOPRIGHT", 0, y)
     local ef, box = W.ScrollEditor(e, D.WHISPER_MAX)
     ef:SetPoint("TOPLEFT", 2, y - 16)
     ef:SetSize(EW - 6, 78)
-    box:SetFontObject("NootropicGM_GameFontHighlightSmall")
+    box:SetFontObject("GameFontHighlightSmall")
     box:SetWidth(EW - 24)
     box:HookScript("OnTextChanged", function(self, user)
         if user and MV.selected then ns.Messages:Update(MV.selected, "text", (self:GetText():gsub("[\r\n]+", " "))) end
@@ -403,19 +403,19 @@ function MV:BuildEditor(f)
     self.textBox = box
     y = y - 102
 
-    local tokens = e:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
+    local tokens = e:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     tokens:SetPoint("TOPLEFT", 0, y)
     tokens:SetText("|cffffd100$name  $class  $level  $race  $zone  $guild|r are filled in for each player")
     y = y - 18
 
-    self.preview = e:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    self.preview = e:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.preview:SetPoint("TOPLEFT", 0, y)
     self.preview:SetWidth(EW - 4)
     self.preview:SetJustifyH("LEFT")
     self.preview:SetSpacing(2)
     y = y - 46
 
-    self.matchInfo = e:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalSmall")
+    self.matchInfo = e:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     self.matchInfo:SetPoint("TOPLEFT", 0, y)
     self.matchInfo:SetWidth(EW - 4)
     self.matchInfo:SetJustifyH("LEFT")
@@ -557,9 +557,9 @@ function MV:BuildTransfer()
     t:Hide()
     self.transfer = t
 
-    t.Title = t:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalLarge")
+    t.Title = t:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     t.Title:SetPoint("TOPLEFT", 16, -14)
-    t.Help = t:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    t.Help = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     t.Help:SetPoint("TOPLEFT", t.Title, "BOTTOMLEFT", 0, -6)
     t.Help:SetPoint("RIGHT", -16, 0)
     t.Help:SetJustifyH("LEFT")
@@ -567,7 +567,7 @@ function MV:BuildTransfer()
     local ef, box = W.ScrollEditor(t)
     ef:SetPoint("TOPLEFT", 18, -66)
     ef:SetPoint("BOTTOMRIGHT", -36, 76)
-    box:SetFontObject("NootropicGM_GameFontHighlightSmall")
+    box:SetFontObject("GameFontHighlightSmall")
     box:SetWidth(WIDTH - 90)
     box:HookScript("OnTextChanged", function(self, user)
         -- keep the export text intact if someone types in it
@@ -575,7 +575,7 @@ function MV:BuildTransfer()
     end)
     t.Edit, t.Box = ef, box
 
-    t.Result = t:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    t.Result = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     t.Result:SetPoint("BOTTOMLEFT", 18, 44)
     t.Result:SetPoint("RIGHT", -16, 0)
     t.Result:SetJustifyH("LEFT")

@@ -164,7 +164,7 @@ local function CreateButton(row)
     b.Check:Hide()
     if b.SetMotionScriptsWhileDisabled then b:SetMotionScriptsWhileDisabled(true) end -- tooltip says why it's off
 
-    b.Wait = b:CreateFontString(nil, "OVERLAY", "NootropicGM_NumberFontNormalSmall")
+    b.Wait = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
     b.Wait:SetPoint("CENTER", 0, 0)
     b.Wait:SetText("...")
     b.Wait:Hide()

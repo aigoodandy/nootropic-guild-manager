@@ -19,7 +19,7 @@ function TV:Build(frame)
     self.page = page
     page:SetScript("OnShow", function() TV:Refresh() end)
 
-    local intro = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    local intro = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     intro:SetPoint("TOPLEFT", frame, "TOPLEFT", 78, -38)
     intro:SetText("Tags are shared with everyone in the guild using the addon. Click a tag's name to find everyone who has it.")
 
@@ -54,7 +54,7 @@ function TV:Build(frame)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.emptyText = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisable")
+    self.emptyText = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     self.emptyText:SetPoint("CENTER", scrollBox, "CENTER")
 
     self:BuildHelp(page, inset, scrollBar)
@@ -110,7 +110,7 @@ local function BuildRow(row)
     end)
     W.Tooltip(row.Pill, "Show members with this tag")
 
-    row.Count = row:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    row.Count = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.Count:SetPoint("LEFT", 258, 0)
 
     row.Delete = W.Button(row, "Delete", 64, 20)
@@ -168,12 +168,12 @@ function TV:BuildHelp(page, inset, leftOf)
     box:SetBackdropColor(0, 0, 0, 0.35)
     box:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.9)
 
-    local title = box:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
+    local title = box:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOPLEFT", 14, -14)
     title:SetText("Searching the Roster")
 
     local Y = "|cffffd100"
-    local body = box:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    local body = box:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     body:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
     body:SetPoint("RIGHT", -14, 0)
     body:SetJustifyH("LEFT")
