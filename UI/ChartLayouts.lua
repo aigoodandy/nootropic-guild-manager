@@ -33,16 +33,17 @@ function CL.Label(key)
     return CL.LAYOUTS[1].label
 end
 
--- Does the page draw this layout itself (bars), or this file?
+-- Does the page draw this layout itself (with its bar rows), or this file?
+-- "Pie with legend" is the pie on top of the same bar rows.
 function CL.UsesBars(key)
-    return key == nil or key == "barspie" or key == "bars"
+    return key == nil or key == "barspie" or key == "bars" or key == "pie"
 end
 
 local MAX_ITEMS = 30
 local LEGEND_H = 22
 local COL_AREA_H = 150 -- the tallest column
 local COL_LABEL_H = 28
-local PIE_BIG = 220
+local PIE_BIG = 140 -- bigger and the circle art goes soft
 
 -- Shows a row's icon (its chosen one, or a class icon) on a texture, or hides it.
 local function SetIcon(tex, look)

@@ -24,7 +24,7 @@ local STAT_H = 36       -- a stat result row: its name above a full-width bar
 local BAR_H = 20        -- result bars (the character panel's skill bar look)
 local MAX_STAT_ROWS = 30 -- rows a stat shows (the page scrolls); the footer says "Showing the top 30" past that
 local PIE = 200         -- the pie's starting size; it's resized to the room left
-local PIE_MAX, PIE_MIN = 240, 80
+local PIE_MAX, PIE_MIN = 140, 80 -- bigger and the circle art goes soft
 local STAT_PREFIX = "stat:"
 
 local GOAL_PREFIX = "goal:"
@@ -1185,6 +1185,19 @@ local function PlacePie(self)
     FinishContent(self)
 end
 
+-- "Pie with legend": the pie on top, under the status line (the bar rows
+-- below it are the legend). Returns its size, to start the rows under it.
+local function PlacePieTop(self)
+    local pie, c = self.pie, self.dContent
+    local size = math.floor(math.min(PIE_MAX, math.max(PIE_MIN, (c:GetWidth() or 300) - 60)))
+    pie:ClearAllPoints()
+    pie:SetSize(size, size)
+    -- the status line spans the page, so this centers the pie
+    pie:SetPoint("TOP", self.dStatus, "BOTTOM", 0, -14)
+    pie:Show()
+    return size
+end
+
 -- After the footer's text is set: the pie for "Bars and pie", none for
 -- "Bars only" (other layouts placed their own).
 local function FinishLayout(self, layout)
@@ -1213,6 +1226,7 @@ function PV:RefreshDetail(p)
     self.hoverRows = nil
     local bars = CL.UsesBars(layout)
     local d, prev, gap = self.dContent, self.dStatus, -12
+    if layout == "pie" then gap = -(PlacePieTop(self) + 26) end -- the rows start under the pie
     local slices, rowsHeight, items = {}, 0, {}
     for i, r in ipairs(self.optionRows) do
         local text = p.options[i]
@@ -1300,6 +1314,7 @@ function PV:RefreshStat(id)
     self.hoverRows = nil
     local bars = CL.UsesBars(layout)
     local d, prev, gap = self.dContent, self.dStatus, -12
+    if layout == "pie" then gap = -(PlacePieTop(self) + 26) end -- the rows start under the pie
     local slices, rowsHeight, items = {}, 0, {}
     for i, r in ipairs(self.statRows) do
         local row = s.rows[i]

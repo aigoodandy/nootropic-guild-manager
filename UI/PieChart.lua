@@ -14,16 +14,11 @@
 local _, ns = ...
 local W = ns.Widgets
 
--- The circle the slices are drawn with. The old portrait mask is small and
--- goes soft when the pie is big; newer clients have a high-resolution one
--- made for scaling, used when it's there.
-local function FileExists(path)
-    if not GetFileIDFromPath then return false end
-    local ok, id = pcall(GetFileIDFromPath, path)
-    return ok and id ~= nil
-end
-local SHARP_CIRCLE = "Interface\\Masks\\CircleMaskScalable"
-local CIRCLE = FileExists(SHARP_CIRCLE) and SHARP_CIRCLE or "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+-- The circle the slices are drawn with: crisp up to about 140 pixels across
+-- (the pages keep the pie that size). (CircleMaskScalable was tried: it has
+-- a feathered edge, so the pie looked blurrier.)
+local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+W.PIE_SHARP_MAX = 140
 
 -- Stops a cooldown sweep at `frac` of the way round: a short cooldown
 -- started that far back, then paused (how Blizzard shows a fixed percentage).
