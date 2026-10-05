@@ -229,7 +229,7 @@ function RV:Relayout()
             if row.entry then RV:InitRow(row, row.entry) end
         end)
     end
-    self:RefreshTagBar()
+    self:RefreshFilterInfo()
 end
 
 function RV:SetListWidth(w)
@@ -362,10 +362,12 @@ function RV:Build(frame)
     page:SetAllPoints()
     self.page, self.frame = page, frame
     page:SetScript("OnShow", function() if RV.dirty then RV:Refresh() end end)
+    page:HookScript("OnHide", function() RV:ClosePanels() end)
 
     self:ComputeLayout()
     self:BuildToolbar(page, frame)
-    self:BuildTagBar(page, frame)
+    self:BuildTagsPanel(page)
+    self:BuildFilterPanel(page)
     self:BuildList(page, frame.Inset)
     self:ApplyHeaderLayout()
 
@@ -374,17 +376,47 @@ function RV:Build(frame)
         for id in pairs(RV.tagFilter) do
             if not ns.DB:GetTag(id) then RV.tagFilter[id] = nil end
         end
-        RV:RefreshTagBar()
+        if RV.tagsPanel:IsShown() then RV:RefreshTagsPanel() end
+        RV:RefreshFilterInfo()
     end)
+end
+
+------------------------------------------------------------------------
+-- Toolbar: search on the left, Tags and Filter on the right, and a
+-- summary line underneath (counts, active tags and filters, Clear).
+-- Columns: right-click any column header.
+------------------------------------------------------------------------
+local function Check(parent, text)
+    local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    cb:SetSize(22, 22)
+    local label = cb.Text or cb.text
+    if not label then
+        label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label:SetPoint("LEFT", cb, "RIGHT", 2, 1)
+    end
+    label:SetFontObject("GameFontHighlightSmall")
+    label:SetText(text)
+    cb.Label = label
+    return cb
+end
+
+-- Button with an arrow at its right edge ("Tags (2)  v", "Filter  >").
+local function MenuButton(parent, text, width, arrow)
+    local b = W.Button(parent, text, width, 22)
+    b.Arrow = b:CreateTexture(nil, "OVERLAY")
+    b.Arrow:SetSize(16, 16)
+    b.Arrow:SetPoint("RIGHT", -4, 0)
+    b.Arrow:SetTexture(arrow == "down" and "Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up" or "Interface\\ChatFrame\\ChatFrameExpandArrow")
+    return b
 end
 
 function RV:BuildToolbar(page, frame)
     local search = CreateFrame("EditBox", "NootropicGMSearchBox", page, "SearchBoxTemplate")
-    search:SetSize(260, 20)
+    search:SetSize(300, 20)
     search:SetPoint("TOPLEFT", frame, "TOPLEFT", 78, -33)
     search:SetAutoFocus(false)
     if search.Instructions then
-        search.Instructions:SetText("Search name, tag, profession, spec, class...")
+        search.Instructions:SetText("Search name, profession, spec, class, note...")
     end
     search:HookScript("OnTextChanged", function(eb)
         RV.query = eb:GetText() or ""
@@ -395,134 +427,310 @@ function RV:BuildToolbar(page, frame)
         "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r limit a word to one field.",
         "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r  |cffffd100is:addon|r",
         "|cffffd100rating:4|r  four stars or better   |cffffd100level>=50|r",
-        "|cffffd100-raiding|r excludes, |cffffd100tag:\"world pvp\"|r matches a phrase.")
+        "|cffffd100-raiding|r excludes, |cffffd100tag:\"world pvp\"|r matches a phrase.",
+        "Right-click a column header to choose columns.")
     self.searchBox = search
 
-    local online = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
-    online:SetSize(24, 24)
-    online:SetPoint("LEFT", search, "RIGHT", 14, 0)
-    local label = online.Text or online.text
-    if not label then
-        label = online:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        label:SetPoint("LEFT", online, "RIGHT", 2, 1)
+    local filter = MenuButton(page, "Filter", 96, "right")
+    filter:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -32)
+    filter:SetScript("OnClick", function() RV:TogglePanel(RV.filterPanel) end)
+    W.Tooltip(filter, "Filter", "Online only, mains or alts, class, rank, and guildmates using the addon.")
+    self.filterBtn = filter
+
+    local tags = MenuButton(page, "Tags", 96, "down")
+    tags:SetPoint("RIGHT", filter, "LEFT", -6, 0)
+    tags:SetScript("OnClick", function() RV:TogglePanel(RV.tagsPanel) end)
+    W.Tooltip(tags, "Tags", "Show only members with the tags you tick.")
+    self.tagsBtn = tags
+
+    -- summary line
+    local clear = CreateFrame("Button", nil, page)
+    clear:SetSize(60, 16)
+    clear:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -63)
+    clear.Text = clear:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    clear.Text:SetPoint("RIGHT", 0, 0)
+    clear.Text:SetText("|TInterface\\Buttons\\UI-StopButton:12|t Clear")
+    clear:SetWidth(math.ceil(clear.Text:GetStringWidth()) + 4)
+    clear:SetScript("OnClick", function() RV:ClearFilters() end)
+    clear:SetScript("OnEnter", function(self) self.Text:SetTextColor(1, 1, 1) end)
+    clear:SetScript("OnLeave", function(self) self.Text:SetTextColor(1, 0.82, 0) end)
+    self.clearBtn = clear
+
+    local filters = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    filters:SetPoint("RIGHT", clear, "LEFT", -8, 0)
+    filters:SetJustifyH("RIGHT")
+    filters:SetWordWrap(false)
+    self.filterInfo = filters
+
+    local count = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    count:SetPoint("TOPLEFT", frame, "TOPLEFT", 80, -66)
+    count:SetPoint("RIGHT", filters, "LEFT", -12, 0)
+    count:SetJustifyH("LEFT")
+    count:SetWordWrap(false)
+    self.countText = count
+end
+
+-- A small panel that opens under a toolbar button.
+local function DropPanel(page, width, height)
+    local p = CreateFrame("Frame", nil, page, "BackdropTemplate")
+    p:SetSize(width, height)
+    p:SetFrameStrata("DIALOG")
+    p:EnableMouse(true)
+    p:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+    p:SetBackdropColor(0.06, 0.05, 0.04, 0.97)
+    p:SetBackdropBorderColor(0.7, 0.6, 0.4, 1)
+    p:Hide()
+    return p
+end
+
+function RV:TogglePanel(p)
+    local open = p:IsShown()
+    self:ClosePanels()
+    if not open then
+        if p == self.tagsPanel then self:RefreshTagsPanel() else self:RefreshFilterPanel() end
+        p:Show()
     end
-    label:SetFontObject("GameFontHighlightSmall")
-    label:SetText("Online only")
-    online:SetChecked(ns.DB:Settings().onlineOnly)
+end
+
+function RV:ClosePanels()
+    if self.tagsPanel then self.tagsPanel:Hide() end
+    if self.filterPanel then self.filterPanel:Hide() end
+end
+
+------------------------------------------------------------------------
+-- Tags menu: every tag (icon and color) in two columns, all/any, Clear
+------------------------------------------------------------------------
+RV.tagAny = false
+
+function RV:BuildTagsPanel(page)
+    local p = DropPanel(page, 330, 120)
+    p:SetPoint("TOPRIGHT", self.tagsBtn, "BOTTOMRIGHT", 0, -4)
+    p.checks = {}
+    self.tagsPanel = p
+
+    local matchLabel = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    matchLabel:SetPoint("BOTTOMLEFT", 14, 16)
+    matchLabel:SetText("Match")
+    local match = W.Button(p, "", 130, 20)
+    match:SetPoint("LEFT", matchLabel, "RIGHT", 8, 0)
+    match:SetScript("OnClick", function(btn)
+        W.ShowMenu(btn, {
+            { text = "Show members with", isTitle = true },
+            { text = "All ticked tags", radio = true, checked = function() return not RV.tagAny end,
+              func = function() RV.tagAny = false; RV:RefreshTagsPanel(); RV:Refresh() end },
+            { text = "Any ticked tag", radio = true, checked = function() return RV.tagAny end,
+              func = function() RV.tagAny = true; RV:RefreshTagsPanel(); RV:Refresh() end },
+        })
+    end)
+    p.Match = match
+    local clear = W.Button(p, "Clear", 70, 20)
+    clear:SetPoint("BOTTOMRIGHT", -12, 12)
+    clear:SetScript("OnClick", function()
+        wipe(RV.tagFilter)
+        RV:RefreshTagsPanel()
+        RV:Refresh()
+    end)
+end
+
+function RV:RefreshTagsPanel()
+    local p = self.tagsPanel
+    local tags = ns.DB:GetTags()
+    local COL_W, ROW = 152, 22
+    for i, tag in ipairs(tags) do
+        local cb = p.checks[i]
+        if not cb then
+            cb = Check(p, "")
+            cb.Icon = cb:CreateTexture(nil, "ARTWORK")
+            cb.Icon:SetSize(14, 14)
+            cb.Icon:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+            cb.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            cb.Label:ClearAllPoints()
+            cb.Label:SetPoint("LEFT", cb.Icon, "RIGHT", 4, 0)
+            cb.Label:SetWidth(COL_W - 44)
+            cb.Label:SetJustifyH("LEFT")
+            cb.Label:SetWordWrap(false)
+            cb:SetScript("OnClick", function(self)
+                if self.tagId then
+                    RV.tagFilter[self.tagId] = self:GetChecked() and true or nil
+                    RV:Refresh()
+                end
+            end)
+            p.checks[i] = cb
+        end
+        local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+        cb:ClearAllPoints()
+        cb:SetPoint("TOPLEFT", 10 + col * COL_W, -10 - row * ROW)
+        cb.tagId = tag.id
+        cb.Icon:SetTexture(D:TagIcon(tag))
+        cb.Label:SetText(D:TagColorHex(tag.color) .. tag.name .. "|r")
+        cb:SetChecked(self.tagFilter[tag.id] and true or false)
+        cb:Show()
+    end
+    for i = #tags + 1, #p.checks do p.checks[i]:Hide() end
+    local rows = math.max(1, math.ceil(#tags / 2))
+    p:SetHeight(20 + rows * ROW + 40)
+    p.Match:SetText(self.tagAny and "Any ticked tag" or "All ticked tags")
+end
+
+------------------------------------------------------------------------
+-- Filter menu: online only, mains/alts, class, rank, addon users
+-- (saved in settings.onlineOnly and settings.rosterFilter)
+------------------------------------------------------------------------
+function RV:Filters()
+    local s = ns.DB:Settings()
+    s.rosterFilter = s.rosterFilter or {}
+    return s.rosterFilter
+end
+
+local KIND_LABELS = { main = "Mains only", alt = "Alts only" }
+
+function RV:BuildFilterPanel(page)
+    local p = DropPanel(page, 250, 196)
+    p:SetPoint("TOPRIGHT", self.filterBtn, "BOTTOMRIGHT", 0, -4)
+    self.filterPanel = p
+
+    local online = Check(p, "Online only")
+    online:SetPoint("TOPLEFT", 10, -10)
     online:SetScript("OnClick", function(self)
         ns.DB:Settings().onlineOnly = self:GetChecked() and true or false
         RV:Refresh()
     end)
-    self.onlineCheck = online
+    p.Online = online
 
-    local sync = W.Button(page, "Sync", 70, 22)
-    sync:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -32)
-    sync:SetScript("OnClick", function()
-        ns.Comm:Broadcast(true)
-        ns.Comm:RequestLog()
-        ns.Roster:Request()
-        ns:Print("Asked guildmates running Nootropic Guild Manager to share their data.")
+    local function Picker(label, y, onClick)
+        local text = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        text:SetPoint("TOPLEFT", 16, y - 4)
+        text:SetText(label)
+        local b = W.Button(p, "", 150, 20)
+        b:SetPoint("TOPLEFT", 84, y)
+        b:SetScript("OnClick", onClick)
+        return b
+    end
+    p.Kind = Picker("Show", -40, function(btn)
+        local f = RV:Filters()
+        local items = { { text = "Show", isTitle = true } }
+        for _, k in ipairs({ { nil, "Mains and alts" }, { "main", "Mains only" }, { "alt", "Alts only" } }) do
+            items[#items + 1] = { text = k[2], radio = true, checked = function() return f.kind == k[1] end,
+                func = function() f.kind = k[1]; RV:RefreshFilterPanel(); RV:Refresh() end }
+        end
+        W.ShowMenu(btn, items)
     end)
-    W.Tooltip(sync, "Sync with guildmates",
-        "Asks everyone online who runs Nootropic Guild Manager to share their professions and specialization.",
-        "Officers also exchange Officer Log entries.")
+    p.Class = Picker("Class", -66, function(btn)
+        local f = RV:Filters()
+        local items = { { text = "Class", isTitle = true },
+            { text = "Any", radio = true, checked = function() return f.classFile == nil end,
+              func = function() f.classFile = nil; RV:RefreshFilterPanel(); RV:Refresh() end } }
+        for _, cls in ipairs(D.CLASSES) do
+            items[#items + 1] = { text = ("|c%s%s|r"):format(ns.ClassHex(cls), D:ClassName(cls)), radio = true,
+                checked = function() return f.classFile == cls end,
+                func = function() f.classFile = cls; RV:RefreshFilterPanel(); RV:Refresh() end }
+        end
+        W.ShowMenu(btn, items)
+    end)
+    p.Rank = Picker("Rank", -92, function(btn)
+        local f = RV:Filters()
+        local items = { { text = "Rank", isTitle = true },
+            { text = "Any", radio = true, checked = function() return f.rank == nil end,
+              func = function() f.rank = nil; RV:RefreshFilterPanel(); RV:Refresh() end } }
+        for _, rank in ipairs(RV:RankNames()) do
+            items[#items + 1] = { text = rank, radio = true, checked = function() return f.rank == rank end,
+                func = function() f.rank = rank; RV:RefreshFilterPanel(); RV:Refresh() end }
+        end
+        W.ShowMenu(btn, items)
+    end)
 
-    local columns = W.Button(page, "Columns", 84, 22)
-    columns:SetPoint("RIGHT", sync, "LEFT", -6, 0)
-    columns:SetScript("OnClick", function(self) RV:ShowColumnsMenu(self) end)
-    W.Tooltip(columns, "Choose columns", "Show or hide roster columns. Your choice is saved.",
-        "Drag a column header sideways to move it, or its edge to resize it. Your layout is saved.", "Narrow windows hide low-priority columns automatically.")
-    self.columnsButton = columns
-
-    local count = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    count:SetPoint("RIGHT", columns, "LEFT", -10, 0)
-    self.countText = count
-end
-
-------------------------------------------------------------------------
--- Tag quick-filter bar
-------------------------------------------------------------------------
-function RV:BuildTagBar(page, frame)
-    local bar = CreateFrame("Frame", nil, page)
-    bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 78, -60)
-    bar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -60)
-    bar:SetHeight(20)
-    self.tagBar = bar
-
-    bar.Label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    bar.Label:SetPoint("LEFT", 0, 0)
-    bar.Label:SetText("Tags:")
-
-    bar.Clear = W.Pill(bar, 16)
-    bar.Clear:SetLabel("Clear")
-    bar.Clear:SetScript("OnClick", function()
-        wipe(RV.tagFilter)
-        RV:RefreshTagBar()
+    local addon = Check(p, "Only guildmates using the addon")
+    addon:SetPoint("TOPLEFT", 10, -118)
+    addon:SetScript("OnClick", function(self)
+        RV:Filters().addonOnly = self:GetChecked() and true or nil
         RV:Refresh()
     end)
+    p.Addon = addon
 
-    bar.More = W.Pill(bar, 16)
-    bar.More:SetLabel("More...")
-    bar.More:SetScript("OnClick", function(self)
-        local items = { { text = "Filter by tag", isTitle = true } }
-        for _, tag in ipairs(ns.DB:GetTags()) do
-            items[#items + 1] = {
-                text = D:TagLabel(tag, 14),
-                checked = function() return RV.tagFilter[tag.id] end,
-                func = function() RV:ToggleTagFilter(tag.id) end,
-            }
-        end
-        W.ShowMenu(self, items)
+    local reset = W.Button(p, "Reset filters", 110, 20)
+    reset:SetPoint("BOTTOMLEFT", 12, 12)
+    reset:SetScript("OnClick", function()
+        ns.DB:Settings().onlineOnly = false
+        wipe(RV:Filters())
+        RV:RefreshFilterPanel()
+        RV:Refresh()
     end)
-
-    bar.pills = {}
+    local close = W.Button(p, CLOSE or "Close", 70, 20)
+    close:SetPoint("BOTTOMRIGHT", -12, 12)
+    close:SetScript("OnClick", function() p:Hide() end)
 end
 
-function RV:ToggleTagFilter(id)
-    self.tagFilter[id] = not self.tagFilter[id] or nil
-    self:RefreshTagBar()
+-- Ranks in the guild's order (highest first), from the roster.
+function RV:RankNames()
+    local byIndex, out = {}, {}
+    for _, e in ipairs(ns.Roster.members) do
+        if e.rank ~= "" and not byIndex[e.rankIndex] then byIndex[e.rankIndex] = e.rank end
+    end
+    local idx = {}
+    for i in pairs(byIndex) do idx[#idx + 1] = i end
+    table.sort(idx)
+    for _, i in ipairs(idx) do out[#out + 1] = byIndex[i] end
+    return out
+end
+
+function RV:RefreshFilterPanel()
+    local p, f = self.filterPanel, self:Filters()
+    p.Online:SetChecked(ns.DB:Settings().onlineOnly and true or false)
+    p.Kind:SetText(KIND_LABELS[f.kind] or "Mains and alts")
+    p.Class:SetText(f.classFile and ("|c%s%s|r"):format(ns.ClassHex(f.classFile), D:ClassName(f.classFile)) or "Any")
+    p.Rank:SetText(f.rank or "Any")
+    p.Addon:SetChecked(f.addonOnly and true or false)
+end
+
+-- Everything the Tags and Filter menus narrow the roster by, for Query.
+function RV:QueryOptions()
+    local f = self:Filters()
+    return { onlineOnly = ns.DB:Settings().onlineOnly, tagIds = self.tagFilter, tagAny = self.tagAny,
+        kind = f.kind, classFile = f.classFile, rank = f.rank, addonOnly = f.addonOnly }
+end
+
+function RV:ClearFilters()
+    wipe(self.tagFilter)
+    ns.DB:Settings().onlineOnly = false
+    wipe(self:Filters())
+    if self.tagsPanel:IsShown() then self:RefreshTagsPanel() end
+    if self.filterPanel:IsShown() then self:RefreshFilterPanel() end
     self:Refresh()
 end
 
-function RV:RefreshTagBar()
-    local bar = self.tagBar
-    if not bar then return end
-    local width = bar:GetWidth()
-    if width < 50 then width = 850 end
-    local x = bar.Label:GetStringWidth() + 8
-    local tags = ns.DB:GetTags()
-    local anyActive = next(self.tagFilter) ~= nil
-    local reserve = 60 + (anyActive and 46 or 0)
-    local overflow = false
+-- Roster of guildmates running the addon (the "x using ..." link).
+function RV:ShowAddonUsers()
+    self:Filters().addonOnly = true
+    self:SetSearch("")
+    if self.filterPanel:IsShown() then self:RefreshFilterPanel() end
+    self:Refresh()
+end
 
-    for i, tag in ipairs(tags) do
-        local p = bar.pills[i]
-        if not p then
-            p = W.Pill(bar, 16)
-            p:SetScript("OnClick", function(self) RV:ToggleTagFilter(self.tag.id) end)
-            bar.pills[i] = p
-        end
-        p:SetTag(tag, self.tagFilter[tag.id] and true or false)
-        if overflow or x + p:GetWidth() > width - reserve then
-            overflow = true
-            p:Hide()
-        else
-            p:ClearAllPoints()
-            p:SetPoint("LEFT", x, 0)
-            p:Show()
-            x = x + p:GetWidth() + 4
+-- Button counts and the right side of the summary line.
+function RV:RefreshFilterInfo()
+    if not self.filterInfo then return end
+    local f = self:Filters()
+    local tagParts, n = {}, 0
+    for _, tag in ipairs(ns.DB:GetTags()) do
+        if self.tagFilter[tag.id] then
+            n = n + 1
+            tagParts[#tagParts + 1] = D:TagIconString(tag, 12) .. " " .. D:TagColorHex(tag.color) .. tag.name .. "|r"
         end
     end
-    for i = #tags + 1, #bar.pills do bar.pills[i]:Hide() end
-
-    bar.More:ClearAllPoints()
-    bar.More:SetPoint("LEFT", x, 0)
-    bar.More:SetShown(overflow)
-    if overflow then x = x + bar.More:GetWidth() + 4 end
-
-    bar.Clear:ClearAllPoints()
-    bar.Clear:SetPoint("LEFT", x + 6, 0)
-    bar.Clear:SetShown(anyActive)
+    local parts = {}
+    if n > 0 then parts[#parts + 1] = (self.tagAny and "Any of: " or "Tags: ") .. table.concat(tagParts, ", ") end
+    local filterCount = 0
+    local function add(text) filterCount = filterCount + 1; parts[#parts + 1] = text end
+    if ns.DB:Settings().onlineOnly then add("online only") end
+    if f.kind then add(KIND_LABELS[f.kind]:lower()) end
+    if f.classFile then add(("|c%s%s|r"):format(ns.ClassHex(f.classFile), D:ClassName(f.classFile))) end
+    if f.rank then add(f.rank) end
+    if f.addonOnly then add("using the addon") end
+    self.filterInfo:SetText(table.concat(parts, "  |cff6d6d6d-|r  "))
+    self.clearBtn:SetShown(#parts > 0)
+    self.tagsBtn:SetText(n > 0 and ("Tags (%d)"):format(n) or "Tags")
+    self.filterBtn:SetText(filterCount > 0 and ("Filter (%d)"):format(filterCount) or "Filter")
 end
 
 ------------------------------------------------------------------------
@@ -1054,7 +1262,7 @@ function RV:Refresh()
 
     local s = ns.DB:Settings()
     if s.sortKey and not COL[s.sortKey] then s.sortKey = "rank" end -- from an older version
-    local list = ns.Roster:Query(self.query, { onlineOnly = s.onlineOnly, tagIds = self.tagFilter })
+    local list = ns.Roster:Query(self.query, self:QueryOptions())
     ns.Roster:Sort(list, s.sortKey, s.sortAsc)
     for i, e in ipairs(list) do e._stripe = (i % 2 == 0) end
 
@@ -1066,18 +1274,24 @@ function RV:Refresh()
         h:SetSortState(key == s.sortKey and (s.sortAsc and "asc" or "desc") or nil)
     end
 
-    local total = #ns.Roster.members
-    self.countText:SetText(("%d of %d members"):format(#list, total))
+    -- summary: "9 members - 3 online - 2 using the addon - showing 4"
+    local total, online, withAddon = ns.Roster:Stats()
+    local SEP = "  |cff6d6d6d-|r  "
+    local summary = (total == 1 and "1 member" or (total .. " members")) .. SEP
+        .. ("|cff40ff40%d online|r"):format(online) .. SEP
+        .. (withAddon == 1 and "1 using the addon" or (withAddon .. " using the addon"))
+    if #list ~= total then summary = summary .. SEP .. ("|cffffd100showing %d|r"):format(#list) end
+    self.countText:SetText(summary)
 
     if not IsInGuild() then
         self.emptyText:SetText("You are not in a guild.")
     elseif total == 0 then
         self.emptyText:SetText("Loading guild roster...")
     elseif #list == 0 then
-        self.emptyText:SetText("No members match your search.")
+        self.emptyText:SetText("No members match your search and filters.")
     else
         self.emptyText:SetText("")
     end
 
-    self:RefreshTagBar()
+    self:RefreshFilterInfo()
 end

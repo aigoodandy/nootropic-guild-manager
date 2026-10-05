@@ -20,7 +20,7 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 
 **Roster tab** — every guild member with first name (with class icon), second name, level, class, location (with a map button), spec, Main / Alt ("Main" or "Alt of Markpri"), up to three professions with skill levels, tags, a 1–5 star rating (officers only; hidden by default), guild rank, and the version of Nootropic Guild Manager they run (hidden by default; shown in red when someone in the guild has a newer version, "-" if they don't use the addon). Click a column header to sort; sorting by Main / Alt groups each main with their alts. Offline members are dimmed.
 
-- **Columns** button (or right-click any header) shows or hides columns. Your choice is saved between logins. Name can't be hidden.
+- **Right-click any column header** to show or hide columns. Your choice is saved between logins. Name can't be hidden.
 - **Rearrange columns** by dragging a header left or right; a gold marker shows where it will land. The order is saved between logins. "Reset column order" in the Columns menu, or **Reset Roster Columns** in Options (order, widths and shown columns), puts things back.
 - **Resize a column** by dragging the right edge of its header. Widths are saved; "Reset column widths" in the Columns menu undoes it. The last column fills the leftover space.
 - **Smaller windows** shrink columns toward a minimum width, then hide them in this order: Rank, Class, Lvl, Location, Professions, Rating, Main / Alt, Tags, Spec, Second Name. First Name is never hidden. Hidden columns come back when you widen the window, and the Columns menu marks them "(window too narrow)".
@@ -29,9 +29,10 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 - **Click a member** to open the detail panel beside the roster.
 - **Right-click a member** for quick tags, rating and main/alt (officers), whisper and invite.
 - **Tags column** shows each tag's icon, framed in the tag's color. Hover the member to see every tag's icon and name in the tooltip.
-- **Tags bar** under the search box filters by tags (members must have every selected tag).
+- **The bar at the top:** search on the left, **Tags** and **Filter** on the right. **Tags** opens a list of every tag (icon and color) to tick, showing members with **all** ticked tags or **any** of them. **Filter** has **Online only**, **Show** (mains and alts, mains only, alts only), **Class**, **Rank** and **Only guildmates using the addon**, plus **Reset filters**; your filter choices are saved. The buttons show how many are on, e.g. "Tags (2)".
+- **The summary line** under the bar shows members, how many are online and how many use the addon (and how many are showing when you search or filter). Active tags and filters are listed on its right, with **Clear** to turn them all off.
 - **Compact roster:** the red **Compact** button beside the close button (on the Roster tab) closes the big window and opens a small roster with no tabs that you can move and resize. It shows **First Name** and **Location**; right-click a column header or use **Columns** to add Level, Class, Second Name, Spec, Main / Alt or Rank. It has its own search and **Online** box, sorts by clicking a header, and shows the same tooltip and right-click menu as the Roster tab. Click a name to open their profile in the full window, or the **expand arrow** to go back. `/ngm compact` shows or hides it.
-- **"x using Nootropic Guild Manager"** at the bottom of the window (it says your guild's name instead when that option is on): click it to list only guildmates running the addon, with the Version column turned on. It searches `is:addon`; clear the search to see everyone again. Options can hide it.
+- **"x using Nootropic Guild Manager"** at the bottom of the window (it says your guild's name instead when that option is on): click it to list only guildmates running the addon, with the Version column turned on. It turns on **Filter > Only guildmates using the addon**; click **Clear** on the summary line to see everyone again. Options can hide it.
 
 **Character profile** (scrolls) — opens beside the roster:
 
@@ -190,7 +191,7 @@ Type any words. A member is shown when every word matches their name, class, spe
 
 The game does not let addons read another player's professions or talents. Nootropic Guild Manager handles this two ways:
 
-- **Members running Nootropic Guild Manager** share their own professions and spec automatically over the hidden guild addon channel when they log in, when they change talents or skills, and when someone opens the roster or presses **Sync**. A green check marks synced data.
+- **Members running Nootropic Guild Manager** share their own professions and spec automatically over the hidden guild addon channel when they log in, when they change talents or skills, and when someone opens the roster, and every few minutes (or right away with **Sync Now** in Options or `/ngm sync`). A green check marks synced data.
 - **Everyone else** can be filled in by hand from the detail panel. Synced data takes priority for professions; a manual spec always wins over a synced one.
 
 Spec is detected from the modern specialization API when the client has it, otherwise from whichever talent tree has the most points (shown as a split like `5/31/15`).

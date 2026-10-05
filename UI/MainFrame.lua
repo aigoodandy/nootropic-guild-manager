@@ -315,8 +315,7 @@ function UI:ShowAddonUsers()
     self:Show()
     self:SelectTab(UI.TAB_ROSTER)
     ns.RosterView:Relayout()
-    ns.RosterView:SetSearch("is:addon")
-    ns.RosterView:Refresh()
+    ns.RosterView:ShowAddonUsers() -- Filter > Only guildmates using the addon
     ns.PlaySound("IG_CHARACTER_INFO_TAB")
 end
 

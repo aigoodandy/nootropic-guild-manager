@@ -349,18 +349,32 @@ local function MatchToken(e, t)
     return hit
 end
 
--- opts: { onlineOnly = bool, tagIds = { [id] = true } }
+-- opts: { onlineOnly = bool, tagIds = { [id] = true }, tagAny = bool (any ticked
+--         tag instead of all), kind = "main" | "alt", classFile, rank (name),
+--         addonOnly = bool }
 function R:Query(text, opts)
     opts = opts or EMPTY
     local tokens = self:ParseQuery(text)
     local out = {}
     for _, e in ipairs(self.members) do
         local ok = not (opts.onlineOnly and not e.online)
-        if ok and opts.tagIds then
-            for id in pairs(opts.tagIds) do
-                if not e.tagSet[id] then ok = false break end
+        if ok and opts.tagIds and next(opts.tagIds) then
+            if opts.tagAny then
+                ok = false
+                for id in pairs(opts.tagIds) do
+                    if e.tagSet[id] then ok = true break end
+                end
+            else
+                for id in pairs(opts.tagIds) do
+                    if not e.tagSet[id] then ok = false break end
+                end
             end
         end
+        if ok and opts.kind == "main" and e.isAlt then ok = false end
+        if ok and opts.kind == "alt" and not e.isAlt then ok = false end
+        if ok and opts.classFile and e.classFile ~= opts.classFile then ok = false end
+        if ok and opts.rank and e.rank ~= opts.rank then ok = false end
+        if ok and opts.addonOnly and not e.hasAddon then ok = false end
         if ok then
             for _, t in ipairs(tokens) do
                 if not MatchToken(e, t) then ok = false break end
