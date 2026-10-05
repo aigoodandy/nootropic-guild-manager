@@ -25,6 +25,7 @@ ns.Stats = ST
 
 ST.TITLE_MAX = 60
 ST.FILTER_MAX = 120
+ST.DESC_MAX = 200
 
 -- Chart colors for rows without their own (tag palette, most distinct first)
 local PALETTE = { 2, 1, 6, 4, 3, 5, 8, 9, 7, 10 }
@@ -302,7 +303,7 @@ function ST:All()
     for raw, def in pairs(MyStats() or {}) do
         if self:Group(def.group) then
             out[#out + 1] = { id = "m:" .. raw, vis = "m", title = def.title, group = def.group, filter = def.filter,
-                looks = def.looks or {}, layout = def.layout, sort = SortKey(raw) }
+                looks = def.looks or {}, layout = def.layout, desc = def.desc, sort = SortKey(raw) }
         end
     end
     table.sort(out, function(a, b)
@@ -342,7 +343,7 @@ end
 
 -- Saves a stat (new when id is nil). looks: each row's color and icon.
 -- Returns its id.
-function ST:Save(id, title, group, filter, vis, looks, layout)
+function ST:Save(id, title, group, filter, vis, looks, layout, desc)
     if not ns.DB:Guild() then return nil, "You are not in a guild." end
     title, filter = Clean(title, self.TITLE_MAX), Clean(filter, self.FILTER_MAX)
     if title == "" then return nil, "Give it a title." end
@@ -361,12 +362,15 @@ function ST:Save(id, title, group, filter, vis, looks, layout)
     raw = raw or (ns.Sync.Base36(ns.DB:Now()) .. ns.Sync.Base36(math.random(0, 1295)))
     looks = TrimLooks(looks or (old and old.looks))
     layout = layout or (old and old.layout)
+    if desc == nil then desc = old and old.desc end
+    desc = desc and Clean(desc, ST.DESC_MAX) or nil
+    if desc == "" then desc = nil end
     if vis == "m" then
-        MyStats()[raw] = { title = title, group = group, filter = filter, looks = looks, layout = layout }
+        MyStats()[raw] = { title = title, group = group, filter = filter, looks = looks, layout = layout, desc = desc }
         ns:Fire("STATS_CHANGED")
     else
         local ok, err = ns.Sync:Set(SCOPES[vis] .. ":" .. raw, ns.Sync.Codec.CustomStat({
-            group = group, title = title, filter = filter, looks = looks, layout = layout }))
+            group = group, title = title, filter = filter, looks = looks, layout = layout, desc = desc }))
         if not ok then return nil, err end
     end
     return vis .. ":" .. raw
@@ -383,7 +387,7 @@ function ST:Delete(id)
         return true
     end
     return ns.Sync:Set(SCOPES[c.vis] .. ":" .. raw, ns.Sync.Codec.CustomStat({
-        group = c.group, deleted = true, title = c.title, filter = c.filter, looks = c.looks, layout = c.layout }))
+        group = c.group, deleted = true, title = c.title, filter = c.filter, looks = c.looks, layout = c.layout, desc = c.desc }))
 end
 
 -- How many members a filter matches now.
@@ -457,7 +461,7 @@ function ST:Compute(id)
     local c = self:Get(id)
     local g = c and self:Group(c.group)
     if not g then return nil end
-    local s = { id = id, title = c.title, custom = c, layout = c.layout or "barspie" }
+    local s = { id = id, title = c.title, desc = c.desc, custom = c, layout = c.layout or "barspie" }
     s.rows, s.total, s.pctOf, s.sub = self:Rows(c.group, c.filter, c.looks)
     if (c.filter or "") ~= "" then s.sub = s.sub .. ("  |cff9d9d9dFilters: %s|r"):format(c.filter) end
     local notes = {}

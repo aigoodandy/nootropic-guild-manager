@@ -45,6 +45,7 @@ UI\RecruitView.lua
 UI\RecruitMini.lua
 UI\MessagesView.lua
 UI\ChartLayouts.lua
+UI\FormKit.lua
 UI\PollsView.lua
 UI\GoalsView.lua
 UI\TagsView.lua

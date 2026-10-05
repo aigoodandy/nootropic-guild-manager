@@ -528,13 +528,20 @@ Codec.LookLabel = LookLabel
 -- looks;filter", "v2;group;deleted;color;icon;title;filter" and
 -- "group;deleted;title;filter", still read.
 -- s: { group, deleted, layout, title, looks, filter }
+-- v5 adds a description: "v5;group;deleted;layout;title;desc;looks;filter".
 function Codec.CustomStat(s)
-    return ("v4;%s;%d;%s;%s;%s;%s"):format((Clean(s.group or ""):gsub(";", "")), s.deleted and 1 or 0,
-        (Clean(s.layout or ""):gsub(";", "")), (Clean(s.title or ""):gsub(";", ",")), Codec.Looks(s.looks), Clean(s.filter or ""))
+    return ("v5;%s;%d;%s;%s;%s;%s;%s"):format((Clean(s.group or ""):gsub(";", "")), s.deleted and 1 or 0,
+        (Clean(s.layout or ""):gsub(";", "")), (Clean(s.title or ""):gsub(";", ",")),
+        (Clean(s.desc or ""):gsub(";", ",")), Codec.Looks(s.looks), Clean(s.filter or ""))
 end
 function Codec.ParseCustomStat(v)
     v = v or ""
-    local group, deleted, layout, title, looks, filter = v:match("^v4;([^;]*);(%d);([^;]*);([^;]*);([^;]*);(.*)$")
+    local group, deleted, layout, title, desc, looks, filter = v:match("^v5;([^;]*);(%d);([^;]*);([^;]*);([^;]*);([^;]*);(.*)$")
+    if group then
+        return { group = group, deleted = deleted == "1", layout = layout ~= "" and layout or nil, title = title,
+            desc = desc ~= "" and desc or nil, looks = Codec.ParseLooks(looks), filter = filter }
+    end
+    group, deleted, layout, title, looks, filter = v:match("^v4;([^;]*);(%d);([^;]*);([^;]*);([^;]*);(.*)$")
     if group then
         return { group = group, deleted = deleted == "1", layout = layout ~= "" and layout or nil, title = title,
             looks = Codec.ParseLooks(looks), filter = filter }
@@ -1097,14 +1104,14 @@ function S:SeedDefaults()
             store[key] = { v = Codec.TagDef(def[2], i * 10, false, def[1]), t = 1, a = "" }
         end
     end
-    -- default guild stats, the same way (time 5: replaces an untouched
-    -- default from an earlier beta, which were times 1 to 4)
+    -- default guild stats, the same way (time 6: replaces an untouched
+    -- default from an earlier beta, which were times 1 to 5)
     for i, def in ipairs(ns.Stats.DEFAULTS) do
         local key = "SD:d" .. i
         local v = Codec.CustomStat({ title = def[1], group = def[2], layout = def[3] })
         local cur = store[key]
-        if not cur or (cur.t < 5 and (cur.a or "") == "") then
-            store[key] = { v = v, t = 5, a = "" }
+        if not cur or (cur.t < 6 and (cur.a or "") == "") then
+            store[key] = { v = v, t = 6, a = "" }
         end
     end
     -- default goals, the same way (time 1; bump it when a default changes,

@@ -198,6 +198,16 @@ local function BuildListRow(row)
     row.HeaderLine:SetHeight(1)
     row.HeaderLine:SetPoint("LEFT", row.Header, "RIGHT", 6, 0)
     row.HeaderLine:SetPoint("RIGHT", -4, 0)
+    -- a stat's description in a tooltip
+    row:SetScript("OnEnter", function(self)
+        local stat = self.item and self.item.stat
+        if not (stat and stat.desc) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(stat.name)
+        GameTooltip:AddLine(stat.desc, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
     row:SetScript("OnClick", function(self)
         local item = self.item
         if item and item.poll then
@@ -313,8 +323,12 @@ function PV:BuildDetail(panel)
     self.dQuestion = Para(c, "GameFontHighlight")
     self.dQuestion:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
     self.dQuestion:SetPoint("RIGHT", c, "RIGHT", -14, 0)
+    -- a short description (stats, when set)
+    self.dDesc = Para(c, "GameFontDisableSmall")
+    self.dDesc:SetPoint("TOPLEFT", self.dQuestion, "BOTTOMLEFT", 0, -4)
+    self.dDesc:SetPoint("RIGHT", c, "RIGHT", -14, 0)
     self.dStatus = Para(c, "GameFontHighlightSmall")
-    self.dStatus:SetPoint("TOPLEFT", self.dQuestion, "BOTTOMLEFT", 0, -6)
+    self.dStatus:SetPoint("TOPLEFT", self.dDesc, "BOTTOMLEFT", 0, -4)
     self.dStatus:SetPoint("RIGHT", c, "RIGHT", -14, 0)
 
     -- the pie, under the result rows (placed and sized in Refresh)
@@ -698,8 +712,14 @@ function PV:FilterMenu(owner, box, onChange)
     W.ShowMenu(owner, items)
 end
 
+-- The stat form: settings on the left (What, Who counts, Who can see it),
+-- a live preview on the right (where each row's icon and color are set),
+-- and Delete / Cancel / Save along the bottom.
+local FORM_LEFT_W = 290
+local PREVIEW_ROW_H = 34
+
 function PV:BuildStatEditor(panel)
-    local ST = ns.Stats
+    local ST, FK = ns.Stats, ns.FormKit
     local c = CreateFrame("Frame", nil, panel)
     c:SetAllPoints()
     c:Hide()
@@ -710,15 +730,47 @@ function PV:BuildStatEditor(panel)
     line:SetPoint("RIGHT", c, "RIGHT", -12, 0)
     self.sHeader = title
 
-    local tLabel = Label(c, "Title")
-    tLabel:SetPoint("TOPLEFT", 14, -36)
-    self.sTitle = Input(c, IW - 8, ST.TITLE_MAX)
+    -- two columns over a bottom bar
+    local left = CreateFrame("Frame", nil, c)
+    left:SetPoint("TOPLEFT", 0, -36)
+    left:SetPoint("BOTTOMLEFT", 0, 44)
+    left:SetWidth(FORM_LEFT_W + 28)
+    local divider = c:CreateTexture(nil, "ARTWORK")
+    divider:SetColorTexture(1, 0.82, 0, 0.18)
+    divider:SetWidth(1)
+    divider:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
+    divider:SetPoint("BOTTOMLEFT", left, "BOTTOMRIGHT", 0, 0)
+    local right = CreateFrame("Frame", nil, c)
+    right:SetPoint("TOPLEFT", left, "TOPRIGHT", 10, 0)
+    right:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -8, 44)
+
+    ---------------- What ----------------
+    local what = FK.Section(left, "What", left)
+    what:SetPoint("TOPLEFT", 14, -2)
+    local tLabel = Label(left, "Title")
+    tLabel:SetPoint("TOPLEFT", 14, -24)
+    self.sTitle = Input(left, FORM_LEFT_W - 6, ST.TITLE_MAX)
     self.sTitle:SetPoint("TOPLEFT", tLabel, "BOTTOMLEFT", 6, -2)
     self.sTitle:HookScript("OnTextChanged", function() PV.sError:SetText("") end)
 
-    local gLabel = Label(c, "Count by")
-    gLabel:SetPoint("TOPLEFT", 14, -82)
-    local group = DropButton(c, 170)
+    local dLabel = Label(left, "Description  |cff9d9d9d(optional)|r")
+    dLabel:SetPoint("TOPLEFT", 14, -66)
+    self.sDescCount = left:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.sDescCount:SetPoint("RIGHT", left, "RIGHT", -14, 0)
+    self.sDescCount:SetPoint("BOTTOM", dLabel, "BOTTOM", 0, 0)
+    local descFrame, desc = W.ScrollEditor(left, ST.DESC_MAX)
+    descFrame:SetPoint("TOPLEFT", dLabel, "BOTTOMLEFT", 2, -4)
+    descFrame:SetSize(FORM_LEFT_W, 38)
+    desc:SetFontObject("GameFontHighlightSmall")
+    desc:SetWidth(FORM_LEFT_W - 18)
+    desc:HookScript("OnTextChanged", function(self)
+        PV.sDescCount:SetText(("%d / %d"):format(#(self:GetText() or ""), ST.DESC_MAX))
+    end)
+    self.sDesc = desc
+
+    local gLabel = Label(left, "Count by")
+    gLabel:SetPoint("TOPLEFT", 14, -126)
+    local group = DropButton(left, 140)
     group:SetPoint("TOPLEFT", gLabel, "BOTTOMLEFT", 0, -4)
     group:SetScript("OnClick", function(btn)
         local items = { { text = "Count members by", isTitle = true } }
@@ -731,91 +783,88 @@ function PV:BuildStatEditor(panel)
     end)
     self.sGroupBtn = group
 
-    -- how it's drawn, beside Count by
-    local lLabel = Label(c, "Layout")
-    lLabel:SetPoint("LEFT", gLabel, "LEFT", 182, 0)
-    local layout = DropButton(c, 140)
-    layout:SetPoint("TOPLEFT", lLabel, "BOTTOMLEFT", 0, -4)
-    layout:SetScript("OnClick", function(btn)
-        PV.ShowLayoutMenu(btn, function() return PV.sLayout end, function(key)
-            PV.sLayout = key
-            PV:RefreshStatEditor()
-        end)
-    end)
-    self.sLayoutBtn = layout
-
-    local fLabel = Label(c, "Filters  |cff9d9d9d(optional)|r")
-    fLabel:SetPoint("TOPLEFT", 14, -134)
-    self.sFilter = Input(c, IW - 8, ST.FILTER_MAX)
-    self.sFilter:SetPoint("TOPLEFT", fLabel, "BOTTOMLEFT", 6, -2)
-    self.sFilter:HookScript("OnTextChanged", function(_, user) if user then PV:RefreshStatEditor() end end)
-    W.Tooltip(self.sFilter, "Filters", "The same words as the roster search; every one must match.",
-        "class:warrior  race:orc  rank:officer  prof:tailoring  tag:raiding  level>=20  is:alt  is:main  is:addon  is:online",
-        "Put a minus in front to leave members out: -is:alt")
-    local add = W.Button(c, "Add Filter", 100, 20)
-    add:SetPoint("TOPLEFT", self.sFilter, "BOTTOMLEFT", -6, -4)
-    add:SetScript("OnClick", function(btn) PV:FilterMenu(btn) end)
-    local clear = W.Button(c, "Clear", 70, 20)
-    clear:SetPoint("LEFT", add, "RIGHT", 6, 0)
-    clear:SetScript("OnClick", function()
-        PV.sFilter:SetText("")
+    local lLabel = Label(left, "Layout")
+    lLabel:SetPoint("TOPLEFT", 166, -126)
+    self.sLayoutPicker = FK.LayoutPicker(left, function() return PV.sLayout end, function(key)
+        PV.sLayout = key
         PV:RefreshStatEditor()
     end)
-    self.sMatches = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    self.sMatches:SetPoint("LEFT", clear, "RIGHT", 10, 0)
+    self.sLayoutPicker:SetPoint("TOPLEFT", lLabel, "BOTTOMLEFT", 0, -4)
 
-    local vLabel = Label(c, "Who can see it")
-    vLabel:SetPoint("TOPLEFT", 14, -212)
-    local vis = DropButton(c, 170)
-    vis:SetPoint("TOPLEFT", vLabel, "BOTTOMLEFT", 0, -4)
-    vis:SetScript("OnClick", function(btn)
-        local officer = ns.IsOfficer()
-        local items = { { text = "Who can see it", isTitle = true } }
-        for _, v in ipairs(ST.VISIBILITY) do
-            items[#items + 1] = { text = v.label, radio = true,
-                disabled = v.key ~= "m" and not officer,
-                checked = function() return PV.sVis == v.key end,
-                func = function()
-                    if v.key ~= "m" and not ns.IsOfficer() then return end
-                    PV.sVis = v.key
-                    PV:RefreshStatEditor()
-                end }
-        end
-        W.ShowMenu(btn, items)
+    ---------------- Who counts ----------------
+    local who = FK.Section(left, "Who counts", left)
+    who:SetPoint("TOPLEFT", 14, -190)
+    self.sFilter = Input(left, FORM_LEFT_W - 6, ST.FILTER_MAX)
+    W.Tooltip(self.sFilter, "Filters", "The same words as the roster search; every one must match.",
+        "class:warrior  race:orc  role:tank  rank:officer  prof:tailoring  tag:raiding  level>=20  is:alt  is:main",
+        "Put a minus in front to leave members out: -is:alt")
+    self.sChips = FK.FilterChips(left, FORM_LEFT_W, self.sFilter, function() PV:RefreshStatEditor() end)
+    self.sChips:SetPoint("TOPLEFT", who, "BOTTOMLEFT", 0, -8)
+
+    ---------------- Who can see it ----------------
+    local vis = FK.Section(left, "Who can see it", left)
+    vis:SetPoint("TOPLEFT", self.sChips, "BOTTOMLEFT", 0, -10)
+    local options = {}
+    for _, v in ipairs(ST.VISIBILITY) do
+        options[#options + 1] = { key = v.key, label = v.key == "c" and "Everyone" or v.label }
+    end
+    self.sVisSeg = FK.Segment(left, FORM_LEFT_W, options, function() return PV.sVis end, function(key)
+        PV.sVis = key
+        PV:RefreshStatEditor()
     end)
-    self.sVisBtn = vis
-    self.sVisHint = Para(c, "GameFontDisableSmall", IW)
-    self.sVisHint:SetPoint("TOPLEFT", vis, "BOTTOMLEFT", 0, -6)
+    self.sVisSeg:SetPoint("TOPLEFT", vis, "BOTTOMLEFT", 0, -8)
+    self.sVisHint = Para(left, "GameFontDisableSmall", FORM_LEFT_W)
+    self.sVisHint:SetPoint("TOPLEFT", self.sVisSeg, "BOTTOMLEFT", 2, -4)
 
+    ---------------- Preview ----------------
+    local prev = FK.Section(right, "Preview", right)
+    prev:SetPoint("TOPLEFT", 4, -2)
+    local pie = W.PieChart(right, 100)
+    pie:SetPoint("TOP", right, "TOP", 0, -26)
+    pie:EnableMouse(false)
+    self.sPie = pie
+    self.sPrevNote = right:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.sPrevNote:SetText("Click a row's icon or swatch to change its look (right-click the icon for none).")
+    self.sPrevNote:SetJustifyH("LEFT")
+    local scroll = W.TryCreate("ScrollFrame", nil, right, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", -24, 0)
+    local list = CreateFrame("Frame", nil, scroll)
+    list:SetSize(200, 10)
+    scroll:SetScrollChild(list)
+    scroll:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then list:SetWidth(w) end end)
+    self.sPrevScroll, self.sRowList, self.sRowFrames = scroll, list, {}
+    self.sRowsEmpty = list:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.sRowsEmpty:SetPoint("TOPLEFT", 4, -4)
+    self.sRowsEmpty:SetText("No rows yet: no members match.")
+
+    ---------------- Bottom bar ----------------
+    local bar = c:CreateTexture(nil, "ARTWORK")
+    bar:SetColorTexture(1, 0.82, 0, 0.18)
+    bar:SetHeight(1)
+    bar:SetPoint("BOTTOMLEFT", 10, 42)
+    bar:SetPoint("BOTTOMRIGHT", -10, 42)
     local save = W.Button(c, SAVE or "Save", 100, 22)
-    save:SetPoint("BOTTOMLEFT", 12, 12)
+    save:SetPoint("BOTTOMRIGHT", -12, 12)
     save:SetScript("OnClick", function() PV:SaveStat() end)
     local cancel = W.Button(c, CANCEL or "Cancel", 90, 22)
-    cancel:SetPoint("LEFT", save, "RIGHT", 8, 0)
+    cancel:SetPoint("RIGHT", save, "LEFT", -8, 0)
     cancel:SetScript("OnClick", function()
         PV.mode = nil
         PV:Refresh()
     end)
-    self.sError = Para(c, "GameFontHighlightSmall", IW)
-    self.sError:SetPoint("BOTTOMLEFT", save, "TOPLEFT", 2, 8)
+    local formDelete = W.Button(c, DELETE or "Delete", 90, 22)
+    formDelete:SetPoint("BOTTOMLEFT", 12, 12)
+    formDelete:SetScript("OnClick", function() PV:DeleteStat(PV.sEditing) end)
+    self.sDeleteBtn = formDelete
+    self.sError = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.sError:SetPoint("RIGHT", cancel, "LEFT", -10, 0)
+    self.sError:SetPoint("LEFT", c, "LEFT", 112, 0)
+    self.sError:SetJustifyH("RIGHT")
+    self.sError:SetWordWrap(false)
     self.sError:SetTextColor(1, 0.35, 0.35)
 
-    -- each row's icon and color (the rows the stat has right now)
-    local rLabel = Label(c, "Rows  |cff9d9d9d(icon and color for each)|r")
-    rLabel:SetPoint("TOPLEFT", self.sVisHint, "BOTTOMLEFT", 0, -12)
-    local scroll = W.TryCreate("ScrollFrame", nil, c, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", rLabel, "BOTTOMLEFT", 0, -6)
-    scroll:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -30, 64)
-    local list = CreateFrame("Frame", nil, scroll)
-    list:SetSize(IW - 24, 10)
-    scroll:SetScrollChild(list)
-    self.sRowList, self.sRowFrames = list, {}
-    self.sRowsEmpty = list:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    self.sRowsEmpty:SetPoint("TOPLEFT", 2, -4)
-    self.sRowsEmpty:SetText("No rows yet: no members match.")
-
-    self.sTitle.nextBox = self.sFilter
-    self.sFilter.nextBox = self.sTitle
+    self.sTitle.nextBox = desc
+    desc.nextBox = self.sTitle
 
     -- on a custom stat's page: Edit and Delete
     local d = self.detailPane
@@ -825,21 +874,24 @@ function PV:BuildStatEditor(panel)
     self.statEditBtn = edit
     local del = W.Button(d, DELETE or "Delete", 90, 22)
     del:SetPoint("LEFT", edit, "RIGHT", 8, 0)
-    del:SetScript("OnClick", function()
-        local cst = PV.stat and PV.stat.custom
-        if not cst then return end
-        local who = cst.vis == "m" and "" or (cst.vis == "c" and " for everyone" or " for all officers")
-        W.Confirm(("Delete the stat \"%s\"%s?"):format(cst.title, who), function()
-            local ok, err = ns.Stats:Delete(cst.id)
-            if not ok and err then
-                ns:Print("|cffff5555" .. err .. "|r")
-            else
-                PV.selected = nil
-                PV:Refresh()
-            end
-        end)
-    end)
+    del:SetScript("OnClick", function() PV:DeleteStat(PV.stat and PV.stat.custom and PV.stat.custom.id) end)
     self.statDeleteBtn = del
+end
+
+-- Asks, then deletes a stat.
+function PV:DeleteStat(id)
+    local cst = id and ns.Stats:Get(id)
+    if not cst then return end
+    local who = cst.vis == "m" and "" or (cst.vis == "c" and " for everyone" or " for all officers")
+    W.Confirm(("Delete the stat \"%s\"%s?"):format(cst.title, who), function()
+        local ok, err = ns.Stats:Delete(cst.id)
+        if not ok and err then
+            ns:Print("|cffff5555" .. err .. "|r")
+        else
+            PV.selected, PV.mode = nil, nil
+            PV:Refresh()
+        end
+    end)
 end
 
 -- custom: the stat to edit, or nil for a new one.
@@ -849,7 +901,9 @@ function PV:ShowStatEditor(custom)
     self.sEditing = custom and custom.id or nil
     self.sHeader:SetText(custom and "Edit Stat" or "New Stat")
     self.sTitle:SetText(custom and custom.title or "")
+    self.sDesc:SetText(custom and custom.desc or "")
     self.sFilter:SetText(custom and custom.filter or "")
+    self.sChips:SetTextMode(false)
     self.sGroup = custom and custom.group or "class"
     self.sVis = custom and custom.vis or (ns.IsOfficer() and "c" or "m")
     self.sLayout = custom and custom.layout or "barspie"
@@ -857,6 +911,7 @@ function PV:ShowStatEditor(custom)
     self.sLooks = {}
     for label, l in pairs(custom and custom.looks or {}) do self.sLooks[label] = { color = l.color, icon = l.icon } end
     self.sError:SetText("")
+    self.sPrevScroll:SetVerticalScroll(0)
     self:Refresh()
     self.sTitle:SetFocus()
 end
@@ -865,37 +920,61 @@ function PV:RefreshStatEditor()
     local ST = ns.Stats
     local g = ST:Group(self.sGroup)
     self.sGroupBtn:SetText(g and g.label or "Choose...")
-    self.sLayoutBtn:SetText(ns.ChartLayouts.Label(self.sLayout))
-    self:RefreshStatRowLooks()
+    self.sLayoutPicker:Refresh()
     if self.sVis ~= "m" and not ns.IsOfficer() then self.sVis = "m" end
-    for _, v in ipairs(ST.VISIBILITY) do
-        if v.key == self.sVis then self.sVisBtn:SetText(v.label) end
-    end
+    local officer = ns.IsOfficer()
+    self.sVisSeg:Refresh(function(key) return key == "m" or officer end)
     self.sVisHint:SetText(self.sVis == "c" and "Shared with everyone in the guild running the addon."
         or self.sVis == "o" and "Shared with officers only. Guildmates never receive it."
         or "Kept in your copy of the addon; nobody else sees it.")
+    self.sChips:Refresh()
     local n, total = ST:MatchCount(self.sFilter:GetText())
-    self.sMatches:SetText(("Matches %d of %d members"):format(n, total))
+    self.sChips.Matches:SetText(("Matches %d of %d members"):format(n, total))
+    self.sDescCount:SetText(("%d / %d"):format(#(self.sDesc:GetText() or ""), ST.DESC_MAX))
+    local existing = self.sEditing and ST:Get(self.sEditing)
+    self.sDeleteBtn:SetShown(existing and ST:CanEdit(existing) or false)
     self.sError:SetText("")
+    self:RefreshStatRowLooks()
 end
 
--- The form's row list: every row the stat would show now, with an icon
--- button and color swatch (its own look until you pick another).
+-- The preview: the pie (for layouts with one) and every row the stat would
+-- show now, as a bar with its icon button and color swatch.
 function PV:RefreshStatRowLooks()
     local looks = self.sLooks or {}
-    local rows = ns.Stats:Rows(self.sGroup, self.sFilter:GetText(), looks)
+    local rows, total = ns.Stats:Rows(self.sGroup, self.sFilter:GetText(), looks)
     local list, frames = self.sRowList, self.sRowFrames
     local Key = ns.Sync.Codec.LookLabel
+
+    -- the pie, when the layout has one
+    local pie = self.sPie
+    local withPie = self.sLayout == "barspie" or self.sLayout == "pie"
+    local slices = {}
+    for i, row in ipairs(rows) do slices[i] = { row.count, row.r, row.g, row.b } end
+    pie:SetSlices(slices)
+    pie:SetShown(withPie)
+    local scroll, note = self.sPrevScroll, self.sPrevNote
+    note:ClearAllPoints()
+    if withPie then
+        note:SetPoint("TOPLEFT", pie:GetParent(), "TOPLEFT", 4, -134)
+    else
+        note:SetPoint("TOPLEFT", pie:GetParent(), "TOPLEFT", 4, -26)
+    end
+    note:SetPoint("RIGHT", pie:GetParent(), "RIGHT", -4, 0)
+    scroll:ClearAllPoints()
+    scroll:SetPoint("TOPLEFT", note, "BOTTOMLEFT", 0, -6)
+    scroll:SetPoint("BOTTOMRIGHT", pie:GetParent(), "BOTTOMRIGHT", -24, 0)
+
     for i, row in ipairs(rows) do
         local f = frames[i]
         if not f then
             f = CreateFrame("Frame", nil, list)
-            f:SetSize(list:GetWidth(), 24)
-            f:SetPoint("TOPLEFT", 0, -(i - 1) * 24)
+            f:SetHeight(PREVIEW_ROW_H)
+            f:SetPoint("TOPLEFT", 0, -(i - 1) * (PREVIEW_ROW_H + 2))
+            f:SetPoint("RIGHT", list, "RIGHT", 0, 0)
             f.Controls = LookControls(f,
                 function()
                     local r = f.row
-                    local chosen = looks and PV.sLooks[Key(r.label)] or {}
+                    local chosen = PV.sLooks[Key(r.label)] or {}
                     return { color = chosen.color, r = r.r, g = r.g, b = r.b, icon = r.icon, classFile = r.classFile }
                 end,
                 function(field, value)
@@ -904,36 +983,43 @@ function PV:RefreshStatRowLooks()
                     PV.sLooks[key][field] = value
                     PV:RefreshStatRowLooks()
                 end)
-            f.Controls:SetPoint("LEFT", 2, 0)
+            f.Controls:SetPoint("TOPLEFT", 2, 0)
             f.Label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            f.Label:SetPoint("LEFT", 54, 0)
-            f.Label:SetPoint("RIGHT", -50, 0)
+            f.Label:SetPoint("LEFT", f.Controls, "RIGHT", 6, 0)
+            f.Label:SetPoint("RIGHT", -60, 0)
             f.Label:SetJustifyH("LEFT")
             f.Label:SetWordWrap(false)
-            f.Count = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-            f.Count:SetPoint("RIGHT", -4, 0)
+            f.Count = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            f.Count:SetPoint("TOPRIGHT", -4, -4)
+            f.BarBg = W.StatBar(f, 10)
+            f.BarBg:SetPoint("BOTTOMLEFT", 2, 1)
+            f.BarBg:SetPoint("BOTTOMRIGHT", -2, 1)
             frames[i] = f
         end
         f.row = row
         f.Label:SetText(row.label)
         f.Label:SetTextColor(row.r or 1, row.g or 1, row.b or 1)
-        f.Count:SetText(row.count)
+        local pct = (total or 0) > 0 and math.floor(row.count * 100 / total + 0.5) or 0
+        f.Count:SetText(("%d  |cff9d9d9d%d%%|r"):format(row.count, pct))
+        f.BarBg.Bar:SetStatusBarColor(row.r or 1, row.g or 1, row.b or 1)
+        f.BarBg.Bar:SetValue((total or 0) > 0 and row.count / total or 0)
         f.Controls:Refresh()
         f:Show()
     end
     for i = #rows + 1, #frames do frames[i]:Hide() end
     self.sRowsEmpty:SetShown(#rows == 0)
-    list:SetHeight(math.max(10, #rows * 24))
+    list:SetHeight(math.max(10, #rows * (PREVIEW_ROW_H + 2)))
 end
 
 function PV:SaveStat()
     local id, err = ns.Stats:Save(self.sEditing, self.sTitle:GetText(), self.sGroup, self.sFilter:GetText(), self.sVis,
-        self.sLooks, self.sLayout)
+        self.sLooks, self.sLayout, self.sDesc:GetText() or "")
     if not id then
         self.sError:SetText(err or "Couldn't save the stat.")
         return
     end
     self.sTitle:ClearFocus()
+    self.sDesc:ClearFocus()
     self.sFilter:ClearFocus()
     self:Select(STAT_PREFIX .. id)
 end
@@ -1234,6 +1320,7 @@ function PV:RefreshDetail(p)
     self.statDeleteBtn:Hide()
     self.dTitle:SetText("Poll")
     self.dQuestion:SetText(p.question)
+    self.dDesc:SetText("")
     self.dStatus:SetText(StatusText(p) .. "  -  " .. VotesText(p.total))
 
     local most = 0
@@ -1324,6 +1411,7 @@ function PV:RefreshStat(id)
     local vis = s.custom and s.custom.vis
     self.dTitle:SetText(vis == "o" and "Officer Stat" or vis == "m" and "My Stat" or "Guild Stat")
     self.dQuestion:SetText(s.title)
+    self.dDesc:SetText(s.desc or "")
     self.dStatus:SetText("|cff66bbff" .. s.sub .. "|r")
 
     local layout = s.layout or "barspie"
@@ -1407,7 +1495,7 @@ local function ListItems(polls)
     local byVis = {}
     for _, c in ipairs(ns.Stats:All()) do
         byVis[c.vis] = byVis[c.vis] or {}
-        table.insert(byVis[c.vis], { id = c.id, name = c.title })
+        table.insert(byVis[c.vis], { id = c.id, name = c.title, desc = c.desc })
     end
     -- goals first, with how far along they are
     local goals = {}
