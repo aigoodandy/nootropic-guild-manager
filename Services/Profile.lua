@@ -52,7 +52,7 @@ local function EncodeAbout(text)
 end
 
 function PF.DecodeAbout(v)
-    return (v or ""):gsub("\\n", "\n")
+    return ((v or ""):gsub("\\n", "\n")) -- just the text (gsub also returns a count)
 end
 
 -- { text, fromMain = name } for a member (an alt without one shows its main's).
