@@ -1,6 +1,6 @@
 # Nootropic Guild Manager
 
-A guild roster for **World of Warcraft: Forever** that shows each member's professions and specialization, links alts to their mains, tags what they enjoy, lets officers rate how well they play their class and keep a dated officer log, records an audit trail of every change, and searches all of it. Shared data stays in sync between everyone running the addon.
+A guild roster for **World of Warcraft: Forever** that shows each member's professions and specialization, links alts to their mains, tags what they enjoy (with icons), runs guild polls, lets officers rate how well they play their class and keep a dated officer log, records an audit trail of every change, and searches all of it. Shared data stays in sync between everyone running the addon.
 
 ## Install
 
@@ -116,7 +116,7 @@ Messages and keywords are saved per guild.
 
 Members can tag **themselves** (on their own profile or by right-clicking their own row); only officers can tag other people.
 
-**Audit tab** (officers only) — every synced change across the guild: when, who changed it, which character, and what changed (e.g. "Rating changed from ★★ to ★★★" shown as star icons, "+Raiding", "Marked as an alt of Markpri"). Search it, filter by kind of change (tags, rating, main/alt, spec, professions, officer log, tag list) or by character, and click a row to open that profile. Changes saved together (within one 15-second batch, see below) are grouped into one line; hover it to see each change, or untick **Group changes**. How long history is kept is set in Options.
+**Audit tab** (officers only) — every synced change across the guild: when, who changed it, which character, and what changed (e.g. "Rating changed from ★★ to ★★★" shown as star icons, "+Raiding", "Marked as an alt of Markpri"). Search it, filter by kind of change (tags, rating, main/alt, spec, professions, officer log, tag list, tag icons, polls, guild settings such as turning reviews off) or by character, and click a row to open that profile. Changes saved together (within one 15-second batch, see below) are grouped into one line; hover it to see each change, or untick **Group changes**. How long history is kept is set in Options.
 
 ## Who can do what
 
@@ -196,7 +196,7 @@ Spec is detected from the modern specialization API when the client has it, othe
 
 ## How syncing works
 
-Every shared value (a member's tags, main, spec, professions, rating, an officer log entry, a tag definition) is stored with the time it was changed and who changed it. The newest change always wins, so everyone ends up with the same data no matter the order messages arrive in.
+Every shared value (a member's tags, main, spec, professions, rating, an officer log entry, a tag definition or icon, a poll, a vote, a guild setting) is stored with the time it was changed and who changed it. The newest change always wins, so everyone ends up with the same data no matter the order messages arrive in.
 
 - **Batches:** your changes show up for you instantly but are sent 15 seconds after the first one, all together. Everything in one batch is grouped in the audit.
 - **Repair:** every few minutes, and whenever you open the window, each copy of the addon sends a short checksum of its data. If a guildmate's checksums differ, the records that differ are re-sent on the same channel, and other clients skip re-sending what someone just sent. Missed messages, officers who were offline, and new installs all catch up this way, with no "Sync" button needed. Nothing is ever whispered.
@@ -212,7 +212,9 @@ In testing, three simulated clients (two officers and a member) with 40-50% of m
 Everything is saved per guild in `WTF/Account/<account>/SavedVariables/NootropicGuildManager.lua`, along with your settings. **Private notes never leave your computer**; shared data syncs as described above.
 
 What is shared:
-- With everyone running the addon: each player's own professions and spec, tags, mains/alts, spec/profession overrides, the Do Not Whisper list, and recruitment statuses (the last 7 days), map dot colors, and which addon version each person runs.
+- With everyone running the addon: each player's own professions and spec, tags (with their icons and colors), mains/alts, spec/profession overrides, the Do Not Whisper list, and recruitment statuses (the last 7 days), map dot colors, which addon version each person runs, polls and everyone's votes (until the poll's results expire), and whether officers have turned guild reviews off.
+
+Guildmates on 1.11 or older ignore polls, tag icons and the reviews switch; everyone should update to 1.12 so the guild stays in sync.
 - With officers only: guild reviews (anonymous) and officer comments on them, ratings, Officer Log entries (140 characters max; deleting one deletes it for every officer) and the audit trail.
 
 A note on trust: the addon checks permissions before sending anything, and officer data can only arrive through the officer channel. A guildmate who modified their copy of the addon could still forge a guild-wide change, but every change is recorded in the Audit tab with its author, so it would be visible to officers.
@@ -229,7 +231,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm sync` | sync now and show sync stats |
 | `/ngm polls` | open the Polls tab |
 | `/ngm audit` | open the Audit tab (officers) |
-| `/ngm reviews` | open the Reviews tab |
+| `/ngm reviews` | open the Reviews tab (Review Guild for members, while reviews are on) |
 | `/ngm minimap` | show or hide the minimap button |
 | `/ngm reset` | reset the window size and position |
 
