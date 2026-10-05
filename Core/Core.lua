@@ -432,13 +432,7 @@ function ns.InspectUnderMouse()
     Out(("Frame: %s (%s) %sx%s, parent %s"):format(f.GetDebugName and f:GetDebugName() or tostring(f:GetName()),
         f:GetObjectType(), Fmt(f:GetWidth()), Fmt(f:GetHeight()),
         parent and (parent.GetDebugName and parent:GetDebugName() or tostring(parent:GetName())) or "none"))
-    PrintRegions(f, "  ")
-    for _, child in ipairs({ f:GetChildren() }) do
-        Out(("  child %s %sx%s"):format(child.GetDebugName and child:GetDebugName() or tostring(child:GetName()),
-            Fmt(child:GetWidth()), Fmt(child:GetHeight())))
-        PrintRegions(child, "    ")
-    end
-    -- a bar's fill (and the fill of bars inside it)
+    -- a bar's fill
     local function BarFill(frame, indent)
         if frame.GetStatusBarTexture then
             local t = frame:GetStatusBarTexture()
@@ -448,8 +442,22 @@ function ns.InspectUnderMouse()
             end
         end
     end
+    PrintRegions(f, "  ")
     BarFill(f, "  ")
-    for _, child in ipairs({ f:GetChildren() }) do BarFill(child, "    ") end
+    -- every frame inside it, a few levels down (bars are often nested)
+    local function Children(frame, indent, depth)
+        if depth > 5 then return end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            local cp, _, _, cx, cy = child:GetPoint(1)
+            Out(("%schild %s (%s) %sx%s%s"):format(indent,
+                child.GetDebugName and child:GetDebugName() or tostring(child:GetName()), child:GetObjectType(),
+                Fmt(child:GetWidth()), Fmt(child:GetHeight()), cp and (" @" .. cp .. " " .. Fmt(cx) .. "," .. Fmt(cy)) or ""))
+            PrintRegions(child, indent .. "  ")
+            BarFill(child, indent .. "  ")
+            Children(child, indent .. "  ", depth + 1)
+        end
+    end
+    Children(f, "  ", 1)
     local hl = f.GetHighlightTexture and f:GetHighlightTexture()
     if hl then Out("  highlight: " .. tostring(hl.GetAtlas and hl:GetAtlas() or hl:GetTexture())) end
     local ck = f.GetCheckedTexture and f:GetCheckedTexture()
