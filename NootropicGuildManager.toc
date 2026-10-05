@@ -34,7 +34,6 @@ UI\ScheduleGrid.lua
 UI\BrandIcon.lua
 UI\MemberPicker.lua
 UI\IconPicker.lua
-UI\TagEditor.lua
 UI\RosterView.lua
 UI\CompactRoster.lua
 UI\ExportView.lua

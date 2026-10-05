@@ -447,8 +447,14 @@ function PF:SetKudosRetired(id, retired)
     return SaveType(id, { color = k.color, order = k.order, retired = retired, icon = k.icon, name = k.name })
 end
 
+-- Moves a kudos up or down among the active ones (or the retired ones).
 function PF:MoveKudos(id, delta)
-    local list = self:KudosTypes(true)
+    local this = self:KudosType(id)
+    if not this then return end
+    local list = {}
+    for _, k in ipairs(self:KudosTypes(true)) do
+        if (k.retired and true or false) == (this.retired and true or false) then list[#list + 1] = k end
+    end
     for i, k in ipairs(list) do
         if k.id == id then
             local other = list[i + delta]
