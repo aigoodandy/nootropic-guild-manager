@@ -101,6 +101,7 @@ local function NewPage(key, name, subtitle)
     local sub = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
     sub:SetText(subtitle)
+    outer.Sub = sub
     O.logos = O.logos or {}
     O.logos[#O.logos + 1] = logo
     return outer, setmetatable({ panel = panel, y = -66 }, Layout)
@@ -118,7 +119,7 @@ local function ActionPicker(L, label, key)
         local items = { { text = label, isTitle = true } }
         for _, a in ipairs(D.MINIMAP_ACTIONS) do
             items[#items + 1] = {
-                text = a.label, radio = true,
+                text = D:MinimapActionLabel(a.key), radio = true,
                 checked = function() return ns.DB:Settings().minimap[key] == a.key end,
                 func = function()
                     ns.DB:Settings().minimap[key] = a.key
@@ -601,6 +602,11 @@ function O:Refresh()
     self.officerNote:SetShown(not officer)
     self.reviewsCheck:SetChecked(ns.DB:ReviewsEnabled())
     SetUsable(self.reviewsCheck, officer and ns.DB:Guild() ~= nil)
+    -- texts that name tabs follow their titles
+    self.reviewsCheck.Hint:SetText(("When off, guildmates don't see the %s tab. Officers still see every review."):format(ns.DB:MemberReviewsTabName()))
+    if self.pages.recruiting and self.pages.recruiting.Sub then
+        self.pages.recruiting.Sub:SetText(("Saved for the guild you're in. Messages and searching are on the %s tab."):format(ns.TabName("recruit")))
+    end
     self.pronounsCheck:SetChecked(ns.Profile:PronounsEnabled())
     SetUsable(self.pronounsCheck, officer and ns.DB:Guild() ~= nil)
     self:RefreshTabControls(officer)

@@ -111,12 +111,15 @@ function W.SizeButton(parent, kind, size, onClick, tipTitle, ...)
     return holder
 end
 
+-- Title and lines may be functions, worked out each time it shows (for text
+-- that changes, such as a renamed tab's name).
 function W.Tooltip(frame, title, ...)
     local lines = { ... }
+    local function Text(v) if type(v) == "function" then return v() end return v end
     frame:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine(title)
-        for _, line in ipairs(lines) do GameTooltip:AddLine(line, 1, 1, 1, true) end
+        GameTooltip:AddLine(Text(title))
+        for _, line in ipairs(lines) do GameTooltip:AddLine(Text(line), 1, 1, 1, true) end
         GameTooltip:Show()
     end)
     frame:HookScript("OnLeave", function() GameTooltip:Hide() end)

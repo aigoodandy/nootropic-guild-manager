@@ -997,6 +997,13 @@ function S:SeedDefaults()
             store[key] = { v = Codec.TagDef(def[2], i * 10, false, def[1]), t = 1, a = "" }
         end
     end
+    -- default guild stats, the same way
+    for i, def in ipairs(ns.Stats.DEFAULTS) do
+        local key = "SD:d" .. i
+        if not store[key] then
+            store[key] = { v = Codec.CustomStat(def[2], false, def[1], ""), t = 1, a = "" }
+        end
+    end
     -- default kudos, the same way (identical everywhere, so they never conflict)
     for i, def in ipairs(ns.Data.DEFAULT_KUDOS) do
         local key = "KT:d" .. i

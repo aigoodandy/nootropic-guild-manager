@@ -429,7 +429,9 @@ function DP:BuildAboutBox(parent)
             if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
         end)
     end)
-    W.Tooltip(s.Clear, "Clear About me", "For anything inappropriate. Officers can clear it but not edit it; the Audit tab records who did.")
+    W.Tooltip(s.Clear, "Clear About me", function()
+        return ("For anything inappropriate. Officers can clear it but not edit it; the %s tab records who did."):format(ns.TabName("audit"))
+    end)
     return s
 end
 
@@ -582,7 +584,7 @@ function DP:KudosMenuItems(e)
             end,
         }
     end
-    if #items == 1 then items[2] = { text = "No kudos set up yet (officers add them on the Tags tab).", disabled = true } end
+    if #items == 1 then items[2] = { text = ("No kudos set up yet (officers add them on the %s tab)."):format(ns.TabName("tags")), disabled = true } end
     items[#items + 1] = { divider = true }
     items[#items + 1] = { text = "|cff9d9d9dAnonymous. Each kudos once a week per person.|r", disabled = true }
     return items
@@ -1137,7 +1139,8 @@ function DP:RefreshHistory(e)
     if shown == 0 then y = y - 16 end
     s.All:ClearAllPoints()
     s.All:SetPoint("TOPLEFT", 0, y - 2)
-    s.All:SetText(#groups > HISTORY_MAX and ("View all %d in Audit"):format(#entries) or "View in Audit tab")
+    local audit = ns.TabName("audit")
+    s.All:SetText(#groups > HISTORY_MAX and ("View all %d in %s"):format(#entries, audit) or ("View in %s tab"):format(audit))
     s:SetHeight(-y + 28)
 end
 

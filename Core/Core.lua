@@ -81,6 +81,26 @@ function ns.PerfReport()
 end
 
 ------------------------------------------------------------------------
+-- Tab names in text ("Vote on the Polls tab"): the title officers gave the
+-- tab in Options > Officers > Tabs, else its usual name. key: "roster",
+-- "recruit", "polls", "tags", "audit" or "reviews".
+------------------------------------------------------------------------
+local USUAL_TAB_NAMES = { roster = "Roster", recruit = "Recruitment", polls = "Polls", tags = "Tags", audit = "Audit", reviews = "Reviews" }
+
+function ns.TabName(key)
+    local UI, DB = ns.UI, ns.DB
+    if UI and UI.TabTitle and DB and DB.TAB_KEYS then
+        for i, k in ipairs(DB.TAB_KEYS) do
+            if k == key then
+                local ok, title = pcall(UI.TabTitle, UI, i)
+                if ok and title then return title end
+            end
+        end
+    end
+    return USUAL_TAB_NAMES[key] or key
+end
+
+------------------------------------------------------------------------
 -- Printing
 ------------------------------------------------------------------------
 function ns:Print(...)
@@ -347,11 +367,11 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm|r  - open or close the roster")
     ns:Print("  |cffffffff/ngm find <text>|r  - open with a search")
     ns:Print("  |cffffffff/ngm sync|r  - sync with guildmates now and show sync stats")
-    ns:Print("  |cffffffff/ngm audit|r  - open the Audit tab (officers)")
-    ns:Print("  |cffffffff/ngm polls|r  - open the Polls tab (vote on guild polls)")
-    ns:Print("  |cffffffff/ngm reviews|r  - open the Reviews tab (review the guild)")
+    ns:Print(("  |cffffffff/ngm audit|r  - open the %s tab (officers)"):format(ns.TabName("audit")))
+    ns:Print(("  |cffffffff/ngm polls|r  - open the %s tab (guild polls and stats)"):format(ns.TabName("polls")))
+    ns:Print(("  |cffffffff/ngm reviews|r  - open the %s tab (review the guild)"):format(ns.TabName("reviews")))
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
-    ns:Print("  |cffffffff/ngm recruit|r  - open the Recruitment tab")
+    ns:Print(("  |cffffffff/ngm recruit|r  - open the %s tab"):format(ns.TabName("recruit")))
     ns:Print("  |cffffffff/ngm mini|r  - show or hide the small recruiting bar")
     ns:Print("  |cffffffff/ngm compact|r  - show or hide the compact guild roster")
     ns:Print("  |cffffffff/ngm export|r  - copy the roster as text for a spreadsheet or .csv file")

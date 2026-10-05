@@ -463,7 +463,7 @@ function RC:Whisper(full, customText)
     end
     p.full, p.short = full, ns.ShortName(full)
     local msg = self:Format(customText or self:TemplateFor(p), p)
-    if msg == "" then return false, "Write a whisper message first (right side of the Recruitment tab)." end
+    if msg == "" then return false, ("Write a whisper message first (right side of the %s tab)."):format(ns.TabName("recruit")) end
     SendWhisper(msg, ns.ChatName(full))
     p.whispered = ns.DB:Now()
     p.lastWhisper = msg
@@ -656,7 +656,7 @@ function RC:WhisperFromWho(info)
     p.guild = (info.guild and info.guild ~= "") and info.guild or nil
     p.seen, p.full, p.short = now, full, ns.ShortName(full)
     if self:Format(self:TemplateFor(p), p) == "" then
-        return false, "Write a whisper message first (Recruitment tab)."
+        return false, ("Write a whisper message first (%s tab)."):format(ns.TabName("recruit"))
     end
     self.queue[#self.queue + 1] = full
     self.queueTotal = (self.queueSent or 0) + #self.queue

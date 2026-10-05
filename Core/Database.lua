@@ -303,6 +303,12 @@ function DB:SetTabTitle(key, title)
     return SaveTab(key, set, title)
 end
 
+-- What guildmates (not officers) call the Reviews tab.
+function DB:MemberReviewsTabName()
+    local _, title = self:TabSetting("reviews")
+    return title or "Review Guild"
+end
+
 -- Your rank number in the guild (0 = Guild Master), or nil.
 function DB:MyRankIndex()
     if not IsInGuild() then return nil end

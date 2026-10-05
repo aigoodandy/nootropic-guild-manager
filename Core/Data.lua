@@ -77,20 +77,24 @@ end
 ------------------------------------------------------------------------
 -- Minimap button click actions (Options > Minimap Button)
 ------------------------------------------------------------------------
+-- Tab actions are named after the tab's title (officers can rename tabs).
 D.MINIMAP_ACTIONS = {
-    { key = "roster",  label = "Open Roster" },
-    { key = "recruit", label = "Open Recruitment" },
-    { key = "polls",   label = "Open Polls" },
-    { key = "tags",    label = "Open Tags (officers)" },
-    { key = "audit",   label = "Open Audit (officers)" },
-    { key = "reviews", label = "Open Reviews" },
+    { key = "roster",  tab = true },
+    { key = "recruit", tab = true },
+    { key = "polls",   tab = true },
+    { key = "tags",    tab = true, suffix = " (officers)" },
+    { key = "audit",   tab = true, suffix = " (officers)" },
+    { key = "reviews", tab = true },
     { key = "options", label = "Open Options" },
     { key = "toggle",  label = "Show / hide window" },
     { key = "none",    label = "Do nothing" },
 }
 function D:MinimapActionLabel(key)
     for _, a in ipairs(self.MINIMAP_ACTIONS) do
-        if a.key == key then return a.label end
+        if a.key == key then
+            if a.tab then return "Open " .. ns.TabName(a.key) .. (a.suffix or "") end
+            return a.label
+        end
     end
     return "Do nothing"
 end

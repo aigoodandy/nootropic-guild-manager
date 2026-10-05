@@ -65,13 +65,14 @@ function RW:Build(frame)
         if not ok and err then
             ns:Print("|cffff5555" .. err .. "|r")
         else
-            ns:Print(on and "Guild reviews are on: guildmates see the Review Guild tab."
-                or "Guild reviews are off: guildmates no longer see the Review Guild tab.")
+            ns:Print((on and "Guild reviews are on: guildmates see the %s tab."
+                or "Guild reviews are off: guildmates no longer see the %s tab."):format(ns.DB:MemberReviewsTabName()))
         end
         RW:Refresh()
     end)
-    W.Tooltip(cb, "Guild reviews", "When off, guildmates don't see the Review Guild tab and can't write reviews.",
-        "Officers still see every review. Reviews are kept for a year.")
+    W.Tooltip(cb, "Guild reviews", function()
+        return ("When off, guildmates don't see the %s tab and can't write reviews."):format(ns.DB:MemberReviewsTabName())
+    end, "Officers still see every review. Reviews are kept for a year.")
     self.enableCheck = cb
 
     local inset = frame.Inset

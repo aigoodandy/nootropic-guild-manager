@@ -347,7 +347,9 @@ function MV:BuildEditor(f)
         t.key = opt[1]
         self.guildToggles[#self.guildToggles + 1] = t
     end
-    W.Tooltip(self.guildToggles[3], "In a guild", "For players found with the Recruitment tab's Guild search.")
+    W.Tooltip(self.guildToggles[3], "In a guild", function()
+        return ("For players found with the %s tab's Guild search."):format(ns.TabName("recruit"))
+    end)
     y = y - 30
 
     -- Level and zone
@@ -520,7 +522,7 @@ function MV:RefreshEditorInfo()
     local r = ns.Recruit:Settings()
     local note = ""
     if not (r and r.useRules) then
-        note = "  |cffff8080Custom messages are turned off on the Recruitment tab.|r"
+        note = ("  |cffff8080Custom messages are turned off on the %s tab.|r"):format(ns.TabName("recruit"))
     elseif not rule.enabled then
         note = "  |cffff8080This message is switched off.|r"
     elseif matches > wins then
@@ -635,7 +637,7 @@ function MV:DoImport(mode)
     if n > 0 then
         msg = ("|cff40ff40Imported %d message%s.|r"):format(n, n == 1 and "" or "s")
         local r = ns.Recruit:Settings()
-        if r and not r.useRules then msg = msg .. " Tick Use custom messages on the Recruitment tab to use them." end
+        if r and not r.useRules then msg = msg .. (" Tick Use custom messages on the %s tab to use them."):format(ns.TabName("recruit")) end
     else
         msg = "|cffff5555Nothing imported.|r"
     end

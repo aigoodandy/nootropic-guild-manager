@@ -225,7 +225,7 @@ function PV:InitRow(row, item)
         row.Header:SetText(header)
     elseif stat then
         row.StatName:SetText(stat.name)
-        row.Live:SetText(stat.who or "live") -- who sees a custom stat
+        row.Live:SetText("live")
     else
         row.Question:SetText(p.question)
         if p.open then
@@ -838,7 +838,7 @@ function PV:OnCreate()
     end
     for _, eb in ipairs(self.optBoxes) do eb:ClearFocus() end
     self.qBox:ClearFocus()
-    ns:Print("Poll created. Guildmates running the addon can vote on the Polls tab.")
+    ns:Print(("Poll created. Guildmates running the addon can vote on the %s tab."):format(ns.TabName("polls")))
     self:Select(id)
 end
 
@@ -948,7 +948,8 @@ function PV:RefreshStat(id)
     local editable = s.custom and ns.Stats:CanEdit(s.custom) or false
     self.statEditBtn:SetShown(editable)
     self.statDeleteBtn:SetShown(editable)
-    self.dTitle:SetText("Guild Stat")
+    local vis = s.custom and s.custom.vis
+    self.dTitle:SetText(vis == "o" and "Officer Stat" or vis == "m" and "My Stat" or "Guild Stat")
     self.dQuestion:SetText(s.title)
     self.dStatus:SetText("|cff66bbff" .. s.sub .. "|r")
 
@@ -1003,16 +1004,16 @@ local function ListItems(polls)
             items[#items + 1] = item
         end
     end
-    -- built-in stats, then custom ones (marked with who sees them)
-    local stats = {}
-    for _, s in ipairs(ns.Stats.LIST) do stats[#stats + 1] = s end
-    local who = {}
-    for _, v in ipairs(ns.Stats.VISIBILITY) do who[v.key] = v.short end
-    for _, c in ipairs(ns.Stats:Custom()) do
-        stats[#stats + 1] = { id = c.id, name = c.title, who = who[c.vis] }
+    -- stats in a section for who sees them: Guild Stats, Officers, My Stats
+    local byVis = {}
+    for _, c in ipairs(ns.Stats:All()) do
+        byVis[c.vis] = byVis[c.vis] or {}
+        table.insert(byVis[c.vis], { id = c.id, name = c.title })
     end
     Section("Open Polls", open, function(p) return { poll = p } end)
-    Section("Guild Stats", stats, function(s) return { stat = s } end)
+    for _, v in ipairs(ns.Stats.VISIBILITY) do
+        Section(v.section, byVis[v.key] or {}, function(s) return { stat = s } end)
+    end
     Section("Closed Polls", closed, function(p) return { poll = p } end)
     return items
 end
@@ -1041,15 +1042,17 @@ function PV:Refresh()
             if p.open and not p.myVote then current = p break end
         end
         if not current and list[1] and list[1].open then current = list[1] end
+        local first = ns.Stats:All()[1]
         if current then
             self.selected = current.id
-        else
-            statId = ns.Stats.LIST[1].id
+        elseif first then
+            statId = first.id
             self.selected = STAT_PREFIX .. statId
         end
     end
     if not editing or not inGuild then
-        self.mode = inGuild and "detail" or nil
+        -- nothing at all to show (no polls, every stat deleted): the info pane
+        self.mode = (inGuild and (current or statId)) and "detail" or nil
     end
 
     local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition
@@ -1069,7 +1072,8 @@ function PV:Refresh()
         if statId then self:RefreshStat(statId) else self:RefreshDetail(current) end
     else
         self.current, self.stat = nil, nil
-        self.infoText:SetText("Join a guild to see its polls and stats.")
+        self.infoText:SetText(inGuild and "No polls or stats yet. Click New Stat to count guildmates your way."
+            or "Join a guild to see its polls and stats.")
     end
 end
 

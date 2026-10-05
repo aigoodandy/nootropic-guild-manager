@@ -52,7 +52,7 @@ function MR:Build()
     W.Tooltip(close, "Hide", "Whispers already queued keep sending. /ngm mini brings the bar back.")
 
     local expand = W.SizeButton(f, "expand", 26, function() MR:Expand() end,
-        "Expand", "Back to the full Recruitment tab.")
+        "Expand", function() return ("Back to the full %s tab."):format(ns.TabName("recruit")) end)
     expand:SetPoint("RIGHT", close, "LEFT", 0, 0)
     expand:MatchLevel(close)
 
@@ -86,7 +86,7 @@ function MR:Build()
             GameTooltip:AddLine("Searches: " .. ns.Recruit:BuildQuery(r.query), 1, 1, 1, true)
             if r.query.step then GameTooltip:AddLine("Step levels is on: each search moves to the next level range.", 0.7, 0.7, 0.7, true) end
         end
-        GameTooltip:AddLine("Change the filters on the Recruitment tab (Expand).", 0.7, 0.7, 0.7, true)
+        GameTooltip:AddLine(("Change the filters on the %s tab (Expand)."):format(ns.TabName("recruit")), 0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
     search:SetScript("OnLeave", function() GameTooltip:Hide() end)

@@ -104,7 +104,9 @@ function CR:Build()
     search:SetAutoFocus(false)
     if search.Instructions then search.Instructions:SetText("Search") end
     search:HookScript("OnTextChanged", function() ns.Debounce("compactsearch", 0.12, function() CR:Refresh() end) end)
-    W.Tooltip(search, "Search", "Same searches as the Roster tab: names, classes, specs, professions, tags, tag:raiding, zone:barrens...")
+    W.Tooltip(search, "Search", function()
+        return ("Same searches as the %s tab: names, classes, specs, professions, tags, tag:raiding, zone:barrens..."):format(ns.TabName("roster"))
+    end)
     self.search = search
 
     local online = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
