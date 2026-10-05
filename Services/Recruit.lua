@@ -10,7 +10,8 @@
       keywords   = { "invite", ... }          -- up to 5
       autoInvite = true                       -- invite on a keyword reply
       inviteMode = "auto" | "confirm"         -- confirm = one-click popup
-      query      = { min, max, class, zone, step, guildOn, guild, name }
+      query      = { min, max, class, zone, step, guildOn, guild, name, hideContacted,
+                     zoneAuto, levelAuto }       -- *Auto: follow the player (see ApplyAutoQuery)
       people     = { ["Name-Realm"] = { level, classFile, className, zone, guild,
                      found, seen, whispered, replied, reply, invited, joined } }
       dnwEnabled = true                       -- watch replies for Do Not Whisper words
@@ -244,6 +245,24 @@ function RC:CooldownRemaining()
     return math.max(0, wait)
 end
 
+-- Zone and levels follow the player unless they typed their own: the zone
+-- you're in, and 3 levels below you to 2 above. Clearing a box (zoneAuto /
+-- levelAuto true) switches it back. Step levels keeps the range it reached.
+function RC:ApplyAutoQuery()
+    local r = self:Settings()
+    if not r then return end
+    local q = r.query
+    if q.zoneAuto ~= false then
+        local zone = (GetRealZoneText and GetRealZoneText()) or (GetZoneText and GetZoneText())
+        if zone and zone ~= "" then q.zone = zone end
+    end
+    if q.levelAuto ~= false and not q.step then
+        local level = UnitLevel and UnitLevel("player") or 1
+        q.min = math.max(1, level - 3)
+        q.max = math.max(q.min, math.min(self:MaxLevel(), level + 2))
+    end
+end
+
 -- Checks the limits and records a search about to happen. Returns the /who
 -- query text, or nil plus a reason. The search itself runs through a secure
 -- "/who" button (C_FriendList.SendWho is restricted to Blizzard's own UI).
@@ -259,6 +278,7 @@ function RC:BeginSearch()
         return nil, ("Searching too often could get you flagged for spam. Try again in %d seconds."):format(math.ceil(wait))
     end
     table.insert(self.history, GetTime())
+    self:ApplyAutoQuery()
     local text = self:BuildQuery(r.query)
     self.searching = true
     self.token = (self.token or 0) + 1

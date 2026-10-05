@@ -90,49 +90,76 @@ function RCV:Build(frame)
     ns:On("MESSAGES_CHANGED", function()
         if page:IsVisible() then ns.Debounce("recruitview", 0.05, function() RCV:Refresh() end) end
     end)
+    -- zone and levels follow you (unless you typed your own)
+    for _, event in ipairs({ "ZONE_CHANGED_NEW_AREA", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do
+        ns:RegisterEvent(event, function()
+            C_Timer.After(0.5, function() if page:IsVisible() then RCV:SyncQueryBoxes() end end)
+        end)
+    end
 end
 
+-- One row: Name, Zone, Level ... Filter, Search. Under it, a summary line
+-- (players, last search, active filters). Class, Step levels, Hide
+-- contacted and the guild search live in the Filter menu.
 function RCV:BuildSearchBar(page, frame)
-    local levelLabel = Label(page, "Level")
-    levelLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 80, -38)
+    -- Name: filters the list as you type, and Search looks for it too
+    local nameLabel = Label(page, "Name")
+    nameLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 80, -38)
+    local nameBox = InputBox(page, 110, 24)
+    nameBox:SetPoint("LEFT", nameLabel, "RIGHT", 8, 0)
+    nameBox:HookScript("OnTextChanged", function(self, user)
+        local r = ns.Recruit:Settings()
+        if user and r then r.query.name = self:GetText() end
+        if user then ns.Debounce("recruitname", 0.15, function() RCV:Refresh() end) end
+    end)
+    W.Tooltip(nameBox, "Search by name",
+        "Shows only players in the list whose name contains this text.",
+        "Search also looks for it, so you can find a specific character. Clear it to see everyone again.")
+    self.nameBox = nameBox
 
+    -- Zone: your current zone unless you type another (clear it to follow you again)
+    local zoneLabel = Label(page, "Zone")
+    zoneLabel:SetPoint("LEFT", nameBox, "RIGHT", 14, 0)
+    local zoneBox = InputBox(page, 130, 40)
+    zoneBox:SetPoint("LEFT", zoneLabel, "RIGHT", 8, 0)
+    zoneBox:HookScript("OnTextChanged", function(self, user)
+        local r = ns.Recruit:Settings()
+        if not (user and r) then return end
+        r.query.zone = self:GetText()
+        r.query.zoneAuto = ns.Trim(self:GetText()) == ""
+    end)
+    W.Tooltip(zoneBox, "Zone",
+        "Starts as the zone you're in and follows you as you travel.",
+        "Type another zone to keep it; clear the box to follow your zone again.")
+    self.zoneBox = zoneBox
+
+    -- Level: 3 below to 2 above you unless you type your own
+    local levelLabel = Label(page, "Level")
+    levelLabel:SetPoint("LEFT", zoneBox, "RIGHT", 14, 0)
     local minBox = InputBox(page, 26, 2, true)
-    minBox:SetPoint("LEFT", levelLabel, "RIGHT", 10, 0)
-    local to = Label(page, "to", "GameFontHighlightSmall")
-    to:SetPoint("LEFT", minBox, "RIGHT", 6, 0)
+    minBox:SetPoint("LEFT", levelLabel, "RIGHT", 8, 0)
+    local dash = Label(page, "-", "GameFontHighlightSmall")
+    dash:SetPoint("LEFT", minBox, "RIGHT", 4, 0)
     local maxBox = InputBox(page, 26, 2, true)
-    maxBox:SetPoint("LEFT", to, "RIGHT", 10, 0)
+    maxBox:SetPoint("LEFT", dash, "RIGHT", 8, 0)
     local function saveLevels()
         local r = ns.Recruit:Settings()
         if not r then return end
         r.query.min = tonumber(minBox:GetText()) or r.query.min
         r.query.max = tonumber(maxBox:GetText()) or r.query.max
+        r.query.levelAuto = minBox:GetText() == "" and maxBox:GetText() == ""
     end
     minBox:HookScript("OnTextChanged", function(_, user) if user then saveLevels() end end)
     maxBox:HookScript("OnTextChanged", function(_, user) if user then saveLevels() end end)
+    W.Tooltip(minBox, "Level range", "Starts at 3 levels below you to 2 above, and follows you as you level.",
+        "Type your own range to keep it; clear both boxes to follow your level again.")
     self.minBox, self.maxBox = minBox, maxBox
 
-    local classBtn = W.Button(page, "Any class", 110, 22)
-    classBtn:SetPoint("LEFT", maxBox, "RIGHT", 12, 0)
-    classBtn:SetScript("OnClick", function(btn) RCV:ShowClassMenu(btn) end)
-    self.classBtn = classBtn
-
-    local zoneLabel = Label(page, "Zone")
-    zoneLabel:SetPoint("LEFT", classBtn, "RIGHT", 10, 0)
-    local zoneBox = InputBox(page, 110, 40)
-    zoneBox:SetPoint("LEFT", zoneLabel, "RIGHT", 10, 0)
-    zoneBox:HookScript("OnTextChanged", function(self, user)
-        local r = ns.Recruit:Settings()
-        if user and r then r.query.zone = self:GetText() end
-    end)
-    zoneBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    self.zoneBox = zoneBox
-
-    local search = W.Button(page, "Search /who", 110, 22)
-    search:SetPoint("LEFT", zoneBox, "RIGHT", 10, 0)
-    -- /who is restricted to Blizzard's UI, so the click runs a secure "/who"
-    -- command. This plain handler only runs when that isn't available
-    -- (in combat, or on clients without secure buttons).
+    -- Search (right edge). /who is restricted to Blizzard's UI, so the click
+    -- runs a secure "/who" command; this plain handler only runs when that
+    -- isn't available (in combat, or on clients without secure buttons).
+    local search = W.Button(page, "Search", 96, 22)
+    search:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -33)
     search:SetScript("OnClick", function()
         if InCombatLockdown and InCombatLockdown() then
             ns:Print("You can't search while in combat.")
@@ -147,31 +174,83 @@ function RCV:BuildSearchBar(page, frame)
         post = function() RCV:Refresh() end,
     })
     W.Tooltip(search, "Find players without a guild",
-        "Runs a /who search with these filters and keeps everyone who has no guild.",
+        "Runs a /who search with these settings and keeps everyone who has no guild.",
         "The game returns at most 50 players per search, so narrow level ranges find more people.",
         ("To keep you clear of spam detection, searches are limited to one every %d seconds and %d per %d minutes."):format(
             ns.Recruit.WHO_COOLDOWN, ns.Recruit.WHO_MAX_PER_WINDOW, ns.Recruit.WHO_WINDOW / 60))
     self.searchBtn = search
 
-    -- Row 2
-    local step = Check(page, "Step levels")
-    step:SetPoint("TOPLEFT", frame, "TOPLEFT", 76, -58)
+    local filter = W.Button(page, "Filter", 86, 22)
+    filter:SetPoint("RIGHT", search, "LEFT", -6, 0)
+    filter.Arrow = filter:CreateTexture(nil, "OVERLAY")
+    filter.Arrow:SetSize(16, 16)
+    filter.Arrow:SetPoint("RIGHT", -4, 0)
+    filter.Arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+    filter:SetScript("OnClick", function() RCV.filterPanel:SetShown(not RCV.filterPanel:IsShown()) end)
+    W.Tooltip(filter, "Filter", "Class, Step levels, Hide contacted, and searching a guild instead.")
+    self.filterBtn = filter
+
+    -- Summary line: players, last search, and which filters are on
+    local filters = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    filters:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -66)
+    filters:SetJustifyH("RIGHT")
+    filters:SetWordWrap(false)
+    self.filterInfo = filters
+    local status = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    status:SetPoint("TOPLEFT", frame, "TOPLEFT", 80, -66)
+    status:SetPoint("RIGHT", filters, "LEFT", -12, 0)
+    status:SetJustifyH("LEFT")
+    status:SetWordWrap(false)
+    self.statusText = status
+
+    self:BuildFilterPanel(page, filter)
+end
+
+-- The Filter menu: a small panel under the Filter button.
+function RCV:BuildFilterPanel(page, anchor)
+    local p = CreateFrame("Frame", nil, page, "BackdropTemplate")
+    p:SetSize(260, 168)
+    p:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -4)
+    p:SetFrameStrata("DIALOG")
+    p:EnableMouse(true)
+    p:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+    p:SetBackdropColor(0.06, 0.05, 0.04, 0.97)
+    p:SetBackdropBorderColor(0.7, 0.6, 0.4, 1)
+    p:Hide()
+    page:HookScript("OnHide", function() p:Hide() end)
+    self.filterPanel = p
+
+    local classLabel = Label(p, "Class")
+    classLabel:SetPoint("TOPLEFT", 14, -16)
+    local classBtn = W.Button(p, "Any class", 150, 22)
+    classBtn:SetPoint("LEFT", classLabel, "RIGHT", 12, 0)
+    classBtn:SetScript("OnClick", function(btn) RCV:ShowClassMenu(btn) end)
+    self.classBtn = classBtn
+
+    local step = Check(p, "Step levels")
+    step:SetPoint("TOPLEFT", 10, -42)
     step:SetScript("OnClick", function(self)
         local r = ns.Recruit:Settings()
         if r then r.query.step = self:GetChecked() and true or false end
+        RCV:LoadSettings()
     end)
     W.Tooltip(step, "Step through levels",
         "After each search the level range moves up by its own size (10-14, then 15-19, ...), wrapping back to 1 at max level. Keep clicking Search to sweep every level.")
     self.stepCheck = step
 
-    local hide = Check(page, "Hide contacted")
-    hide:SetPoint("LEFT", step.Label, "RIGHT", 14, -1)
-    hide:SetScript("OnClick", function() RCV:Refresh() end)
+    local hide = Check(p, "Hide contacted")
+    hide:SetPoint("TOPLEFT", step, "BOTTOMLEFT", 0, -2)
+    hide:SetScript("OnClick", function(self)
+        local r = ns.Recruit:Settings()
+        if r then r.query.hideContacted = self:GetChecked() and true or false end
+        RCV:LoadSettings()
+        RCV:Refresh()
+    end)
     self.hideCheck = hide
 
-    -- Search a specific guild (off by default)
-    local guildCheck = Check(page, "Guild:")
-    guildCheck:SetPoint("LEFT", hide.Label, "RIGHT", 14, -1)
+    local guildCheck = Check(p, "Search a guild instead")
+    guildCheck:SetPoint("TOPLEFT", hide, "BOTTOMLEFT", 0, -2)
     guildCheck:SetScript("OnClick", function(self)
         local r = ns.Recruit:Settings()
         if r then r.query.guildOn = self:GetChecked() and true or false end
@@ -181,45 +260,52 @@ function RCV:BuildSearchBar(page, frame)
         "When ticked, Search finds members of the guild named here instead of players without a guild.",
         "Your own guild is never included.")
     self.guildCheck = guildCheck
-    local guildBox = InputBox(page, 120, 24)
-    guildBox:SetPoint("LEFT", guildCheck.Label, "RIGHT", 8, 0)
+    local guildBox = InputBox(p, 190, 24)
+    guildBox:SetPoint("TOPLEFT", guildCheck, "BOTTOMLEFT", 30, -2)
     guildBox:HookScript("OnTextChanged", function(self, user)
         local r = ns.Recruit:Settings()
-        if user and r then r.query.guild = self:GetText() end
+        if user and r then
+            r.query.guild = self:GetText()
+            RCV:RefreshFilterInfo()
+        end
     end)
     self.guildBox = guildBox
 
-    -- Name: filters the list as you type, and Search /who looks for it too
-    -- (first row, between Zone and Search)
-    local nameLabel = Label(page, "Name")
-    nameLabel:SetPoint("LEFT", self.zoneBox, "RIGHT", 10, 0)
-    local nameBox = InputBox(page, 100, 24)
-    nameBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
-    nameBox:HookScript("OnTextChanged", function(self, user)
+    local reset = W.Button(p, "Reset filters", 110, 20)
+    reset:SetPoint("BOTTOMLEFT", 12, 10)
+    reset:SetScript("OnClick", function()
         local r = ns.Recruit:Settings()
-        if user and r then r.query.name = self:GetText() end
-        if user then ns.Debounce("recruitname", 0.15, function() RCV:Refresh() end) end
+        if not r then return end
+        local q = r.query
+        q.class, q.step, q.hideContacted, q.guildOn, q.guild = nil, false, false, false, ""
+        RCV:LoadSettings()
+        RCV:Refresh()
     end)
-    W.Tooltip(nameBox, "Search by name",
-        "Shows only players in the list whose name contains this text.",
-        "Search /who also looks for it, so you can find a specific character. Clear it to see everyone again.")
-    self.nameBox = nameBox
-    self.searchBtn:ClearAllPoints()
-    self.searchBtn:SetPoint("LEFT", nameBox, "RIGHT", 10, 0)
+    local close = W.Button(p, CLOSE or "Close", 70, 20)
+    close:SetPoint("BOTTOMRIGHT", -12, 10)
+    close:SetScript("OnClick", function() p:Hide() end)
+end
 
-    local clear = W.Button(page, "Clear New", 86, 20)
-    clear:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -59)
-    clear:SetScript("OnClick", function()
-        W.Confirm("Remove everyone you haven't contacted from the list?", function() ns.Recruit:ClearUncontacted() end)
-    end)
-    W.Tooltip(clear, "Clear the list", "Removes players you haven't whispered or invited. Contacted players are kept so you don't message them twice.")
+-- "Mage, step levels, guild <Name>" for the summary line and the Filter button.
+function RCV:ActiveFilters()
+    local r = ns.Recruit:Settings()
+    local out = {}
+    if not r then return out end
+    local q = r.query
+    if q.class then out[#out + 1] = ("|c%s%s|r"):format(ns.ClassHex(q.class), D:ClassName(q.class)) end
+    if q.step then out[#out + 1] = "step levels" end
+    if q.hideContacted then out[#out + 1] = "hide contacted" end
+    if q.guildOn then
+        local g = ns.Trim(q.guild)
+        out[#out + 1] = g ~= "" and ("guild <" .. g .. ">") or "guild (type a name)"
+    end
+    return out
+end
 
-    local status = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    status:SetPoint("LEFT", guildBox, "RIGHT", 12, 0)
-    status:SetPoint("RIGHT", clear, "LEFT", -10, 0)
-    status:SetJustifyH("RIGHT")
-    status:SetWordWrap(false)
-    self.statusText = status
+function RCV:RefreshFilterInfo()
+    local list = self:ActiveFilters()
+    self.filterInfo:SetText(#list > 0 and ("Filters: " .. table.concat(list, ", ")) or "")
+    self.filterBtn:SetText(#list > 0 and ("Filter (%d)"):format(#list) or "Filter")
 end
 
 function RCV:ShowClassMenu(owner)
@@ -293,9 +379,17 @@ function RCV:BuildFooter(page, inset)
     local clear = W.Button(f, "Clear", 60, 22)
     clear:SetPoint("LEFT", selNew, "RIGHT", 4, 0)
     clear:SetScript("OnClick", function() ns.Recruit:ClearSelection() end)
+    W.Tooltip(clear, "Clear", "Unticks everyone.")
+
+    local clearNew = W.Button(f, "Clear New", 86, 22)
+    clearNew:SetPoint("LEFT", clear, "RIGHT", 4, 0)
+    clearNew:SetScript("OnClick", function()
+        W.Confirm("Remove everyone you haven't contacted from the list?", function() ns.Recruit:ClearUncontacted() end)
+    end)
+    W.Tooltip(clearNew, "Clear New", "Removes players you haven't whispered or invited from the list. Contacted players are kept so you don't message them twice.")
 
     self.sendInfo = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    self.sendInfo:SetPoint("LEFT", clear, "RIGHT", 10, 0)
+    self.sendInfo:SetPoint("LEFT", clearNew, "RIGHT", 10, 0)
     self.sendInfo:SetJustifyH("LEFT")
     self.sendInfo:SetWordWrap(false)
 
@@ -811,19 +905,33 @@ function RCV:RefreshRulesInfo()
     self.rulesButton:SetAlpha(r.useRules and 1 or 0.6)
 end
 
+-- Zone and level boxes: your zone and level unless you typed your own.
+function RCV:SyncQueryBoxes()
+    local r = ns.Recruit:Settings()
+    if not r then return end
+    ns.Recruit:ApplyAutoQuery()
+    local q = r.query
+    if not self.minBox:HasFocus() and not self.maxBox:HasFocus() then
+        self.minBox:SetText(tostring(q.min or 1))
+        self.maxBox:SetText(tostring(q.max or 60))
+    end
+    if not self.zoneBox:HasFocus() then self.zoneBox:SetText(q.zone or "") end
+end
+
 function RCV:LoadSettings()
     local r = ns.Recruit:Settings()
     if not r then return end
     local q = r.query
-    if not self.minBox:HasFocus() then self.minBox:SetText(tostring(q.min or 1)) end
-    if not self.maxBox:HasFocus() then self.maxBox:SetText(tostring(q.max or 60)) end
-    if not self.zoneBox:HasFocus() then self.zoneBox:SetText(q.zone or "") end
+    self:SyncQueryBoxes()
     self.classBtn:SetText(q.class and ("|c%s%s|r"):format(ns.ClassHex(q.class), D:ClassName(q.class)) or "Any class")
     self.stepCheck:SetChecked(q.step)
+    self.hideCheck:SetChecked(q.hideContacted)
     self.guildCheck:SetChecked(q.guildOn)
     if not self.guildBox:HasFocus() then self.guildBox:SetText(q.guild or "") end
     if not self.nameBox:HasFocus() then self.nameBox:SetText(q.name or "") end
-    self.guildBox:SetAlpha(q.guildOn and 1 or 0.5)
+    -- the guild name box only matters (and only shows) while guild search is on
+    self.guildBox:SetShown(q.guildOn and true or false)
+    self:RefreshFilterInfo()
     self.dnwCheck:SetChecked(r.dnwEnabled)
     for i, eb in ipairs(self.dnwBoxes) do
         if not eb:HasFocus() then eb:SetText(r.dnwWords[i] or "") end
@@ -847,7 +955,7 @@ function RCV:SearchState()
     local wait = RC:CooldownRemaining()
     if RC.searching then return "Searching...", false end
     if wait > 0 then return ("Wait %ds"):format(math.ceil(wait)), false end
-    return "Search /who", RC:Settings() ~= nil
+    return "Search", RC:Settings() ~= nil
 end
 
 -- Keep refreshing every second while a countdown is visible.
@@ -861,7 +969,8 @@ function RCV:Refresh()
     local RC = ns.Recruit
     local r = RC:Settings()
 
-    local list = RC:List({ hideContacted = self.hideCheck:GetChecked(), name = self.nameBox:GetText() })
+    local hideContacted = r and r.query.hideContacted
+    local list = RC:List({ hideContacted = hideContacted, name = self.nameBox:GetText() })
     self.list = list
     for i, p in ipairs(list) do p._stripe = (i % 2 == 0) end
     local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition
@@ -870,9 +979,9 @@ function RCV:Refresh()
     if not r then
         self.emptyText:SetText("Join a guild to start recruiting.")
     elseif #list == 0 and ns.Trim(self.nameBox:GetText()) ~= "" then
-        self.emptyText:SetText("Nobody in the list has that name. Click Search /who to look for them.")
+        self.emptyText:SetText("Nobody in the list has that name. Click Search to look for them.")
     elseif #list == 0 then
-        self.emptyText:SetText("Set a level range and click Search /who to find players without a guild.")
+        self.emptyText:SetText("Click Search to find players without a guild in your zone and level range.")
     else
         self.emptyText:SetText("")
     end
@@ -881,21 +990,8 @@ function RCV:Refresh()
     self.searchBtn:SetText(searchText)
     self.searchBtn:SetEnabled(searchOn)
 
-    local last = RC.last
-    if RC.searching then
-        self.statusText:SetText("|cffffd100Searching:|r " .. (RC.pendingQuery or ""))
-    elseif last and last.timedOut then
-        self.statusText:SetText("|cffff8080No reply from /who. The server limits how often you can search - wait a few seconds.|r")
-    elseif last then
-        local capped = (last.total or 0) > (last.shown or 0)
-        self.statusText:SetText(("%d players, %d %s, |cff40ff40%d new|r%s%s"):format(
-            last.total or 0, last.matched or last.unguilded or 0,
-            last.guild and ("in <" .. last.guild .. ">") or "unguilded", last.new or 0,
-            (last.skipped or 0) > 0 and ("  |cffff8080" .. last.skipped .. " do-not-whisper skipped|r") or "",
-            capped and "  |cffff8080(capped at 50 - narrow the range)|r" or ""))
-    else
-        self.statusText:SetText(("%d in list"):format(#list))
-    end
+    self.statusText:SetText(self:SummaryText())
+    self:RefreshFilterInfo()
 
     self:RefreshFooter()
     self:RefreshRulesInfo()
@@ -914,8 +1010,39 @@ function RCV:Refresh()
         self.dnwCount:SetText(n == 1 and "1 person on the list" or (n .. " people on the list"))
     end
 
-    if r and not self.minBox:HasFocus() and not self.maxBox:HasFocus() then
-        self.minBox:SetText(tostring(r.query.min or 1))
-        self.maxBox:SetText(tostring(r.query.max or 60))
+    self:SyncQueryBoxes()
+end
+
+-- "139 players · 9 new from last search · 12 whispered · 3 replied", or
+-- what a search in progress / a failed search is doing.
+function RCV:SummaryText()
+    local RC = ns.Recruit
+    if not RC:Settings() then return "" end
+    if RC.searching then return "|cffffd100Searching:|r " .. (RC.pendingQuery or "") end
+    local last = RC.last
+    if last and last.timedOut then
+        return "|cffff8080No reply from /who. The server limits how often you can search - wait a few seconds.|r"
     end
+    local total, whispered, replied = 0, 0, 0
+    for _, p in ipairs(RC:List()) do
+        total = total + 1
+        local st = RC:Status(p)
+        if st == "whispered" then whispered = whispered + 1 elseif st == "replied" then replied = replied + 1 end
+    end
+    local SEP = "  |cff6d6d6d-|r  "
+    local parts = { total == 1 and "1 player" or (total .. " players") }
+    if last then
+        parts[#parts + 1] = ("|cff40ff40%d new|r from last search%s"):format(last.new or 0,
+            last.guild and (" in <" .. last.guild .. ">") or "")
+    end
+    parts[#parts + 1] = ("|cffb0b0ff%d whispered|r"):format(whispered)
+    parts[#parts + 1] = ("|cff40ff40%d replied|r"):format(replied)
+    local text = table.concat(parts, SEP)
+    if last and (last.skipped or 0) > 0 then
+        text = text .. SEP .. ("|cffff8080%d do-not-whisper skipped|r"):format(last.skipped)
+    end
+    if last and (last.total or 0) > (last.shown or 0) then
+        text = text .. SEP .. "|cffff8080capped at 50 - narrow the range|r"
+    end
+    return text
 end
