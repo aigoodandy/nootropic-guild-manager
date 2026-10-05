@@ -37,6 +37,11 @@
       A:<id>               audit entry             officers (officer scope)
       DN:<player>          Do Not Whisper entry    anyone in the guild ("" = removed)
       RS:<player>          recruitment status      anyone in the guild (kept 7 days)
+      DC:<member>          map dot colors          the member only
+      AV:<member>          addon version in use    the member only
+      GR:<id>              anonymous guild review  officers (officer scope, kept 1 year,
+                                                   no author, can never be changed or deleted)
+      GC:<review>:<id>     officer comment on a review   officers (kept 1 year)
 
     Types with a ttl expire: older records are deleted, left out of digests
     and repairs, and refused when they arrive.
@@ -75,10 +80,15 @@ S.TYPES = {
     A  = { scope = "officer", officer = true, noAudit = true, label = "Audit" },
     DN = { scope = "guild",   anyone = true, label = "Do Not Whisper" },
     RS = { scope = "guild",   anyone = true, noAudit = true, ttl = 7 * 86400, label = "Recruitment status" },
+    DC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Map dot colors" },
+    AV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Addon version" },
+    GR = { scope = "officer", officer = true, noAudit = true, ttl = 365 * 86400, low = true, immutable = true, anonymous = true, label = "Guild review" },
+    GC = { scope = "officer", officer = true, noAudit = true, ttl = 365 * 86400, low = true, label = "Review comment" },
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
 
 S.officers = {} -- players seen sending on the officer channel this session
+S.officerBeacons = {} -- officers running the addon -> GetTime() they last said so
 S.stats = { sent = 0, received = 0, applied = 0, retries = 0, dropped = 0 }
 
 ------------------------------------------------------------------------
@@ -122,7 +132,7 @@ function S.ParseKey(key)
     local member
     if typ == "L" then
         member = rest:match("^([^:]+):")
-    elseif typ ~= "T" and typ ~= "A" then
+    elseif typ ~= "T" and typ ~= "A" and typ ~= "GR" and typ ~= "GC" then
         member = rest
     end
     return typ, member, rest
@@ -182,6 +192,7 @@ function S:Accept(typ, member, def, rec, ctx)
     if rec.t > Now() + 300 then return false end -- refuse timestamps from the future
     if typ == "A" and rec.t < Now() - self:RetentionSeconds() then return false end
     if def.ttl and rec.t < Now() - def.ttl then return false end
+    if def.anonymous and (rec.a or "") ~= "" then return false end -- reviews never carry a name
     return true
 end
 
@@ -235,7 +246,7 @@ function S:Set(key, value, opts)
     local t = opts.time or Now()
     if cur and cur.t >= t then t = cur.t + 1 end
     local rec = { v = value, t = t, a = opts.author or Me() }
-    if not opts.migration then rec.b = self:CurrentBatch() end
+    if not opts.migration and not opts.noBatch then rec.b = self:CurrentBatch() end
     self:Apply(key, rec, { origin = "local", migration = opts.migration })
     if not opts.migration then self:QueueOutgoing(key) end
     self:FlushNotify()
@@ -295,6 +306,9 @@ function S:Apply(key, rec, ctx)
     if ctx.origin == "remote" and not self:Accept(typ, member, def, rec, ctx) then return false end
     local cur = store[key]
     if cur and not Newer(rec, cur) then return false end
+    if cur and def.immutable then return false end -- reviews can't be changed or deleted
+    -- a comment can only be changed (or deleted) by the officer who wrote it
+    if cur and typ == "GC" and ctx.origin == "remote" and (cur.a or "") ~= (rec.a or "") then return false end
     store[key] = rec
     self:Materialize(typ, key, member, rec)
     if not def.noAudit and not ctx.migration and ns.IsOfficer() then
@@ -416,6 +430,12 @@ function S:Materialize(typ, key, member, rec)
     if typ == "T" then
         self:Notify("tags")
         return
+    elseif typ == "GR" or typ == "GC" then
+        ns.Debounce("reviewschanged", 0.2, function() ns:Fire("REVIEWS_CHANGED") end)
+        return
+    elseif typ == "DC" then
+        ns.Debounce("dotcolors", 0.2, function() ns:Fire("LOCATIONS_CHANGED") end)
+        return
     elseif typ == "DN" or typ == "RS" then
         -- Do Not Whisper entries are about people outside the guild: no member record
         ns.Debounce("dnwchanged", 0.1, function() ns:Fire("RECRUITS_CHANGED") end)
@@ -443,6 +463,9 @@ function S:Materialize(typ, key, member, rec)
             data.ts = rec.t
             m.auto = data
         end
+    elseif typ == "AV" then
+        m.version = v ~= "" and v or nil
+        ns.Debounce("versioncheck", 1, function() if ns.Roster.CheckVersion then ns.Roster:CheckVersion() end end)
     elseif typ == "RT" then
         m.rating = math.max(0, math.min(5, tonumber(v) or 0))
     elseif typ == "L" then
@@ -464,7 +487,7 @@ function S:RebuildAll()
     local g = ns.DB:Guild()
     if not g then return end
     for _, m in pairs(g.members) do
-        m.tags, m.main, m.spec, m.profs, m.auto, m.rating, m.log = {}, nil, nil, nil, nil, 0, nil
+        m.tags, m.main, m.spec, m.profs, m.auto, m.rating, m.log, m.version = {}, nil, nil, nil, nil, 0, nil, nil
     end
     for _, scope in ipairs({ "guild", "officer" }) do
         for key, rec in pairs(self:Store(scope)) do
@@ -601,6 +624,7 @@ function S:Exchange(force)
     self.lastExchange = now
     self:Send(table.concat({ PROTO, "D", "guild", EncodeDigest(self:Digest("guild")) }, FS), "GUILD", nil, "high")
     if ns.IsOfficer() then
+        self:Send(table.concat({ PROTO, "O" }, FS), "GUILD", nil, "bulk")
         self:Send(table.concat({ PROTO, "D", "officer", EncodeDigest(self:Digest("officer")) }, FS), "OFFICER", nil, "high")
     end
     return true
@@ -676,9 +700,10 @@ end
 
 function S:Broadcast(key, rec)
     local typ = S.ParseKey(key)
-    local scope = S.TYPES[typ].scope
+    local def = S.TYPES[typ]
+    local scope = def.scope
     if scope == "officer" and not ns.IsOfficer() then return end
-    self:Send(self:EncodeRecord(key, rec), CHANNEL[scope], nil, "high")
+    self:Send(self:EncodeRecord(key, rec), CHANNEL[scope], nil, def.low and "bulk" or "high")
 end
 
 local partials = {}
@@ -703,6 +728,12 @@ function S:OnMessage(msg, channel, sender)
     elseif kind == "P" then
         -- live position for the world map (not stored, not audited)
         if channel == "GUILD" and ns.Location then ns.Location:OnPosition(who, f[3], f[4], f[5]) end
+    elseif kind == "O" then
+        -- an officer running the addon is online (reviews are handed to one)
+        if channel == "GUILD" then self.officerBeacons[who] = GetTime() end
+    elseif kind == "V" or kind == "K" then
+        -- a review handed to an officer, or an officer confirming it arrived
+        if channel == "WHISPER" and ns.Reviews then ns.Reviews:OnMessage(kind, f, who) end
     elseif kind == "B" then
         local scope, b = f[3], tonumber(f[4])
         if b and self.dumped[scope] then self.dumped[scope][b] = GetTime() end
@@ -900,6 +931,8 @@ function S:Init()
         S:PruneAudit()
         S:PruneExpired()
         S:RebuildAll()
+        -- tell the guild which version of the addon we run
+        S:Set("AV:" .. Me(), ns.version)
         C_Timer.After(5 + math.random() * 10, function() S:Exchange(true) end)
     end
     ns:RegisterEvent("GUILD_ROSTER_UPDATE", ready)

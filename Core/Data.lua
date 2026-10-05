@@ -82,6 +82,7 @@ D.MINIMAP_ACTIONS = {
     { key = "recruit", label = "Open Recruitment" },
     { key = "tags",    label = "Open Tags (officers)" },
     { key = "audit",   label = "Open Audit (officers)" },
+    { key = "reviews", label = "Open Reviews" },
     { key = "options", label = "Open Options" },
     { key = "toggle",  label = "Show / hide window" },
     { key = "none",    label = "Do nothing" },

@@ -82,6 +82,19 @@ function ns.Debounce(key, delay, fn)
     end)
 end
 
+-- -1, 0 or 1 comparing versions like "1.9" and "1.10" part by part.
+-- Anything that isn't a number counts as 0 ("dev" < "1.0").
+function ns.CompareVersions(a, b)
+    local pa, pb = {}, {}
+    for n in tostring(a or ""):gmatch("[^%.]+") do pa[#pa + 1] = tonumber(n) or 0 end
+    for n in tostring(b or ""):gmatch("[^%.]+") do pb[#pb + 1] = tonumber(n) or 0 end
+    for i = 1, math.max(#pa, #pb) do
+        local x, y = pa[i] or 0, pb[i] or 0
+        if x ~= y then return x < y and -1 or 1 end
+    end
+    return 0
+end
+
 function ns.Trim(s)
     return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
 end
@@ -248,6 +261,7 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
     ns.Comm:Init()
     ns.Recruit:Init()
     ns.Location:Init()
+    ns.Reviews:Init()
     ns.Minimap:Init()
     ns.Options:Init()
     ns.Communities:Init()
@@ -268,6 +282,7 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm find <text>|r  - open with a search")
     ns:Print("  |cffffffff/ngm sync|r  - sync with guildmates now and show sync stats")
     ns:Print("  |cffffffff/ngm audit|r  - open the Audit tab (officers)")
+    ns:Print("  |cffffffff/ngm reviews|r  - open the Reviews tab (review the guild)")
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
     ns:Print("  |cffffffff/ngm recruit|r  - open the Recruitment tab")
     ns:Print("  |cffffffff/ngm options|r  - open the options")
@@ -303,6 +318,9 @@ SlashCmdList.NOOTROPICGM = function(msg)
     elseif cmd == "audit" then
         ns.UI:Show()
         ns.UI:SelectTab(ns.UI.TAB_AUDIT)
+    elseif cmd == "review" or cmd == "reviews" then
+        ns.UI:Show()
+        ns.UI:SelectTab(ns.UI.TAB_REVIEWS)
     elseif cmd == "minimap" then
         ns.Minimap:ToggleShown()
     elseif cmd == "reset" then

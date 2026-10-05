@@ -139,7 +139,8 @@ function R:Decorate(e)
         e.spec, e.specSource = nil, nil
     end
     e.dist = auto and auto.dist ~= "" and auto.dist or nil
-    e.hasAddon = auto ~= nil
+    e.version = m and m.version
+    e.hasAddon = auto ~= nil or e.version ~= nil
     e.syncedAt = auto and auto.ts
 
     -- Professions: addon-reported data first, manual entries fill the gaps.
@@ -390,6 +391,10 @@ local SORTERS = {
     rank = function(a, b)
         if a.rankIndex ~= b.rankIndex then return a.rankIndex < b.rankIndex end
     end,
+    version = function(a, b)
+        local c = ns.CompareVersions(a.version or (a.hasAddon and "0" or ""), b.version or (b.hasAddon and "0" or ""))
+        if c ~= 0 then return c < 0 end
+    end,
 }
 R.DEFAULT_DESC = { level = true, rating = true, tags = true }
 
@@ -429,3 +434,33 @@ function R:TagCount(id)
     end
     return n
 end
+
+------------------------------------------------------------------------
+-- Addon versions
+------------------------------------------------------------------------
+-- The newest version of the addon anyone in the guild runs (including you).
+function R:NewestVersion()
+    local newest = ns.version
+    local g = ns.DB:Guild()
+    for _, m in pairs(g and g.members or {}) do
+        if type(m) == "table" and m.version and ns.CompareVersions(m.version, newest) > 0 then newest = m.version end
+    end
+    return newest
+end
+
+-- Is this member's copy older than the newest one in the guild?
+function R:IsOutdated(e)
+    if not e.hasAddon then return false end
+    if not e.version then return true end -- 1.10 or older never said
+    return ns.CompareVersions(e.version, self:NewestVersion()) < 0
+end
+
+-- Tells you (once per session) when a guildmate has a newer version.
+function R:CheckVersion()
+    local newest = self:NewestVersion()
+    if self.toldNewer ~= newest and ns.CompareVersions(newest, ns.version) > 0 then
+        self.toldNewer = newest
+        ns:Print(("A newer version (%s) is in use in your guild. You have %s."):format(newest, ns.version))
+    end
+end
+

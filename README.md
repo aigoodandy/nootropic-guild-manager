@@ -30,7 +30,7 @@ Existing Nootropic data is never overwritten by the import. Guildmates need the 
 
 ## What you see
 
-**Roster tab** — every guild member with first name (with class icon), second name, level, class, location (with a map button), spec, Main / Alt ("Main" or "Alt of Markpri"), up to three professions with skill levels, tags, a 1–5 star rating (officers only; hidden by default) and guild rank. Click a column header to sort; sorting by Main / Alt groups each main with their alts. Offline members are dimmed.
+**Roster tab** — every guild member with first name (with class icon), second name, level, class, location (with a map button), spec, Main / Alt ("Main" or "Alt of Markpri"), up to three professions with skill levels, tags, a 1–5 star rating (officers only; hidden by default), guild rank, and the version of Nootropic Guild Manager they run (hidden by default; shown in red when someone in the guild has a newer version, "-" if they don't use the addon). Click a column header to sort; sorting by Main / Alt groups each main with their alts. Offline members are dimmed.
 
 - **Columns** button (or right-click any header) shows or hides columns. Your choice is saved between logins. Name can't be hidden.
 - **Rearrange columns** by dragging a header left or right; a gold marker shows where it will land. The order is saved between logins. "Reset column order" in the Columns menu, or **Reset Roster Columns** in Options (order, widths and shown columns), puts things back.
@@ -105,6 +105,15 @@ Each message starts with `message:`. Lines you leave out mean "any"; `guild` is 
 
 Messages and keywords are saved per guild.
 
+**Reviews tab** (the last tab) — anonymous reviews of the guild.
+
+- **Everyone** can rate the guild 1-5 stars and write a message (up to 500 characters), once every 7 days.
+- **Only officers** can read reviews. They see the average rating, how many reviews gave each number of stars, and every review from the last year, newest first. Click one to read it and see the officer comments.
+- **Officer comments**: officers can comment on a review; other officers see the comment with its author's name. You can delete your own comments, nobody else's.
+- **Nobody can change or delete a review**, officers included. Reviews and comments are kept for a year, then deleted.
+- **How it stays anonymous**: a review never carries a name. Its id is random, it's dated by day only, and it isn't sent when you click Submit but 2-15 minutes later. It goes to a single officer running the addon (not the whole guild); that officer's copy saves it without a name and shares it with the other officers at low priority on the officer channel. If no officer with the addon is online, it waits (up to 30 days) and is sent when one is.
+- **What an addon can't hide**: the game itself attaches the sender's name to every addon message, so the receiving officer's game client briefly knows who sent it. Nootropic Guild Manager discards that name and never saves or shows it, but someone running their own tools to watch addon traffic at that moment could see it. The 7-day limit is remembered by your own copy of the addon (per account and guild), since the guild can't know who wrote what.
+
 **Tags tab** (officers only) — create, rename, recolor, reorder and delete tags. Tags are shared with everyone in the guild running the addon. Click a tag's name to see everyone who has it. Ten tags are created to start: Questing, Dungeons, Raiding, World PvP, Battlegrounds, Crafting, Gathering, Leveling, Roleplay, Social.
 
 **Audit tab** (officers only) — every synced change across the guild: when, who changed it, which character, and what changed (e.g. "Rating changed from ★★ to ★★★" shown as star icons, "+Raiding", "Marked as an alt of Markpri"). Search it, filter by kind of change (tags, rating, main/alt, spec, professions, officer log, tag list) or by character, and click a row to open that profile. Changes saved together (within one 15-second batch, see below) are grouped into one line; hover it to see each change, or untick **Group changes**. How long history is kept is set in Options.
@@ -116,6 +125,8 @@ Messages and keywords are saved per guild.
 | See roster, tags, mains/alts, specs, professions | yes | yes |
 | Add to or remove from the Do Not Whisper list | yes | yes |
 | Share recruitment statuses | yes | yes |
+| Write an anonymous guild review (every 7 days) | yes | yes |
+| Read reviews, comment on them | | yes |
 | Edit their **own** tags, spec and professions | yes | yes |
 | Edit anyone's tags, spec, professions, mains/alts | | yes |
 | See and edit ratings | | yes |
@@ -127,7 +138,9 @@ Messages and keywords are saved per guild.
 
 Every copy of the addon shares its player's map position with the guild (every 15 seconds while moving, once a minute standing still; never inside dungeons). Guildmates appear on the world map as dots in their class color, on zone and continent maps. Hover a dot for the same details as the roster tooltip; click it to open their profile. The roster's **Location** column shows each guildmate's zone with a small map button that opens the map there and highlights them.
 
-Both are on by default. Options has separate switches to stop sharing your own location and to hide the dots. Positions are never saved or audited and disappear after 3 minutes without an update.
+Both are on by default. Options has separate switches to stop sharing your own location and to hide the dots.
+
+**Custom dot colors** (off by default): turn it on in Options to see the colors guildmates picked for their dots, and to pick your own dot color and outline color (with a preview and a **Use Class Color** reset). With it off, every dot is its class color with a black outline. Your colors are shared with the guild and only show for people who turned the option on. Positions are never saved or audited and disappear after 3 minutes without an update.
 
 ## Options
 
@@ -135,8 +148,8 @@ Open from **Options > AddOns > Nootropic Guild Manager**, the gear button at the
 
 - **Addon Icon**: Ale Mug, Brewfest Stein, or your **Guild Emblem**. The choice applies to the window's top-left icon, the minimap button and the Guild & Communities shortcut. The emblem falls back to the mug when you're not in a guild or it has no tabard.
 - **Audit History**: keep 30, 60 or 90 days of change history. Older entries are deleted.
-- **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Tags, Audit, Options, show/hide window, or nothing).
-- **Guildmate Locations**: share my location; show guildmates on the world map.
+- **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Tags, Audit, Reviews, Options, show/hide window, or nothing).
+- **Guildmate Locations**: share my location; show guildmates on the world map; custom dot colors (your dot and outline color).
 - **Use my guild's name in the window title**: "Knights of Azeroth Guild Manager" instead of "Nootropic Guild Manager".
 - **Show shortcut on the Guild & Communities window**: a side tab with the addon icon under the window's own tabs.
 - **Open Guild Manager**, **Reset Size and Position** and **Reset Roster Columns** buttons.
@@ -195,8 +208,8 @@ In testing, three simulated clients (two officers and a member) with 40-50% of m
 Everything is saved per guild in `WTF/Account/<account>/SavedVariables/NootropicGuildManager.lua`, along with your settings. **Private notes never leave your computer**; shared data syncs as described above.
 
 What is shared:
-- With everyone running the addon: each player's own professions and spec, tags, mains/alts, spec/profession overrides, the Do Not Whisper list, and recruitment statuses (the last 7 days).
-- With officers only: ratings, Officer Log entries (140 characters max; deleting one deletes it for every officer) and the audit trail.
+- With everyone running the addon: each player's own professions and spec, tags, mains/alts, spec/profession overrides, the Do Not Whisper list, and recruitment statuses (the last 7 days), map dot colors, and which addon version each person runs.
+- With officers only: guild reviews (anonymous) and officer comments on them, ratings, Officer Log entries (140 characters max; deleting one deletes it for every officer) and the audit trail.
 
 A note on trust: the addon checks permissions before sending anything, and officer data can only arrive through the officer channel. A guildmate who modified their copy of the addon could still forge a guild-wide change, but every change is recorded in the Audit tab with its author, so it would be visible to officers.
 
@@ -211,6 +224,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm diag` | report what the Guild & Communities shortcut can see |
 | `/ngm sync` | sync now and show sync stats |
 | `/ngm audit` | open the Audit tab (officers) |
+| `/ngm reviews` | open the Reviews tab |
 | `/ngm minimap` | show or hide the minimap button |
 | `/ngm reset` | reset the window size and position |
 
@@ -219,8 +233,8 @@ A note on trust: the addon checks permissions before sending anything, and offic
 ```
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data)  Sync.lua (records, repair, transport)
-Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)
-UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  RosterView.lua  RecruitView.lua  MessagesView.lua  DetailPanel.lua  TagsView.lua  AuditView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua
+Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)
+UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  RosterView.lua  RecruitView.lua  MessagesView.lua  DetailPanel.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua
 ```
 
 ## Names in WoW: Forever

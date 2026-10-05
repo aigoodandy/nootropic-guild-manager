@@ -28,6 +28,7 @@ local COLUMNS = {
     { key = "tags",   label = "Tags",        width = 160, min = 70, hidePriority = 8 },
     { key = "rating", label = "Rating",      width = 86,  min = 76, hidePriority = 5, officerOnly = true },
     { key = "rank",   label = "Rank",        width = 96,  min = 56, hidePriority = 1 },
+    { key = "version", label = "Version",    width = 62,  min = 50, hidePriority = 0.5 },
 }
 local COL = {}
 for _, c in ipairs(COLUMNS) do COL[c.key] = c end
@@ -83,6 +84,7 @@ function RV:ResetColumns()
     wipe(s.columnWidths)
     wipe(s.hiddenColumns)
     s.hiddenColumns.rating = true
+    s.hiddenColumns.version = true
     self:Relayout()
     self:Refresh()
 end
@@ -240,7 +242,8 @@ end
 
 function RV:SetColumnShown(key, shown)
     if COL[key].locked then return end
-    ns.DB:Settings().hiddenColumns[key] = (not shown) or nil
+    -- false (not nil) so a column that starts hidden stays shown after a reload
+    ns.DB:Settings().hiddenColumns[key] = not shown
     self:Relayout()
     self:Refresh()
 end
@@ -328,7 +331,8 @@ function RV:ShowColumnsMenu(owner)
     items[#items + 1] = {
         text = "Show all",
         func = function()
-            wipe(ns.DB:Settings().hiddenColumns)
+            local hidden = ns.DB:Settings().hiddenColumns
+            for _, c in ipairs(COLUMNS) do hidden[c.key] = false end
             RV:Relayout()
             RV:Refresh()
         end,
@@ -740,6 +744,11 @@ local function BuildRow(row)
     row.Rank:SetPoint("RIGHT", -4, 0)
     row.Rank:SetTextColor(0.8, 0.8, 0.8)
 
+    -- Addon version
+    row.Version = Text(cells.version)
+    row.Version:SetPoint("LEFT", 6, 0)
+    row.Version:SetPoint("RIGHT", -4, 0)
+
     row:SetScript("OnClick", function(self, button)
         local e = self.entry
         if not e then return end
@@ -883,6 +892,16 @@ function RV:InitRow(row, e)
 
     row.Stars:SetValue(e.rating)
     row.Rank:SetText(e.rank)
+    if row.cells.version:IsShown() then
+        if not e.hasAddon then
+            row.Version:SetText("|cff6d6d6d-|r")
+        elseif ns.Roster:IsOutdated(e) then
+            -- red: someone in the guild has a newer version
+            row.Version:SetText("|cffff4040" .. (e.version or "old") .. "|r")
+        else
+            row.Version:SetText("|cffffffff" .. e.version .. "|r")
+        end
+    end
 end
 
 ------------------------------------------------------------------------

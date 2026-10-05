@@ -33,7 +33,7 @@ local DEFAULTS = {
         onlineOnly = false,
         sortKey = "rank",
         sortAsc = true,
-        hiddenColumns = { rating = true },
+        hiddenColumns = { rating = true, version = true }, -- false = shown on purpose
         columnWidths = {},
         frameSize = { w = 1000, h = 580 },
     },

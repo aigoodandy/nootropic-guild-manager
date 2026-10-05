@@ -413,6 +413,51 @@ end
 -- Scrolling multi-line text editor (Blizzard's input scroll frame when
 -- available). Anchor the returned frame; its EditBox width follows it.
 ------------------------------------------------------------------------
+-- Opens the game's color picker. onChange(r, g, b) runs while the color is
+-- dragged; Cancel restores (and reports) the starting color.
+function W.PickColor(r, g, b, onChange)
+    local picker = ColorPickerFrame
+    if type(picker) ~= "table" then return end
+    local r0, g0, b0 = r, g, b
+    local function apply()
+        local nr, ng, nb = picker:GetColorRGB()
+        onChange(nr, ng, nb)
+    end
+    local function cancel() onChange(r0, g0, b0) end
+    if picker.SetupColorPickerAndShow then
+        picker:SetupColorPickerAndShow({ r = r, g = g, b = b, hasOpacity = false,
+            swatchFunc = apply, cancelFunc = cancel })
+    else
+        picker:Hide()
+        picker.hasOpacity, picker.opacityFunc = false, nil
+        picker.previousValues = { r, g, b }
+        picker.func, picker.cancelFunc = apply, cancel
+        picker:SetColorRGB(r, g, b)
+        if ShowUIPanel then ShowUIPanel(picker) else picker:Show() end
+    end
+end
+
+-- A small color square that opens the color picker when clicked.
+function W.Swatch(parent, size, getColor, onChange)
+    local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    b:SetSize(size, size)
+    b:SetBackdrop({ bgFile = W.WHITE, edgeFile = W.WHITE, edgeSize = 1 })
+    b:SetBackdropBorderColor(0.8, 0.8, 0.8, 1)
+    b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    function b:Update()
+        local r, g, bl = getColor()
+        self:SetBackdropColor(r, g, bl, 1)
+    end
+    b:SetScript("OnClick", function()
+        local r, g, bl = getColor()
+        W.PickColor(r, g, bl, function(nr, ng, nb)
+            onChange(nr, ng, nb)
+            b:Update()
+        end)
+    end)
+    return b
+end
+
 function W.ScrollEditor(parent, maxLetters)
     local ok, frame = pcall(CreateFrame, "ScrollFrame", nil, parent, "InputScrollFrameTemplate")
     local box

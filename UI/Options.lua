@@ -76,7 +76,7 @@ function O:Build()
     scroll:SetPoint("TOPLEFT", 0, -4)
     scroll:SetPoint("BOTTOMRIGHT", -26, 4)
     local panel = CreateFrame("Frame", nil, scroll)
-    panel:SetSize(600, 900)
+    panel:SetSize(600, 1000)
     scroll:SetScrollChild(panel)
     outer:SetScript("OnSizeChanged", function(_, w) panel:SetWidth(math.max(400, (w or 600) - 30)) end)
     self.content = panel
@@ -141,7 +141,58 @@ function O:Build()
     self.mapCheck = Check(panel, "Show guildmates on the world map",
         "Class-colored dots; hover one for their roster details, click it to open their profile.", y - 66,
         function(on) ns.Location:SetShowing(on) end)
-    y = y - 122
+    self.customDotsCheck = Check(panel, "Custom dot colors",
+        "See the dot colors guildmates picked, and pick your own. Off: every dot is its class color.", y - 112,
+        function(on) ns.Location:SetCustomDots(on) end)
+
+    -- my dot: fill and outline swatches, a preview and a reset
+    local L = ns.Location
+    local function myColors()
+        local me = ns.PlayerFullName()
+        local _, cls = UnitClass and UnitClass("player")
+        local fr, fg, fb = ns.ClassColor(cls)
+        local fill, outline = L:ChosenColors(me)
+        if fill then fr, fg, fb = L.RGB(fill) end
+        local br, bg, bb = 0, 0, 0
+        if outline then br, bg, bb = L.RGB(outline) end
+        return fr, fg, fb, br, bg, bb
+    end
+    self.dotRow = {}
+    local fillLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    fillLabel:SetPoint("TOPLEFT", 44, y - 162)
+    fillLabel:SetText("My dot")
+    self.fillSwatch = W.Swatch(panel, 18, function() local r, g, b = myColors() return r, g, b end,
+        function(r, g, b) L:SetMyColor("fill", r, g, b) O:RefreshDot() end)
+    self.fillSwatch:SetPoint("LEFT", fillLabel, "RIGHT", 8, 0)
+    local outLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    outLabel:SetPoint("LEFT", self.fillSwatch, "RIGHT", 18, 0)
+    outLabel:SetText("Outline")
+    self.outlineSwatch = W.Swatch(panel, 18, function() return select(4, myColors()) end,
+        function(r, g, b) L:SetMyColor("outline", r, g, b) O:RefreshDot() end)
+    self.outlineSwatch:SetPoint("LEFT", outLabel, "RIGHT", 8, 0)
+    -- preview, drawn like a map dot
+    local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+    local prevLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    prevLabel:SetPoint("LEFT", self.outlineSwatch, "RIGHT", 18, 0)
+    prevLabel:SetText("Preview")
+    local pv = CreateFrame("Frame", nil, panel)
+    pv:SetSize(20, 20)
+    pv:SetPoint("LEFT", prevLabel, "RIGHT", 8, 0)
+    pv.Border = pv:CreateTexture(nil, "ARTWORK", nil, 1)
+    pv.Border:SetTexture(CIRCLE)
+    pv.Border:SetAllPoints()
+    pv.Dot = pv:CreateTexture(nil, "ARTWORK", nil, 2)
+    pv.Dot:SetTexture(CIRCLE)
+    pv.Dot:SetSize(14, 14)
+    pv.Dot:SetPoint("CENTER")
+    self.dotPreview = pv
+    local resetDot = W.Button(panel, "Use Class Color", 130, 22)
+    resetDot:SetPoint("LEFT", pv, "RIGHT", 16, 0)
+    resetDot:SetScript("OnClick", function() L:ResetMyColors() O:RefreshDot() end)
+    W.Tooltip(resetDot, "Use class color", "Your dot goes back to your class color with a black outline.")
+    self.resetDot = resetDot
+    self.dotRow = { fillLabel, self.fillSwatch, outLabel, self.outlineSwatch, prevLabel, pv, resetDot }
+    y = y - 200
 
     -- Shortcuts and window
     Header(panel, "Window", y)
@@ -232,12 +283,34 @@ function O:Refresh()
     for _, b in ipairs(self.clickPickers) do b:SetText(D:MinimapActionLabel(s.minimap[b.key])) end
     self.shareCheck:SetChecked(s.shareLocation ~= false)
     self.mapCheck:SetChecked(s.showOnMap ~= false)
+    self.customDotsCheck:SetChecked(s.customDots == true)
+    self:RefreshDot()
     self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
     for _, rb in ipairs(self.auditRadios) do rb:SetChecked((s.auditDays or 30) == rb.days) end
     local st = ns.Sync.stats
     self.syncStatus:SetText(("Sync this session: %d sent, %d received, %d applied, %d waiting to send.  |cffffffff/ngm sync|r runs one now.")
         :format(st.sent, st.received, st.applied, ns.Sync:QueueSize()))
+end
+
+-- Your dot's swatches and preview; only usable while custom colors are on.
+function O:RefreshDot()
+    if not self.dotRow then return end
+    local on = ns.Location:CustomDots()
+    for _, w in ipairs(self.dotRow) do w:SetAlpha(on and 1 or 0.35) end
+    self.fillSwatch:SetEnabled(on)
+    self.outlineSwatch:SetEnabled(on)
+    self.resetDot:SetEnabled(on)
+    self.fillSwatch:Update()
+    self.outlineSwatch:Update()
+    local _, cls = UnitClass and UnitClass("player")
+    local fr, fg, fb = ns.ClassColor(cls)
+    local fill, outline = ns.Location:ChosenColors(ns.PlayerFullName())
+    local br, bg, bb = 0, 0, 0
+    if on and fill then fr, fg, fb = ns.Location.RGB(fill) end
+    if on and outline then br, bg, bb = ns.Location.RGB(outline) end
+    self.dotPreview.Dot:SetVertexColor(fr, fg, fb)
+    self.dotPreview.Border:SetVertexColor(br, bg, bb, 0.9)
 end
 
 ------------------------------------------------------------------------

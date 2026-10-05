@@ -2,7 +2,7 @@
 ## Title: |cffffd100Nootropic|r Guild Manager
 ## Notes: Guild roster with professions, specs, mains and alts, tags, officer ratings, an officer log, audit history and recruiting tools. Fully searchable.
 ## Author: Nootropic
-## Version: 1.10
+## Version: 1.11
 ## SavedVariables: NootropicGuildManagerDB
 ## Category: Guild
 ## IconTexture: Interface\Icons\INV_Drink_13
@@ -22,6 +22,7 @@ Services\Comm.lua
 Services\Messages.lua
 Services\Recruit.lua
 Services\Location.lua
+Services\Reviews.lua
 Services\Audit.lua
 
 # Interface
@@ -34,6 +35,7 @@ UI\RecruitView.lua
 UI\MessagesView.lua
 UI\TagsView.lua
 UI\AuditView.lua
+UI\ReviewsView.lua
 UI\MainFrame.lua
 UI\MinimapButton.lua
 UI\MapPins.lua

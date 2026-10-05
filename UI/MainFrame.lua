@@ -10,8 +10,8 @@ ns.UI = UI
 
 local FRAME_W, FRAME_H = 1000, 580
 local MIN_W, MIN_H, MAX_W, MAX_H = 640, 520, 1800, 1100
-local TAB_LABELS = { "Roster", "Recruitment", "Tags", "Audit" }
-UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_TAGS, UI.TAB_AUDIT = 1, 2, 3, 4
+local TAB_LABELS = { "Roster", "Recruitment", "Tags", "Audit", "Reviews" }
+UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_TAGS, UI.TAB_AUDIT, UI.TAB_REVIEWS = 1, 2, 3, 4, 5
 local OFFICER_TABS = { [3] = true, [4] = true } -- Tags and Audit
 
 ------------------------------------------------------------------------
@@ -55,6 +55,7 @@ function UI:Create()
     ns.RecruitView:Build(f)
     ns.TagsView:Build(f)
     ns.AuditView:Build(f)
+    ns.ReviewsView:Build(f)
     ns.DetailPanel:Build(f)
     self:BuildTabs(f)
     self:BuildResizeGrip(f)
@@ -214,13 +215,14 @@ function UI:SelectTab(id)
 
     -- Roster and Recruitment need room above the inset for a second toolbar row.
     f.Inset:ClearAllPoints()
-    f.Inset:SetPoint("TOPLEFT", 4, (id == UI.TAB_TAGS or id == UI.TAB_AUDIT) and -64 or -86)
+    f.Inset:SetPoint("TOPLEFT", 4, (id == UI.TAB_ROSTER or id == UI.TAB_RECRUIT) and -86 or -64)
     f.Inset:SetPoint("BOTTOMRIGHT", -6, 26)
 
     ns.RosterView.page:SetShown(id == UI.TAB_ROSTER)
     ns.RecruitView.page:SetShown(id == UI.TAB_RECRUIT)
     ns.TagsView.page:SetShown(id == UI.TAB_TAGS)
     ns.AuditView.page:SetShown(id == UI.TAB_AUDIT)
+    ns.ReviewsView.page:SetShown(id == UI.TAB_REVIEWS)
     if id ~= UI.TAB_ROSTER then ns.DetailPanel:Hide() end
 end
 

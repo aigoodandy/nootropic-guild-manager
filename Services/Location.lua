@@ -8,6 +8,11 @@
     Message:  3 <tab> P <tab> mapID <tab> x <tab> y     (x, y in 1/10000ths)
               mapID 0 = "stopped sharing"
     Positions are never saved or audited, and go stale after a few minutes.
+
+    Custom dot colors (opt-in, off by default): each player may pick a fill and
+    outline color for their own dot (sync record DC:<member> = "rrggbb;rrggbb").
+    Only players who turned the option on see custom colors; everyone else
+    sees class colors with a black outline.
 ]]
 local _, ns = ...
 local L = {}
@@ -94,6 +99,67 @@ function L:Get(full)
     local e = ns.Roster.byName[full]
     if e and not e.online then return nil end
     return p
+end
+
+------------------------------------------------------------------------
+-- Custom dot colors
+------------------------------------------------------------------------
+function L:CustomDots() return ns.DB:Settings().customDots == true end
+
+function L:SetCustomDots(on)
+    ns.DB:Settings().customDots = on and true or false
+    ns:Fire("LOCATIONS_CHANGED")
+    ns:Fire("SETTINGS_CHANGED")
+end
+
+local function Hex(r, g, b)
+    local function c(v) return math.max(0, math.min(255, math.floor((v or 0) * 255 + 0.5))) end
+    return ("%02x%02x%02x"):format(c(r), c(g), c(b))
+end
+L.Hex = Hex
+
+local function RGB(hex)
+    if type(hex) ~= "string" or not hex:match("^%x%x%x%x%x%x$") then return nil end
+    return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
+end
+L.RGB = RGB
+
+-- A player's chosen colors: fillHex, outlineHex (either may be nil).
+function L:ChosenColors(full)
+    local v = ns.Sync:Value("DC:" .. (full or ""))
+    if not v or v == "" then return nil, nil end
+    local fill, outline = v:match("^(%x*);(%x*)$")
+    return RGB(fill) and fill or nil, RGB(outline) and outline or nil
+end
+
+-- Colors to draw `full`'s dot with: fill r,g,b and outline r,g,b.
+function L:DotColors(full, classFile)
+    local fr, fg, fb = ns.ClassColor(classFile)
+    local or_, og, ob = 0, 0, 0
+    if self:CustomDots() then
+        local fill, outline = self:ChosenColors(full)
+        if fill then fr, fg, fb = RGB(fill) end
+        if outline then or_, og, ob = RGB(outline) end
+    end
+    return fr, fg, fb, or_, og, ob
+end
+
+-- Sets my own dot's fill or outline ("fill" / "outline"); nil r = back to default.
+function L:SetMyColor(which, r, g, b)
+    local me = ns.PlayerFullName()
+    local fill, outline = self:ChosenColors(me)
+    local hex = r and Hex(r, g, b) or nil
+    if which == "fill" then fill = hex else outline = hex end
+    local v = (fill or outline) and ((fill or "") .. ";" .. (outline or "")) or ""
+    ns.Sync:Set("DC:" .. me, v)
+    ns:Fire("LOCATIONS_CHANGED")
+    ns:Fire("SETTINGS_CHANGED")
+end
+
+function L:ResetMyColors()
+    ns.Sync:Set("DC:" .. ns.PlayerFullName(), "")
+    ns:Fire("LOCATIONS_CHANGED")
+    ns:Fire("SETTINGS_CHANGED")
 end
 
 ------------------------------------------------------------------------
