@@ -80,7 +80,10 @@ function PV:Build(frame)
     page:SetAllPoints()
     page:Hide()
     self.page, self.frame = page, frame
-    page:SetScript("OnShow", function() PV:Refresh() end)
+    page:SetScript("OnShow", function()
+        PV.animateNext = true -- the chart grows in when the tab opens
+        PV:Refresh()
+    end)
 
     self.summary = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     self.summary:SetPoint("TOPLEFT", frame, "TOPLEFT", 84, -38)
@@ -1014,6 +1017,36 @@ end
 ------------------------------------------------------------------------
 -- Refresh
 ------------------------------------------------------------------------
+-- Opening a poll or stat (or the tab), the bars grow and the pie sweeps in
+-- clockwise over ANIM_TIME, fast at first and easing to a stop. Live
+-- updates of what's already shown just change the values.
+local ANIM_TIME = 0.4
+PV.barTargets = {}
+
+function PV:AnimStep(t)
+    local e = 1 - (1 - t) ^ 3
+    for bar, target in pairs(self.barTargets) do bar:SetValue(target * e) end
+    self.pie:SetProgress(e)
+end
+
+function PV:StartAnimation()
+    self.animStart = GetTime()
+    self.animating = true
+    local driver = self.animDriver or CreateFrame("Frame")
+    self.animDriver = driver
+    self:AnimStep(0)
+    driver:SetScript("OnUpdate", function()
+        local t = (GetTime() - PV.animStart) / ANIM_TIME
+        if t >= 1 then
+            driver:SetScript("OnUpdate", nil)
+            PV.animating = false
+            PV:AnimStep(1)
+        else
+            PV:AnimStep(t)
+        end
+    end)
+end
+
 -- Rows stretch across the panel; the pie sits under them (and the footer
 -- text), centered, as big as the room left allows.
 local function PlaceRow(r, prev, gap, d)
@@ -1076,7 +1109,8 @@ function PV:RefreshDetail(p)
             -- the leading answer's count turns gold once voting closed
             local lead = not p.open and n > 0 and n == most
             r.Count:SetText(("%s%d|r  |cff9d9d9d%d%%|r"):format(lead and "|cffffd100" or "|cffffffff", n, pct))
-            r.Bar:SetValue(p.total > 0 and n / p.total or 0)
+            self.barTargets[r.Bar] = p.total > 0 and n / p.total or 0
+            r.Bar:SetValue(self.barTargets[r.Bar])
             r.Bar:SetStatusBarColor(cr, cg, cb)
             r.Check:SetShown(p.myVote == i)
             if p.myVote == i then r.Text:SetTextColor(0.4, 1, 0.4) else r.Text:SetTextColor(1, 1, 1) end
@@ -1136,7 +1170,8 @@ function PV:RefreshStat(id)
             r.Label:SetText(row.label)
             r.Label:SetTextColor(row.r, row.g, row.b)
             r.Count:SetText(("%d  |cff9d9d9d%d%%|r"):format(row.count, pct))
-            r.Bar:SetValue(s.total > 0 and row.count / s.total or 0)
+            self.barTargets[r.Bar] = s.total > 0 and row.count / s.total or 0
+            r.Bar:SetValue(self.barTargets[r.Bar])
             r.Bar:SetStatusBarColor(row.r, row.g, row.b)
             PlaceRow(r, prev, gap, d)
             r:Show()
@@ -1243,7 +1278,19 @@ function PV:Refresh()
         self.current, self.stat = nil, nil
         self:RefreshStatEditor()
     elseif self.mode == "detail" then
+        wipe(self.barTargets)
         if statId then self:RefreshStat(statId) else self:RefreshDetail(current) end
+        -- grow in when something new is shown; live updates just change
+        local key = statId and (STAT_PREFIX .. statId) or current.id
+        local animate = self.animateNext or key ~= self.shownKey
+        self.shownKey, self.animateNext = key, false
+        if animate then
+            self:StartAnimation()
+        elseif self.animating then
+            self:AnimStep(math.min(1, (GetTime() - self.animStart) / ANIM_TIME))
+        else
+            self.pie:SetProgress(1)
+        end
     else
         self.current, self.stat = nil, nil
         self.infoText:SetText(inGuild and "No polls or stats yet. Click New Stat to count guildmates your way."

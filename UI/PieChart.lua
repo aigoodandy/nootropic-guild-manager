@@ -74,19 +74,49 @@ function W.PieChart(parent, size)
 
     pie.sweeps = {}
     pie.slices = {}
+    pie.progress = 1
+
+    -- While the pie sweeps in (progress < 1) the last slice is a sweep too
+    -- and the circle under it is dark; once it's whole, the circle is the
+    -- last slice (a cooldown can't show a full circle).
+    local function Whole(self) return self.progress >= 1 end
 
     function pie:Paint()
         local n, hi = #self.slices, self.highlight
         for i, s in ipairs(self.slices) do
             local mode = hi and (i == hi and "hi" or "dim") or nil
             local r, g, b = Shade(s.r, s.g, s.b, mode)
-            if i == n then
+            if i == n and Whole(self) then
                 self.Base:SetVertexColor(r, g, b, 1)
-            else
+            elseif self.sweeps[i] then
                 self.sweeps[i]:SetSwipeColor(r, g, b, 1)
             end
         end
-        if n == 0 then self.Base:SetVertexColor(0.2, 0.2, 0.2, 1) end
+        if n == 0 or not Whole(self) then self.Base:SetVertexColor(0.12, 0.12, 0.12, 1) end
+    end
+
+    -- Draws the slices up to `progress` of the way round (0 to 1).
+    function pie:Draw()
+        local n, p = #self.slices, self.progress
+        local base = self:GetFrameLevel()
+        for i = 1, math.max(n, #self.sweeps) do
+            local cd = self.sweeps[i]
+            local s = self.slices[i]
+            local frac = s and math.min(s.to, p) or 0
+            local show = s and frac > 0 and (i < n or not Whole(self))
+            if show then
+                if not cd then
+                    cd = NewSweep(self)
+                    self.sweeps[i] = cd
+                end
+                cd:SetFrameLevel(base + n - i + 1) -- first slice on top
+                cd:Show()
+                SetFraction(cd, frac)
+            elseif cd then
+                cd:Hide()
+            end
+        end
+        self:Paint()
     end
 
     -- slices: { { value, r, g, b }, ... }; empty ones are left out.
@@ -104,23 +134,14 @@ function W.PieChart(parent, size)
         end
         local n = #self.slices
         if n > 0 then self.slices[n].to = 1 end
-        local base = self:GetFrameLevel()
-        for i = 1, math.max(n - 1, #self.sweeps) do
-            local cd = self.sweeps[i]
-            if i <= n - 1 then
-                if not cd then
-                    cd = NewSweep(self)
-                    self.sweeps[i] = cd
-                end
-                cd:SetFrameLevel(base + n - i) -- first slice on top
-                cd:Show()
-                SetFraction(cd, self.slices[i].to)
-            elseif cd then
-                cd:Hide()
-            end
-        end
         if self.highlight and not self:SliceFor(self.highlight) then self.highlight = nil end
-        self:Paint()
+        self:Draw()
+    end
+
+    -- How far round the slices are drawn (0 to 1); used to sweep the pie in.
+    function pie:SetProgress(p)
+        self.progress = math.max(0, math.min(1, p))
+        self:Draw()
     end
 
     -- Slice position for a data index (SetSlices' list index), or nil.
