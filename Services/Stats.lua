@@ -253,7 +253,7 @@ ST.DEFAULTS = {
     { "Who uses Nootropic Guild Manager?", "addon", "number" },
     { "Which days is the guild online?",   "day",   "columns" },
     { "What time is the guild online?",    "time",  "columns" },
-    { "Which kudos get given?",            "kudos", "barspie" },
+    { "Which kudos get given?",            "kudos", "bars" },
 }
 
 ------------------------------------------------------------------------

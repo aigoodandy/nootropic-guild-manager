@@ -1097,14 +1097,14 @@ function S:SeedDefaults()
             store[key] = { v = Codec.TagDef(def[2], i * 10, false, def[1]), t = 1, a = "" }
         end
     end
-    -- default guild stats, the same way (time 4: replaces an untouched
-    -- default from an earlier beta, which were times 1 to 3)
+    -- default guild stats, the same way (time 5: replaces an untouched
+    -- default from an earlier beta, which were times 1 to 4)
     for i, def in ipairs(ns.Stats.DEFAULTS) do
         local key = "SD:d" .. i
         local v = Codec.CustomStat({ title = def[1], group = def[2], layout = def[3] })
         local cur = store[key]
-        if not cur or (cur.t < 4 and (cur.a or "") == "") then
-            store[key] = { v = v, t = 4, a = "" }
+        if not cur or (cur.t < 5 and (cur.a or "") == "") then
+            store[key] = { v = v, t = 5, a = "" }
         end
     end
     -- default goals, the same way (time 1; bump it when a default changes,
