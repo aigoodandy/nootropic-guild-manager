@@ -15,11 +15,28 @@ local _, ns = ...
 local W = ns.Widgets
 
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-local SPAN = 1e7 -- a cooldown this long looks frozen (it would take months to move visibly)
+
+-- Stops a cooldown sweep at `frac` of the way round: a short cooldown
+-- started that far back, then paused (how Blizzard shows a fixed percentage).
+-- The start time must not be negative or the game ignores the cooldown, so
+-- clients without Pause get a long cooldown that can't start before 0.
+local function SetFraction(cd, frac)
+    local now = GetTime()
+    if cd.Pause then
+        if cd.Resume then cd:Resume() end
+        cd:SetCooldown(now - frac * 100, 100)
+        cd:Pause()
+    else
+        local span = math.max(100, math.min(1e6, now / math.max(frac, 0.001)))
+        cd:SetCooldown(now - frac * span, span)
+    end
+end
 
 local function NewSweep(pie)
-    local cd = CreateFrame("Cooldown", nil, pie)
+    local cd = CreateFrame("Cooldown", nil, pie, "CooldownFrameTemplate")
+    cd:ClearAllPoints()
     cd:SetAllPoints()
+    if cd.SetDrawSwipe then cd:SetDrawSwipe(true) end
     if cd.SetSwipeTexture then cd:SetSwipeTexture(CIRCLE) end
     if cd.SetDrawEdge then cd:SetDrawEdge(false) end
     if cd.SetDrawBling then cd:SetDrawBling(false) end
@@ -96,8 +113,8 @@ function W.PieChart(parent, size)
                     self.sweeps[i] = cd
                 end
                 cd:SetFrameLevel(base + n - i) -- first slice on top
-                cd:SetCooldown(GetTime() - self.slices[i].to * SPAN, SPAN)
                 cd:Show()
+                SetFraction(cd, self.slices[i].to)
             elseif cd then
                 cd:Hide()
             end
