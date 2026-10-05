@@ -19,6 +19,68 @@ end
 ns.version = Meta("Version") or "dev"
 
 ------------------------------------------------------------------------
+-- Performance counters (/ngm perf)
+------------------------------------------------------------------------
+ns.perf = { started = GetTime() }
+
+function ns.Count(name, n)
+    ns.perf[name] = (ns.perf[name] or 0) + (n or 1)
+end
+
+local function KB(bytes)
+    if bytes >= 1024 * 1024 then return ("%.1f MB"):format(bytes / 1024 / 1024) end
+    return ("%.1f KB"):format(bytes / 1024)
+end
+
+-- /ngm perf: memory, sync traffic, stored records and redraw counts.
+function ns.PerfReport()
+    local p = ns.perf
+    local secs = math.max(1, GetTime() - p.started)
+    local mins = secs / 60
+    local function Rate(n) return ("%d (%.1f/min)"):format(n or 0, (n or 0) / mins) end
+    ns:Print(("Performance this session (%dh %02dm):"):format(math.floor(secs / 3600), math.floor(secs / 60) % 60))
+
+    if UpdateAddOnMemoryUsage and GetAddOnMemoryUsage then
+        pcall(UpdateAddOnMemoryUsage)
+        local ok, kb = pcall(GetAddOnMemoryUsage, ns.name)
+        if ok and kb then ns:Print("  Memory: " .. KB(kb * 1024)) end
+    end
+
+    local st = ns.Sync.stats
+    ns:Print(("  Sync: %d sent (%s), %d received (%s), %d applied, %d queued, %d retries, %d dropped"):format(
+        st.sent, KB(p.bytesOut or 0), st.received, KB(p.bytesIn or 0), st.applied, ns.Sync:QueueSize(), st.retries, st.dropped))
+    ns:Print(("  Sending: %.0f bytes/sec on average (limit %d)"):format((p.bytesOut or 0) / secs, ns.Sync.BYTES_PER_SEC))
+
+    for _, scope in ipairs({ "guild", "officer" }) do
+        local store = ns.DB:Guild() and ns.Sync:Store(scope)
+        if store then
+            local total, byType = 0, {}
+            for key in pairs(store) do
+                total = total + 1
+                local typ = key:match("^(%u+):")
+                if typ then byType[typ] = (byType[typ] or 0) + 1 end
+            end
+            local list = {}
+            for typ, n in pairs(byType) do list[#list + 1] = { typ, n } end
+            table.sort(list, function(a, b) return a[2] > b[2] end)
+            local parts = {}
+            for i = 1, math.min(5, #list) do
+                local def = ns.Sync.TYPES[list[i][1]]
+                parts[i] = ("%s %d"):format(def and def.label or list[i][1], list[i][2])
+            end
+            ns:Print(("  Stored %s records: %d%s"):format(scope, total, #parts > 0 and (" (" .. table.concat(parts, ", ") .. ")") or ""))
+        end
+    end
+
+    local positions = 0
+    for _ in pairs(ns.Location.positions) do positions = positions + 1 end
+    ns:Print(("  Roster: rebuilt %s, redrawn %s"):format(Rate(p.rosterBuilds), Rate(p.rosterRedraws)))
+    ns:Print(("  Map: %s positions received, dots redrawn %s, %d guildmates on the map"):format(
+        Rate(p.positionsIn), Rate(p.mapRedraws), positions))
+    ns:Print(("  Kudos index built %d times"):format(p.kudosIndexBuilds or 0))
+end
+
+------------------------------------------------------------------------
 -- Printing
 ------------------------------------------------------------------------
 function ns:Print(...)
@@ -295,6 +357,7 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm export|r  - copy the roster as text for a spreadsheet or .csv file")
     ns:Print("  |cffffffff/ngm options|r  - open the options")
     ns:Print("  |cffffffff/ngm diag|r  - troubleshoot the Guild & Communities shortcut")
+    ns:Print("  |cffffffff/ngm perf|r  - memory, sync traffic and how often things redraw")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
 end
 
@@ -313,6 +376,8 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns.Communities:Diagnose()
         ns.WhoWhisper:Diagnose()
         ns.Roster:Diagnose()
+    elseif cmd == "perf" then
+        ns.PerfReport()
     elseif cmd == "options" or cmd == "config" or cmd == "settings" then
         ns.Options:Open()
     elseif cmd == "recruit" then

@@ -1307,6 +1307,7 @@ function RV:Refresh()
         return
     end
     self.dirty = false
+    ns.Count("rosterRedraws")
 
     local s = ns.DB:Settings()
     if s.sortKey and not COL[s.sortKey] then s.sortKey = "rank" end -- from an older version

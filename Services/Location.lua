@@ -80,6 +80,7 @@ function L:OnPosition(full, mapID, x, y)
     mapID, x, y = tonumber(mapID), tonumber(x), tonumber(y)
     if not (full and mapID and x and y) then return end
     if not ns.Roster.byName[full] then return end -- guild members only
+    ns.Count("positionsIn")
     if mapID == 0 then
         self.positions[full] = nil
     else

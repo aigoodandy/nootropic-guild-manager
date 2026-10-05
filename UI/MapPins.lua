@@ -66,6 +66,7 @@ function MP:Refresh()
     if not (WorldMapFrame and WorldMapFrame.GetCanvas) then return end
     local canvas = WorldMapFrame:GetCanvas()
     if not canvas then return end
+    ns.Count("mapRedraws")
     local shown = 0
     local visible = WorldMapFrame:IsShown() and ns.Location:Showing()
     local mapID = visible and WorldMapFrame.GetMapID and WorldMapFrame:GetMapID()
@@ -115,20 +116,27 @@ function MP:Attach()
     if WorldMapFrame.OnMapChanged then
         hooksecurefunc(WorldMapFrame, "OnMapChanged", function() MP:Refresh() end)
     end
-    -- keep dots current (movement, zoom) while the map is open
+    -- keep dots current (movement, zoom) while the map is open: at most twice
+    -- a second however many positions arrive, and not at all while it's closed
     local driver = CreateFrame("Frame")
     local elapsed = 0
-    driver:SetScript("OnUpdate", function(_, dt)
+    local function Drive(_, dt)
         elapsed = elapsed + (dt or 0)
         if elapsed < 0.5 then return end
         elapsed = 0
-        if WorldMapFrame:IsShown() then MP:Refresh() end
-    end)
+        MP:Refresh()
+    end
+    WorldMapFrame:HookScript("OnShow", function() driver:SetScript("OnUpdate", Drive) end)
+    WorldMapFrame:HookScript("OnHide", function() driver:SetScript("OnUpdate", nil) end)
+    if WorldMapFrame:IsShown() then driver:SetScript("OnUpdate", Drive) end
     self:Refresh()
 end
 
 function MP:Init()
-    ns:On("LOCATIONS_CHANGED", function()
+    ns:On("LOCATIONS_CHANGED", function(full)
+        -- a guildmate's new position waits for the next twice-a-second redraw;
+        -- color and setting changes show right away
+        if full then return end
         if WorldMapFrame and WorldMapFrame:IsShown() then MP:Refresh() end
     end)
     ns:RegisterEvent("ADDON_LOADED", function(_, name)

@@ -248,6 +248,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm export` | copy the roster as text for a spreadsheet or `.csv` file |
 | `/ngm options` | open the options |
 | `/ngm diag` | report what the Guild & Communities shortcut and the /who whisper buttons can see, and which name and version the addon uses for you |
+| `/ngm perf` | performance this session: memory use, sync traffic, stored records, and how often the roster and map dots were rebuilt and redrawn |
 | `/ngm sync` | sync now and show sync stats |
 | `/ngm polls` | open the Polls tab |
 | `/ngm audit` | open the Audit tab (officers) |

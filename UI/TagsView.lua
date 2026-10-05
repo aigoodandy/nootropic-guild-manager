@@ -39,15 +39,14 @@ end
 -- and for one type: member -> count.
 local function KudosGiven(forType)
     local byType, byMember = {}, {}
-    local store = ns.DB:Guild() and ns.Sync:Store("guild")
-    if not store then return byType, byMember end
     local cutoff = ns.DB:Now() - ns.Profile.KUDOS_DAYS * 86400
-    for key, rec in pairs(store) do
-        if key:sub(1, 3) == "KU:" and rec.t >= cutoff then
-            local member, typeId = key:match("^KU:([^:]+):([^:]+):")
-            if typeId then
-                byType[typeId] = (byType[typeId] or 0) + 1
-                if typeId == forType then byMember[member] = (byMember[member] or 0) + 1 end
+    for member, types in pairs(ns.Profile.KudosIndex()) do
+        for typeId, times in pairs(types) do
+            for _, t in ipairs(times) do
+                if t >= cutoff then
+                    byType[typeId] = (byType[typeId] or 0) + 1
+                    if typeId == forType then byMember[member] = (byMember[member] or 0) + 1 end
+                end
             end
         end
     end

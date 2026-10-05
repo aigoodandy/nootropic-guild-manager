@@ -533,7 +533,7 @@ function S:Materialize(typ, key, member, rec)
         ns.Debounce("guildsettings", 0.1, function() ns:Fire("GUILD_SETTINGS_CHANGED") end)
         return
     elseif typ == "KT" or typ == "KD" or typ == "KU" then
-        if typ ~= "KU" then ns.DB.kudosCache = nil end
+        if typ == "KU" then ns.Profile:InvalidateKudosIndex() else ns.DB.kudosCache = nil end
         ns.Debounce("kudoschanged", 0.2, function() ns:Fire("KUDOS_CHANGED") end)
         return
     elseif typ == "GR" or typ == "GC" then
@@ -828,6 +828,7 @@ function S:OnMessage(msg, channel, sender)
     local f = ns.Split(msg, FS)
     if f[1] ~= PROTO then return end -- other protocol versions are ignored
     self.stats.received = self.stats.received + 1
+    ns.Count("bytesIn", #msg)
     local kind = f[2]
     if kind == "R" then
         local key, t, author, batch = f[3], tonumber(f[4]), f[5], f[6]
@@ -939,6 +940,7 @@ function S:Pump()
             tokens = tokens - cost
             if result == "ok" then
                 S.stats.sent = S.stats.sent + 1
+                ns.Count("bytesOut", cost)
             else
                 S.stats.dropped = S.stats.dropped + 1
             end

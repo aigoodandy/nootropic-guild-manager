@@ -500,20 +500,48 @@ end
 ------------------------------------------------------------------------
 -- Giving kudos (anonymous)
 ------------------------------------------------------------------------
+-- Kudos by member: member -> typeId -> { times given }. Built from the shared
+-- records once, then only again after a kudos arrives (instead of reading
+-- every record each time a tooltip or profile shows kudos). Old times are
+-- skipped when counting, so expired kudos never need removing here.
+local kudosIndex, indexStore
+
+function PF:InvalidateKudosIndex()
+    kudosIndex = nil
+end
+
+function PF.KudosIndex()
+    local store = ns.DB:Guild() and ns.Sync:Store("guild")
+    if not store then return {} end
+    if kudosIndex and indexStore == store then return kudosIndex end
+    local idx = {}
+    for key, rec in pairs(store) do
+        if key:sub(1, 3) == "KU:" then
+            local member, typeId = key:match("^KU:([^:]+):([^:]+):")
+            if typeId then
+                local m = idx[member]
+                if not m then m = {}; idx[member] = m end
+                local times = m[typeId]
+                if not times then times = {}; m[typeId] = times end
+                times[#times + 1] = rec.t
+            end
+        end
+    end
+    kudosIndex, indexStore = idx, store
+    ns.Count("kudosIndexBuilds")
+    return idx
+end
+
 -- { [typeId] = { count, last } } for a member over the last 90 days, plus total.
 function PF:KudosFor(full)
     local out, total = {}, 0
-    local store = ns.DB:Guild() and ns.Sync:Store("guild")
-    if not store then return out, 0 end
-    local prefix = "KU:" .. full .. ":"
     local cutoff = Now() - self.KUDOS_DAYS * 86400
-    for key, rec in pairs(store) do
-        if key:sub(1, #prefix) == prefix and rec.t >= cutoff then
-            local typeId = key:sub(#prefix + 1):match("^([^:]+):")
-            if typeId then
+    for typeId, times in pairs(self.KudosIndex()[full] or {}) do
+        for _, t in ipairs(times) do
+            if t >= cutoff then
                 local e = out[typeId] or { count = 0, last = 0 }
                 e.count = e.count + 1
-                if rec.t > e.last then e.last = rec.t end
+                if t > e.last then e.last = t end
                 out[typeId] = e
                 total = total + 1
             end
