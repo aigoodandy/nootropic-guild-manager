@@ -1,7 +1,7 @@
 --[[
     Nootropic Guild Manager - Mini recruiter
     A small bar for recruiting while you play: status and countdown, Search
-    /who, Select New and Send / Stop / Send Next. Open it with Minimize on the
+    /who, Select New and Send / Stop / Send Next. Open it with the Compact button on the
     Recruitment tab (or /ngm mini); it also appears when the main window is
     closed while whispers are still being sent. Expand goes back to the tab.
     Its position is saved (settings.miniPos).
@@ -54,6 +54,7 @@ function MR:Build()
     local expand = W.SizeButton(f, "expand", 26, function() MR:Expand() end,
         "Expand", "Back to the full Recruitment tab.")
     expand:SetPoint("RIGHT", close, "LEFT", 0, 0)
+    expand:MatchLevel(close)
 
     self.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.status:SetPoint("TOPLEFT", 12, -30)
@@ -190,7 +191,7 @@ function MR:Toggle()
 end
 
 -- From the Recruitment tab: close the big window, show the bar.
-function MR:Minimize()
+function MR:Compact()
     self:Show()
     ns.UI:Hide()
 end

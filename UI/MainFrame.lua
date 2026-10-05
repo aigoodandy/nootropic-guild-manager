@@ -40,7 +40,7 @@ function UI:Create()
 
     self:UpdateTitle()
     self:BuildPortrait(f)
-    self:BuildMinimizeButton(f)
+    self:BuildCompactButton(f)
     self:RestorePosition()
 
     -- Status line along the bottom edge
@@ -101,17 +101,17 @@ function UI:BuildPortrait(f)
     self.portrait = ns.Brand:AttachPortrait(f)
 end
 
--- Red minimize arrow beside the close button, on the Roster tab (compact
--- roster) and the Recruitment tab (small recruiting bar).
-function UI:BuildMinimizeButton(f)
+-- Red Compact arrow beside the close button (as on the spellbook), on the
+-- Roster tab (compact roster) and the Recruitment tab (small recruiting bar).
+function UI:BuildCompactButton(f)
     local close = f.CloseButton or (f.GetName and _G[f:GetName() .. "CloseButton"])
     local size = close and math.floor(close:GetWidth() + 0.5) or 24
     if size < 16 then size = 24 end
     local mini = W.SizeButton(f, "condense", size, function()
         if UI.tab == UI.TAB_RECRUIT then
-            ns.RecruitMini:Minimize()
+            ns.RecruitMini:Compact()
         else
-            ns.CompactRoster:Minimize()
+            ns.CompactRoster:Compact()
         end
     end)
     if close then
@@ -119,10 +119,10 @@ function UI:BuildMinimizeButton(f)
     else
         mini:SetPoint("TOPRIGHT", -28, -2)
     end
-    mini:SetFrameLevel(f:GetFrameLevel() + 10)
+    mini:MatchLevel(close)
     mini.Button:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine("Minimize")
+        GameTooltip:AddLine("Compact")
         if UI.tab == UI.TAB_RECRUIT then
             GameTooltip:AddLine("A small recruiting bar you can move anywhere: search, tick new players and send whispers while you play.", 1, 1, 1, true)
         else

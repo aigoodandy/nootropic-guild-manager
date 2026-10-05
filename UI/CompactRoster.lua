@@ -1,6 +1,6 @@
 --[[
     Nootropic Guild Manager - Compact roster
-    A small guild roster window without tabs, opened with the minimize arrow
+    A small guild roster window without tabs, opened with the Compact button
     on the Roster tab. Shows First Name and Location by default; right-click
     a column header (or use the Columns menu) to add Level, Class, Second
     Name, Spec, Main / Alt or Rank. Search, Online only, sorting, the roster
@@ -85,7 +85,7 @@ function CR:Build()
     else
         expand:SetPoint("TOPRIGHT", -26, -2)
     end
-    expand:SetFrameLevel(f:GetFrameLevel() + 10)
+    expand:MatchLevel(close)
 
     -- search and Online only
     local search = CreateFrame("EditBox", "NootropicGMCompactSearch", f, "SearchBoxTemplate")
@@ -411,7 +411,7 @@ function CR:Toggle()
 end
 
 -- From the Roster tab: close the big window, show the compact roster.
-function CR:Minimize()
+function CR:Compact()
     self:Show()
     ns.UI:Hide()
 end

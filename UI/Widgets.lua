@@ -54,7 +54,7 @@ function W.Button(parent, text, width, height)
     return b
 end
 
--- Blizzard's red minimize ("condense") or expand arrow button, the same
+-- Blizzard's red compact ("condense") or expand arrow button, the same
 -- family as the red close X. Built from the game's own
 -- MaximizeMinimizeButtonFrameTemplate when the client has it (so the art is
 -- whatever this client uses), else the atlas, else the older panel buttons.
@@ -101,6 +101,13 @@ function W.SizeButton(parent, kind, size, onClick, tipTitle, ...)
     button:SetScript("OnClick", function() if onClick then onClick() end end)
     if tipTitle then W.Tooltip(button, tipTitle, ...) end
     holder.Button = button
+    -- Blizzard window borders draw on a high frame level; sit on the close
+    -- button's level (like the spellbook's own button) so we're never covered.
+    function holder:MatchLevel(ref)
+        local level = ref and ref:GetFrameLevel() or (parent:GetFrameLevel() + 10)
+        self:SetFrameLevel(level)
+        if button ~= self then button:SetFrameLevel(level + 1) end
+    end
     return holder
 end
 
