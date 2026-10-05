@@ -24,10 +24,6 @@ local MAX_STAT_ROWS = 14
 local PIE = 120
 local STAT_PREFIX = "stat:"
 
--- Poll answers get chart colors in order (tag palette, most distinct first).
-local PALETTE = { 2, 1, 6, 4, 3, 5 }
-local function OptionColor(i) return D:TagColor(PALETTE[(i - 1) % #PALETTE + 1]) end
-
 local function StatId(key)
     return type(key) == "string" and key:sub(1, #STAT_PREFIX) == STAT_PREFIX and key:sub(#STAT_PREFIX + 1) or nil
 end
@@ -162,11 +158,9 @@ local function BuildListRow(row)
     row.Selected:SetVertexColor(1, 0.82, 0, 0.45)
     row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
     row:GetHighlightTexture():SetAlpha(0.3)
-    -- the poll's or stat's icon in its color
-    row.Icon = W.TagIcon(row, 18)
     -- poll
     row.Question = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    row.Question:SetPoint("TOPLEFT", 32, -7)
+    row.Question:SetPoint("TOPLEFT", 10, -7)
     row.Question:SetPoint("RIGHT", -64, 0)
     row.Question:SetJustifyH("LEFT")
     row.Question:SetWordWrap(false)
@@ -181,7 +175,7 @@ local function BuildListRow(row)
     row.Mine:SetPoint("TOPRIGHT", row.Votes, "BOTTOMRIGHT", 0, -5)
     -- stat
     row.StatName = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.StatName:SetPoint("LEFT", 32, 0)
+    row.StatName:SetPoint("LEFT", 12, 0)
     row.StatName:SetPoint("RIGHT", -64, 0)
     row.StatName:SetJustifyH("LEFT")
     row.StatName:SetWordWrap(false)
@@ -220,13 +214,6 @@ function PV:InitRow(row, item)
     row.Live:SetShown(stat ~= nil)
     row.Header:SetShown(header ~= nil)
     row.HeaderLine:SetShown(header ~= nil)
-    local look = p or stat
-    row.Icon:SetShown(look ~= nil)
-    if look then
-        row.Icon:SetTag({ icon = look.icon, color = look.color })
-        row.Icon:ClearAllPoints()
-        if p then row.Icon:SetPoint("TOPLEFT", 8, -7) else row.Icon:SetPoint("LEFT", 8, 0) end
-    end
     row.Stripe:SetShown(item.stripe and not header)
     local key = p and p.id or stat and (STAT_PREFIX .. stat.id)
     row.Selected:SetShown(key ~= nil and key == self.selected and self.mode == "detail")
@@ -293,26 +280,8 @@ function PV:BuildDetail(panel)
     line:SetPoint("RIGHT", d, "RIGHT", -12, 0)
     self.dTitle = title
 
-    -- its icon in its color; officers (or you, for your own stats) click it
-    -- to change the icon or color
-    local look = CreateFrame("Button", nil, d)
-    look:SetSize(36, 36)
-    look:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    look.Tag = W.TagIcon(look, 36)
-    look.Tag:SetAllPoints()
-    look:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    look:SetScript("OnClick", function(self) PV:LookMenu(self) end)
-    look:SetScript("OnEnter", function(self)
-        if not PV:CanChangeLook() then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Change the icon or color")
-        GameTooltip:Show()
-    end)
-    look:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    self.dLook = look
-
     self.dQuestion = Para(d, "GameFontHighlight")
-    self.dQuestion:SetPoint("TOPLEFT", look, "TOPRIGHT", 10, -1)
+    self.dQuestion:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
     self.dQuestion:SetPoint("RIGHT", d, "RIGHT", -14, 0)
     self.dStatus = Para(d, "GameFontHighlightSmall")
     self.dStatus:SetPoint("TOPLEFT", self.dQuestion, "BOTTOMLEFT", 0, -6)
@@ -342,6 +311,9 @@ function PV:BuildDetail(panel)
         r.Check:SetSize(14, 14)
         r.Check:SetPoint("TOPLEFT", 2, -2)
         r.Check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+        r.Icon = r:CreateTexture(nil, "ARTWORK")
+        r.Icon:SetSize(14, 14)
+        r.Icon:SetPoint("TOPLEFT", 20, -2)
         r.Text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         r.Text:SetPoint("TOPLEFT", 20, -3)
         r.Text:SetPoint("RIGHT", -70, 0)
@@ -403,79 +375,80 @@ function PV:BuildDetail(panel)
 end
 
 ------------------------------------------------------------------------
--- A poll's or stat's look (icon and color)
+-- Row looks: each poll answer's and stat row's color and icon
 ------------------------------------------------------------------------
--- "Icon [x] Color [Rare Blue v]" in a form at `y`. getLook() returns the
--- form's { color, icon } table (changed in place); onChange() redraws.
-function PV:LookPicker(parent, y, getLook, onChange)
-    local label = Label(parent, "Icon")
-    label:SetPoint("TOPLEFT", 14, y - 4)
-    local icon = CreateFrame("Button", nil, parent)
-    icon:SetSize(26, 26)
-    icon:SetPoint("TOPLEFT", 50, y + 2)
-    icon.Tag = W.TagIcon(icon, 26)
-    icon.Tag:SetAllPoints()
-    icon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    icon:SetScript("OnClick", function(self)
-        local look = getLook()
-        ns.IconPicker:Open(look.icon, function(chosen)
-            look.icon = chosen
-            onChange()
-        end, self)
-    end)
-    W.Tooltip(icon, "Choose an icon", "Any icon from the macro icon menu, or paste one.")
-    local cLabel = Label(parent, "Color")
-    cLabel:SetPoint("TOPLEFT", 92, y - 4)
-    local color = W.ColorButton(parent, 150)
-    color:SetPoint("TOPLEFT", 132, y)
-    color:SetScript("OnClick", function(self)
-        local look = getLook()
-        W.ShowColorMenu(self, function() return look.color end, function(i)
-            look.color = i
-            onChange()
-        end)
-    end)
-    return icon, color
-end
-
--- Shows a form's look on its picker.
-local function ShowLook(iconBtn, colorBtn, look)
-    iconBtn.Tag:SetTag({ icon = look.icon, color = look.color })
-    colorBtn:SetColor(look.color)
-end
-
--- Changed from a poll's or stat's page:
-function PV:CanChangeLook()
-    if self.stat then return self.stat.custom and ns.Stats:CanEdit(self.stat.custom) or false end
-    return self.current ~= nil and ns.IsOfficer()
-end
-
--- Saves a new color and/or icon for what's shown.
-function PV:SetLook(color, icon)
-    local ok, err
-    if self.stat then
-        local c = self.stat.custom
-        ok, err = ns.Stats:Save(c.id, c.title, c.group, c.filter, c.vis, color or c.color, icon or c.icon)
-    elseif self.current then
-        ok, err = ns.Polls:SetLook(self.current.id, color, icon)
+-- Shows a row's icon on a texture (its chosen icon, or a class icon), or
+-- hides it. Returns whether there is one.
+local function SetRowIcon(tex, row)
+    if row and row.icon then
+        W.SetIcon(tex, row.icon)
+    elseif row and row.classFile then
+        W.SetClassIcon(tex, row.classFile)
+    else
+        tex:Hide()
+        return false
     end
-    if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-    self:Refresh()
+    tex:Show()
+    return true
 end
 
-function PV:LookMenu(owner)
-    if not self:CanChangeLook() then return end
-    local current = self.stat or self.current
-    W.ShowMenu(owner, {
-        { text = "Look", isTitle = true },
-        { text = "Change icon...", func = function()
-            ns.IconPicker:Open(current.icon, function(icon) PV:SetLook(nil, icon) end, owner)
-        end },
-        { text = "Change color...", func = function()
-            W.ShowColorMenu(owner, function() return current.color end, function(i) PV:SetLook(i, nil) end)
-        end },
-    })
+-- An icon button and a color swatch for one row in a form. get() returns
+-- what the row shows now: { color (a palette number) or r, g, b, icon,
+-- classFile }. set("icon", icon or false for none) / set("color", n) saves
+-- a pick. Right-click the icon to show none.
+local function LookControls(parent, get, set)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(44, 20)
+    local icon = CreateFrame("Button", nil, f, "BackdropTemplate")
+    icon:SetSize(20, 20)
+    icon:SetPoint("LEFT")
+    icon:SetBackdrop({ edgeFile = W.WHITE, edgeSize = 1 })
+    icon:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+    icon.Tex = icon:CreateTexture(nil, "ARTWORK")
+    icon.Tex:SetPoint("TOPLEFT", 1, -1)
+    icon.Tex:SetPoint("BOTTOMRIGHT", -1, 1)
+    icon.Empty = icon:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    icon.Empty:SetPoint("CENTER")
+    icon.Empty:SetText("+")
+    icon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    icon:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    icon:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then
+            set("icon", false)
+            return
+        end
+        ns.IconPicker:Open(get().icon, function(chosen) set("icon", chosen) end, self)
+    end)
+    W.Tooltip(icon, "Icon", "Click to choose an icon (or paste one).", "Right-click to show no icon.")
+    local swatch = CreateFrame("Button", nil, f, "BackdropTemplate")
+    swatch:SetSize(16, 16)
+    swatch:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+    swatch:SetBackdrop({ bgFile = W.WHITE, edgeFile = W.WHITE, edgeSize = 1 })
+    swatch:SetBackdropBorderColor(0, 0, 0, 1)
+    swatch:SetScript("OnClick", function(self)
+        W.ShowColorMenu(self, function() return get().color end, function(i) set("color", i) end)
+    end)
+    swatch:SetScript("OnEnter", function(self)
+        local l = get()
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Color")
+        if l.color then GameTooltip:AddLine(D:ColorName(l.color), D:TagColor(l.color)) end
+        GameTooltip:AddLine("Click to choose.", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    swatch:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    function f:Refresh()
+        local l = get() or {}
+        icon.Empty:SetShown(not SetRowIcon(icon.Tex, l))
+        if l.r and not l.color then
+            swatch:SetBackdropColor(l.r, l.g, l.b, 1)
+        else
+            swatch:SetBackdropColor(D:TagColor(l.color or 1))
+        end
+    end
+    return f
 end
+
 
 -- Stat result rows: label, bar, count and percent on one line.
 function PV:BuildStatRows(d)
@@ -485,9 +458,12 @@ function PV:BuildStatRows(d)
         r:SetHeight(STAT_H)
         r:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         r:GetHighlightTexture():SetAlpha(0.3)
+        r.Icon = r:CreateTexture(nil, "ARTWORK")
+        r.Icon:SetSize(16, 16)
+        r.Icon:SetPoint("LEFT", 2, 0)
         r.Label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        r.Label:SetPoint("LEFT", 2, 0)
-        r.Label:SetWidth(92)
+        r.Label:SetPoint("LEFT", 22, 0)
+        r.Label:SetWidth(82)
         r.Label:SetJustifyH("LEFT")
         r.Label:SetWordWrap(false)
         r.Count = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -691,10 +667,8 @@ function PV:BuildStatEditor(panel)
     self.sMatches = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.sMatches:SetPoint("LEFT", clear, "RIGHT", 10, 0)
 
-    self.sIcon, self.sColor = self:LookPicker(c, -214, function() return PV.sLook end, function() PV:RefreshStatEditor() end)
-
     local vLabel = Label(c, "Who can see it")
-    vLabel:SetPoint("TOPLEFT", 14, -252)
+    vLabel:SetPoint("TOPLEFT", 14, -212)
     local vis = DropButton(c, 170)
     vis:SetPoint("TOPLEFT", vLabel, "BOTTOMLEFT", 0, -4)
     vis:SetScript("OnClick", function(btn)
@@ -728,6 +702,20 @@ function PV:BuildStatEditor(panel)
     self.sError = Para(c, "GameFontHighlightSmall", IW)
     self.sError:SetPoint("BOTTOMLEFT", save, "TOPLEFT", 2, 8)
     self.sError:SetTextColor(1, 0.35, 0.35)
+
+    -- each row's icon and color (the rows the stat has right now)
+    local rLabel = Label(c, "Rows  |cff9d9d9d(icon and color for each)|r")
+    rLabel:SetPoint("TOPLEFT", self.sVisHint, "BOTTOMLEFT", 0, -12)
+    local scroll = W.TryCreate("ScrollFrame", nil, c, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", rLabel, "BOTTOMLEFT", 0, -6)
+    scroll:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -30, 64)
+    local list = CreateFrame("Frame", nil, scroll)
+    list:SetSize(IW - 24, 10)
+    scroll:SetScrollChild(list)
+    self.sRowList, self.sRowFrames = list, {}
+    self.sRowsEmpty = list:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.sRowsEmpty:SetPoint("TOPLEFT", 2, -4)
+    self.sRowsEmpty:SetText("No rows yet: no members match.")
 
     self.sTitle.nextBox = self.sFilter
     self.sFilter.nextBox = self.sTitle
@@ -767,8 +755,9 @@ function PV:ShowStatEditor(custom)
     self.sFilter:SetText(custom and custom.filter or "")
     self.sGroup = custom and custom.group or "class"
     self.sVis = custom and custom.vis or (ns.IsOfficer() and "c" or "m")
-    self.sLook = custom and { color = custom.color, icon = custom.icon }
-        or { color = D:NextColor(#ns.Stats:All()), icon = "Interface\\Icons\\INV_Misc_Note_01" }
+    -- the chosen row looks, copied so Cancel leaves the stat as it was
+    self.sLooks = {}
+    for label, l in pairs(custom and custom.looks or {}) do self.sLooks[label] = { color = l.color, icon = l.icon } end
     self.sError:SetText("")
     self:Refresh()
     self.sTitle:SetFocus()
@@ -778,7 +767,7 @@ function PV:RefreshStatEditor()
     local ST = ns.Stats
     local g = ST:Group(self.sGroup)
     self.sGroupBtn:SetText(g and g.label or "Choose...")
-    if self.sLook then ShowLook(self.sIcon, self.sColor, self.sLook) end
+    self:RefreshStatRowLooks()
     if self.sVis ~= "m" and not ns.IsOfficer() then self.sVis = "m" end
     for _, v in ipairs(ST.VISIBILITY) do
         if v.key == self.sVis then self.sVisBtn:SetText(v.label) end
@@ -791,10 +780,56 @@ function PV:RefreshStatEditor()
     self.sError:SetText("")
 end
 
+-- The form's row list: every row the stat would show now, with an icon
+-- button and color swatch (its own look until you pick another).
+function PV:RefreshStatRowLooks()
+    local looks = self.sLooks or {}
+    local rows = ns.Stats:Rows(self.sGroup, self.sFilter:GetText(), looks)
+    local list, frames = self.sRowList, self.sRowFrames
+    local Key = ns.Sync.Codec.LookLabel
+    for i, row in ipairs(rows) do
+        local f = frames[i]
+        if not f then
+            f = CreateFrame("Frame", nil, list)
+            f:SetSize(list:GetWidth(), 24)
+            f:SetPoint("TOPLEFT", 0, -(i - 1) * 24)
+            f.Controls = LookControls(f,
+                function()
+                    local r = f.row
+                    local chosen = looks and PV.sLooks[Key(r.label)] or {}
+                    return { color = chosen.color, r = r.r, g = r.g, b = r.b, icon = r.icon, classFile = r.classFile }
+                end,
+                function(field, value)
+                    local key = Key(f.row.label)
+                    PV.sLooks[key] = PV.sLooks[key] or {}
+                    PV.sLooks[key][field] = value
+                    PV:RefreshStatRowLooks()
+                end)
+            f.Controls:SetPoint("LEFT", 2, 0)
+            f.Label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            f.Label:SetPoint("LEFT", 54, 0)
+            f.Label:SetPoint("RIGHT", -50, 0)
+            f.Label:SetJustifyH("LEFT")
+            f.Label:SetWordWrap(false)
+            f.Count = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+            f.Count:SetPoint("RIGHT", -4, 0)
+            frames[i] = f
+        end
+        f.row = row
+        f.Label:SetText(row.label)
+        f.Label:SetTextColor(row.r or 1, row.g or 1, row.b or 1)
+        f.Count:SetText(row.count)
+        f.Controls:Refresh()
+        f:Show()
+    end
+    for i = #rows + 1, #frames do frames[i]:Hide() end
+    self.sRowsEmpty:SetShown(#rows == 0)
+    list:SetHeight(math.max(10, #rows * 24))
+end
+
 function PV:SaveStat()
-    local look = self.sLook or {}
     local id, err = ns.Stats:Save(self.sEditing, self.sTitle:GetText(), self.sGroup, self.sFilter:GetText(), self.sVis,
-        look.color, look.icon)
+        self.sLooks)
     if not id then
         self.sError:SetText(err or "Couldn't save the stat.")
         return
@@ -822,14 +857,23 @@ function PV:BuildCreate(panel)
 
     local aLabel = Label(c, ("Answers  |cff9d9d9d(%d to %d)|r"):format(P.MIN_OPTIONS, P.MAX_OPTIONS))
     aLabel:SetPoint("TOPLEFT", 14, -82)
-    self.optBoxes = {}
+    self.optBoxes, self.optLookControls = {}, {}
     local prev = self.qBox
     for i = 1, P.MAX_OPTIONS do
         local num = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         num:SetPoint("TOPLEFT", 16, -102 - (i - 1) * 24)
         num:SetText(i .. ".")
-        local eb = Input(c, IW - 28, P.OPTION_MAX)
-        eb:SetPoint("LEFT", num, "LEFT", 18, 0)
+        -- the answer's icon and color
+        local looks = LookControls(c,
+            function() return PV.answerLooks and PV.answerLooks[i] or {} end,
+            function(field, value)
+                PV.answerLooks[i][field] = value or nil
+                PV.optLookControls[i]:Refresh()
+            end)
+        looks:SetPoint("LEFT", num, "LEFT", 16, 0)
+        self.optLookControls[i] = looks
+        local eb = Input(c, IW - 76, P.OPTION_MAX)
+        eb:SetPoint("LEFT", looks, "RIGHT", 10, 0)
         prev.nextBox = eb
         prev = eb
         self.optBoxes[i] = eb
@@ -879,9 +923,6 @@ function PV:BuildCreate(panel)
     self.closeNum:HookScript("OnTextChanged", function() PV:RefreshCreate() end)
     self.keepNum:HookScript("OnTextChanged", function() PV:RefreshCreate() end)
 
-    -- icon and color
-    self.pIcon, self.pColor = self:LookPicker(c, y - 50, function() return PV.newLook end, function() PV:RefreshCreate() end)
-
     local create = W.Button(c, "Create Poll", 120, 22)
     create:SetPoint("BOTTOMLEFT", 12, 12)
     create:SetScript("OnClick", function() PV:OnCreate() end)
@@ -911,7 +952,9 @@ function PV:ShowCreate()
     local P = ns.Polls
     self.mode = "create"
     self.unit = P.DEFAULT_CLOSE[2]
-    self.newLook = { color = D:NextColor(#P:List()), icon = "Interface\\Icons\\INV_Scroll_03" }
+    -- each answer starts in its own color, with no icon
+    self.answerLooks = {}
+    for i = 1, P.MAX_OPTIONS do self.answerLooks[i] = { color = P.AnswerColor(i) } end
     self.qBox:SetText("")
     for _, eb in ipairs(self.optBoxes) do eb:SetText("") end
     self.closeNum:SetText(tostring(P.DEFAULT_CLOSE[1]))
@@ -929,7 +972,7 @@ end
 
 function PV:RefreshCreate()
     self.unitBtn:SetText(ns.Polls.UnitLabel(self.unit) or "Days")
-    if self.newLook then ShowLook(self.pIcon, self.pColor, self.newLook) end
+    for _, controls in ipairs(self.optLookControls) do controls:Refresh() end
     local secs = self:CloseSeconds()
     local keep = tonumber(self.keepNum:GetText())
     if secs and secs >= 60 then
@@ -945,8 +988,7 @@ end
 function PV:OnCreate()
     local options = {}
     for i, eb in ipairs(self.optBoxes) do options[i] = eb:GetText() end
-    local look = self.newLook or {}
-    local id, err = ns.Polls:Create(self.qBox:GetText(), options, self:CloseSeconds(), self.keepNum:GetText(), look.color, look.icon)
+    local id, err = ns.Polls:Create(self.qBox:GetText(), options, self:CloseSeconds(), self.keepNum:GetText(), self.answerLooks)
     if not id then
         self.createError:SetText(err or "Couldn't create the poll.")
         return
@@ -975,8 +1017,7 @@ end
 -- Rows sit to the left of the pie; the pie lines up with the first row.
 local function PlaceRow(r, prev, gap, d)
     r:ClearAllPoints()
-    -- the first row starts under the icon, back at the left edge
-    r:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", prev == PV.dStatus and -46 or 0, gap)
+    r:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, gap)
     r:SetPoint("RIGHT", d, "RIGHT", -(18 + PIE + 14), 0)
 end
 
@@ -1004,8 +1045,6 @@ function PV:RefreshDetail(p)
     self.statDeleteBtn:Hide()
     self.dTitle:SetText("Poll")
     self.dQuestion:SetText(p.question)
-    self.dLook.Tag:SetTag({ icon = p.icon, color = p.color })
-    self.dQuestion:SetTextColor(D:TagColor(p.color))
     self.dStatus:SetText(StatusText(p) .. "  -  " .. VotesText(p.total))
 
     local most = 0
@@ -1017,8 +1056,12 @@ function PV:RefreshDetail(p)
         if text then
             local n = p.counts[i]
             local pct = p.total > 0 and math.floor(n * 100 / p.total + 0.5) or 0
-            local cr, cg, cb = OptionColor(i)
+            -- the answer's own color and icon
+            local look = p.answerLooks and p.answerLooks[i] or {}
+            local cr, cg, cb = D:TagColor(look.color or ns.Polls.AnswerColor(i))
             slices[i] = { n, cr, cg, cb }
+            local hasIcon = SetRowIcon(r.Icon, look)
+            r.Text:SetPoint("TOPLEFT", hasIcon and 38 or 20, -3)
             r.Text:SetText(text)
             -- the leading answer's count turns gold once voting closed
             local lead = not p.open and n > 0 and n == most
@@ -1069,8 +1112,6 @@ function PV:RefreshStat(id)
     local vis = s.custom and s.custom.vis
     self.dTitle:SetText(vis == "o" and "Officer Stat" or vis == "m" and "My Stat" or "Guild Stat")
     self.dQuestion:SetText(s.title)
-    self.dLook.Tag:SetTag({ icon = s.icon, color = s.color })
-    self.dQuestion:SetTextColor(D:TagColor(s.color))
     self.dStatus:SetText("|cff66bbff" .. s.sub .. "|r")
 
     local d, prev, gap = self.detailPane, self.dStatus, -12
@@ -1080,6 +1121,7 @@ function PV:RefreshStat(id)
         if row then
             local pct = s.total > 0 and math.floor(row.count * 100 / s.total + 0.5) or 0
             slices[i] = { row.count, row.r, row.g, row.b }
+            SetRowIcon(r.Icon, row)
             r.Label:SetText(row.label)
             r.Label:SetTextColor(row.r, row.g, row.b)
             r.Count:SetText(("%d  |cff9d9d9d%d%%|r"):format(row.count, pct))
@@ -1128,7 +1170,7 @@ local function ListItems(polls)
     local byVis = {}
     for _, c in ipairs(ns.Stats:All()) do
         byVis[c.vis] = byVis[c.vis] or {}
-        table.insert(byVis[c.vis], { id = c.id, name = c.title, icon = c.icon, color = c.color })
+        table.insert(byVis[c.vis], { id = c.id, name = c.title })
     end
     Section("Open Polls", open, function(p) return { poll = p } end)
     for _, v in ipairs(ns.Stats.VISIBILITY) do

@@ -9,7 +9,7 @@
     Sync records (guild scope, see Core/Sync.lua)
       PL:<id>             "closeAt;expireAt;deleted;question;answer1;answer2;..."   officers
       PV:<id>:<member>    answer number   the voter only, counted if cast before closeAt
-      PI:<id>             "color;icon"    officers (the poll's look, like a tag's)
+      PI:<id>             each answer's color and icon: "o;1=color:icon~2=..."   officers
 ]]
 local _, ns = ...
 local P = {}
@@ -80,17 +80,16 @@ function P:List()
     for key, rec in pairs(store) do
         if key:sub(1, 3) == "PI:" then
             local p = byId[key:sub(4)]
-            if p then p.color, p.icon = Codec().ParsePollLook(rec.v) end
+            if p then p.looks = Codec().ParsePollLooks(rec.v) end
         end
     end
-    -- polls without a look (made before polls had one)
+    -- each answer's color and icon (answers without one get the next color)
     for _, p in ipairs(out) do
-        if not p.color then
-            local n = 0
-            for i = 1, #p.id do n = n + p.id:byte(i) end -- the same color every time
-            p.color = ns.Data:NextColor(n)
+        p.answerLooks = {}
+        for i = 1, #p.options do
+            local l = p.looks and p.looks[tostring(i)] or {}
+            p.answerLooks[i] = { color = l.color or P.AnswerColor(i), icon = l.icon }
         end
-        p.icon = p.icon or "Interface\\Icons\\INV_Scroll_03"
     end
     for key, rec in pairs(store) do
         if key:sub(1, 3) == "PV:" then
@@ -136,20 +135,29 @@ local function CleanText(s, max)
     return ns.Trim(ns.Sync.Clean(s or ""):gsub(";", ",")):sub(1, max)
 end
 
+-- The color an answer starts with (tag palette, most distinct first).
+local ANSWER_COLORS = { 2, 1, 6, 4, 3, 5 }
+function P.AnswerColor(i)
+    return ANSWER_COLORS[(i - 1) % #ANSWER_COLORS + 1]
+end
+
 -- closeIn: seconds until voting closes.  keepDays: days results stay after that.
--- color, icon: the poll's look (like a tag's).
-function P:Create(question, options, closeIn, keepDays, color, icon)
+-- looks: { [n] = { color, icon } } for the nth answer box (empty boxes are
+-- skipped, and their looks with them).
+function P:Create(question, options, closeIn, keepDays, looks)
     if not ns.DB:Guild() then return nil, "You are not in a guild." end
     if not self:CanCreate() then return nil, "Only officers can create polls." end
     question = CleanText(question, self.QUESTION_MAX)
     if question == "" then return nil, "Write a question." end
-    local answers, seen = {}, {}
-    for _, o in ipairs(options or {}) do
-        o = CleanText(o, self.OPTION_MAX)
+    local answers, answerLooks, seen = {}, {}, {}
+    for n = 1, self.MAX_OPTIONS do
+        local o = CleanText(options and options[n], self.OPTION_MAX)
         if o ~= "" then
             if seen[o:lower()] then return nil, ("\"%s\" is listed twice."):format(o) end
             seen[o:lower()] = true
             answers[#answers + 1] = o
+            local l = looks and looks[n]
+            if l then answerLooks[tostring(#answers)] = { color = l.color, icon = l.icon } end
         end
     end
     if #answers < self.MIN_OPTIONS then return nil, "Add at least two answers." end
@@ -168,17 +176,9 @@ function P:Create(question, options, closeIn, keepDays, color, icon)
         closeAt = closeAt, expireAt = closeAt + keepDays * 86400, question = question, options = answers,
     }))
     if not ok then return nil, err end
-    if color or icon then self:SetLook(id, color, icon) end
+    if next(answerLooks) then ns.Sync:Set("PI:" .. id, Codec().PollLooks(answerLooks)) end
     self:MarkSeen(id)
     return id
-end
-
--- Officers: a poll's color and icon.
-function P:SetLook(id, color, icon)
-    if not ns.IsOfficer() then return nil, "Only officers can change polls." end
-    local p = self:Get(id)
-    if not p then return nil, "Poll not found." end
-    return ns.Sync:Set("PI:" .. id, Codec().PollLook(color or p.color, tostring(icon or p.icon or "")))
 end
 
 local function Rewrite(id, change)
