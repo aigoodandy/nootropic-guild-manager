@@ -39,6 +39,7 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 
 - **Header**: name, "Level 22 Feral Druid - Veteran" (with the spec icon), online status and zone, and their **map dot** in the colors you'd see on the map (click it to open the map where they are). Under it, one line for **main / alts** (click a name to open that profile).
 - **Status**: a short line they set ("Leveling to 30 this week, whisper me!") with how long ago they set it.
+- **Pronouns** (off unless officers turn them on in **Options > Officers**): up to 24 characters, typed or picked from suggestions (he/him, she/her, they/them, he/they, she/they, any pronouns, ask me), shown in grey next to the name on the profile and in the roster tooltip. Alts without their own show their main's. Officers can clear someone's but not change them. Turning the option off hides everyone's pronouns without deleting them.
 - **About me**: a few lines they write about themselves (up to 300 characters). An alt without one shows its main's. **Officers can clear** someone's About me (for anything inappropriate) but never edit it; the Audit tab records who did.
 - **Tags**: only the tags they have.
 - **Kudos**: thank-you badges from guildmates with counts (e.g. "Helpful x12"), from the last 90 days. **+ Give Kudos** (also in the roster's right-click menu) gives one: each kudos once a week per person, never to yourself. **Kudos are anonymous**: no name is saved or shown, and a kudos is sent a few minutes after you give it. (Like guild reviews, the game itself attaches your name to addon messages, which the addon discards; someone watching addon traffic with their own tools could still see it.) Defaults: Great Tank, Healer Hero, Damage Dealer, Group Leader, Helpful, Good Teacher, Generous, Good Vibes and Funny.
@@ -151,6 +152,7 @@ Members can tag **themselves** (on their own profile or by right-clicking their 
 | Edit anyone's tags, spec, professions, mains/alts | | yes |
 | See and edit ratings | | yes |
 | Officer Log, Change History, Audit tab, Tags tab | | yes |
+| Turn pronouns on profiles on or off; clear someone's pronouns | | yes |
 
 "Officers" are ranks that can read officer notes (the game's own permission). If someone is promoted or demoted, the addon updates on the spot.
 

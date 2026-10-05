@@ -9,6 +9,9 @@
     Status (ST:<member>)
       Up to 80 characters; the record's time says when it was set.
 
+    Pronouns (PN:<member>)
+      Up to 24 characters, only while officers have them turned on.
+
     Usually online (SC:<member>)
       Learned from when you actually play (your own copy notes it, last 4
       weeks), with optional per-day hours you set. Kept and shared in server
@@ -98,6 +101,54 @@ function PF:SetStatus(text)
     if not (me and ns.DB:Guild()) then return nil, "You are not in a guild." end
     text = ns.Trim((text or ""):gsub("[\r\n]+", " ")):sub(1, self.STATUS_MAX)
     return ns.Sync:Set("ST:" .. me, text)
+end
+
+------------------------------------------------------------------------
+-- Pronouns (PN:<member>)
+-- Off until an officer turns them on for the guild (GS:pronouns = "1").
+-- While off nothing is shown or editable; what people entered is kept and
+-- comes back if they're turned on again. An alt without its own shows its
+-- main's. Officers can clear someone's, never change them.
+------------------------------------------------------------------------
+PF.PRONOUNS_MAX = 24
+PF.PRONOUN_SUGGESTIONS = { "he/him", "she/her", "they/them", "he/they", "she/they", "any pronouns", "ask me" }
+
+function PF:PronounsEnabled()
+    return ns.Sync:Value("GS:pronouns") == "1"
+end
+
+function PF:SetPronounsEnabled(on)
+    if not ns.IsOfficer() then return nil, "Only officers can turn pronouns on or off." end
+    return ns.Sync:Set("GS:pronouns", on and "1" or "0")
+end
+
+-- What to show for a member (nil when off or not set), and the main it
+-- came from for an alt without its own.
+function PF:Pronouns(full)
+    if not self:PronounsEnabled() then return nil end
+    local m = ns.DB:GetMember(full)
+    if m and m.pronouns then return m.pronouns end
+    local main = m and m.main
+    local mm = main and ns.DB:GetMember(main)
+    if mm and mm.pronouns then return mm.pronouns, main end
+end
+
+function PF:OwnPronouns(full)
+    local m = ns.DB:GetMember(full)
+    return m and m.pronouns or ""
+end
+
+function PF:SetPronouns(text)
+    local me = Me()
+    if not (me and ns.DB:Guild()) then return nil, "You are not in a guild." end
+    if not self:PronounsEnabled() then return nil, "Pronouns are turned off for this guild." end
+    text = ns.Trim(((text or ""):gsub("[|\r\n\t]+", " "))):sub(1, self.PRONOUNS_MAX)
+    return ns.Sync:Set("PN:" .. me, text)
+end
+
+function PF:ClearPronouns(full)
+    if full ~= Me() and not ns.IsOfficer() then return nil, "Only officers can clear someone's pronouns." end
+    return ns.Sync:Set("PN:" .. full, "")
 end
 
 ------------------------------------------------------------------------

@@ -384,6 +384,16 @@ function O:BuildOfficers()
         end)
     L:Space(4)
 
+    L:Header("Profiles  |cff9d9d9d(whole guild)|r")
+    self.pronounsCheck = L:Check("Guildmates can add pronouns to their profile",
+        "Off by default. When on, each guildmate can add their pronouns (up to 24 characters) on their own profile; they show next to their name on the profile and in the roster tooltip. Officers can clear someone's. Turning it off hides them again without deleting them.",
+        function(on)
+            local ok, err = ns.Profile:SetPronounsEnabled(on)
+            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+            O:Refresh()
+        end)
+    L:Space(4)
+
     L:Header("Audit History  |cff9d9d9d(your copy)|r")
     L:Text("How long to keep the record of who changed what. Older entries are deleted.")
     local y = L:Row(30)
@@ -470,6 +480,8 @@ function O:Refresh()
     self.officerNote:SetShown(not officer)
     self.reviewsCheck:SetChecked(ns.DB:ReviewsEnabled())
     SetUsable(self.reviewsCheck, officer and ns.DB:Guild() ~= nil)
+    self.pronounsCheck:SetChecked(ns.Profile:PronounsEnabled())
+    SetUsable(self.pronounsCheck, officer and ns.DB:Guild() ~= nil)
     for _, rb in ipairs(self.auditRadios) do
         rb:SetChecked((s.auditDays or 30) == rb.days)
         SetUsable(rb, officer)

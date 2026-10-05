@@ -50,6 +50,8 @@
                            (only counted if cast before the poll closed)
       AB:<member>          About me text            the member; officers may only clear it ("")
       ST:<member>          status line              the member only
+      PN:<member>          pronouns (shown only while GS:pronouns = "1")
+                           the member; officers may only clear it ("")
       SC:<member>          usual online hours: 168 bits (Monday 00:00 UTC
                            onward) as 42 hex digits   the member only
       KT:<id>              kudos type (like a tag definition)   officers
@@ -105,6 +107,7 @@ S.TYPES = {
     PV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Poll vote" },
     AB = { scope = "guild",   officer = true, self = true, label = "About me" },
     ST = { scope = "guild",   selfOnly = true, noAudit = true, label = "Status" },
+    PN = { scope = "guild",   officer = true, self = true, label = "Pronouns" },
     SC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Usually online" },
     KT = { scope = "guild",   officer = true, label = "Kudos type" },
     KD = { scope = "guild",   officer = true, label = "Kudos description" },
@@ -245,8 +248,8 @@ function S:Accept(typ, member, def, rec, ctx)
     if expires and expires < Now() then return false end
     if def.anonymous and (rec.a or "") ~= "" then return false end -- reviews never carry a name
     if typ == "PV" and not self:VoteInTime(ctx.key, rec) then return false end
-    -- someone else's About me can only be cleared (officers), never rewritten
-    if typ == "AB" and rec.a ~= member and rec.v ~= "" then return false end
+    -- someone else's About me or pronouns can only be cleared (officers), never rewritten
+    if (typ == "AB" or typ == "PN") and rec.a ~= member and rec.v ~= "" then return false end
     return true
 end
 
@@ -573,6 +576,8 @@ function S:Materialize(typ, key, member, rec)
         m.about = v ~= "" and v or nil
     elseif typ == "ST" then
         m.status, m.statusAt = (v ~= "" and v or nil), rec.t
+    elseif typ == "PN" then
+        m.pronouns = v ~= "" and v or nil
     elseif typ == "SC" then
         m.schedule = v ~= "" and v or nil
     elseif typ == "AV" then

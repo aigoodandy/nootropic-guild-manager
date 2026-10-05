@@ -214,6 +214,8 @@ function DP:Build(parent)
     -- edit mode
     self.editAbout = self:BuildEditAbout(content)
     self.editStatus = self:BuildEditStatus(content)
+    self.editPronouns = self:BuildEditPronouns(content)
+    self.clearPronouns = self:BuildClearPronouns(content)
     self.editSchedule = self:BuildEditSchedule(content)
     self.editDot = self:BuildEditDot(content)
     self:BuildAltSection(content)
@@ -223,7 +225,8 @@ function DP:Build(parent)
     self.allSections = {
         self.linkLine, self.statusBox, self.aboutBox, self.tagsRead, self.kudos, self.schedule, self.tabs,
         self.prof, self.note, self.rating, self.log, self.history,
-        self.editAbout, self.editStatus, self.editSchedule, self.editDot, self.alt, self.spec, self.tagsEdit,
+        self.editAbout, self.editStatus, self.editPronouns, self.clearPronouns, self.editSchedule, self.editDot,
+        self.alt, self.spec, self.tagsEdit,
     }
 
     self.footer = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -238,6 +241,7 @@ function DP:Build(parent)
     ns:On("ROSTER_UPDATED", refresh)
     ns:On("KUDOS_CHANGED", refresh)
     ns:On("LOCATIONS_CHANGED", refresh)
+    ns:On("GUILD_SETTINGS_CHANGED", refresh) -- pronouns turned on or off
     ns:On("AUDIT_CHANGED", function()
         if f:IsShown() and DP.tab == "officer" then ns.Debounce("detailhistory", 0.2, function() DP:Refresh() end) end
     end)
@@ -321,7 +325,8 @@ end
 function DP:RefreshHeader(e)
     local h = self.header
     W.SetClassIcon(h.Icon, e.classFile)
-    h.Name:SetText(e.short)
+    local pronouns = ns.Profile:Pronouns(e.full)
+    h.Name:SetText(e.short .. (pronouns and ("  |cffb0b0b0(" .. pronouns .. ")|r") or ""))
     h.Name:SetTextColor(ns.ClassColor(e.classFile))
     local specIcon = e.spec and D:SpecIcon(e.classFile, e.spec)
     local spec = e.spec and ((specIcon and ("|T" .. specIcon .. ":12:12:0:0:64:64:5:59:5:59|t ") or "") .. e.spec .. " ") or ""
@@ -1204,6 +1209,58 @@ function DP:BuildEditStatus(parent)
     return s
 end
 
+-- Pronouns (only while officers have them turned on). Your own profile: a
+-- box plus suggestions. An officer on someone else's: theirs and Clear.
+function DP:BuildEditPronouns(parent)
+    local s = NewSection(parent, "Pronouns")
+    EditText(s, ns.Profile.PRONOUNS_MAX, 26, false, function(text) return ns.Profile:SetPronouns(text) end)
+    s.Line:SetPoint("RIGHT", s.Count, "LEFT", -6, 0)
+    s.Bg:SetWidth(INNER - 110)
+    local pick = SmallButton(s, "Suggestions", 100)
+    pick:SetPoint("LEFT", s.Bg, "RIGHT", 10, 0)
+    pick:SetScript("OnClick", function(btn)
+        local items = { { text = "Pronouns", isTitle = true } }
+        for _, p in ipairs(ns.Profile.PRONOUN_SUGGESTIONS) do
+            items[#items + 1] = { text = p, func = function()
+                s.Box:SetText(p)
+                local ok, err = ns.Profile:SetPronouns(p)
+                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+            end }
+        end
+        items[#items + 1] = { divider = true }
+        items[#items + 1] = { text = "None (clear)", func = function()
+            s.Box:SetText("")
+            ns.Profile:SetPronouns("")
+        end }
+        W.ShowMenu(btn, items)
+    end)
+    s.Hint = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    s.Hint:SetPoint("TOPLEFT", s.Bg, "BOTTOMLEFT", 0, -3)
+    s.Hint:SetText("Shown next to your name. Optional; leave empty to show none.")
+    s:SetHeight(22 + 26 + 18)
+    return s
+end
+
+function DP:BuildClearPronouns(parent)
+    local s = NewSection(parent, "Pronouns")
+    s.Text = s:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    s.Text:SetPoint("TOPLEFT", 0, -24)
+    s.Clear = SmallButton(s, "Clear", 70)
+    s.Clear:SetPoint("LEFT", s.Text, "RIGHT", 10, 0)
+    s.Clear:SetScript("OnClick", function()
+        local e = DP.entry
+        if not e then return end
+        W.Confirm(("Clear %s's pronouns?\nThey can set them again."):format(e.short), function()
+            local ok, err = ns.Profile:ClearPronouns(e.full)
+            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+            DP:Refresh()
+        end)
+    end)
+    W.Tooltip(s.Clear, "Clear pronouns", "Officers can clear someone's pronouns but not change them.")
+    s:SetHeight(46)
+    return s
+end
+
 -- Folded: your summary and "Edit hours". Open: learning on/off and, per day,
 -- learned / not playing / from-to (server time, the same for the whole guild).
 local MODE_LABELS = { learned = "Learned", off = "Not playing", hours = "Set hours" }
@@ -1683,8 +1740,13 @@ function DP:VisibleSections(e)
     local function add(s, show) if show ~= false then list[#list + 1] = s end end
     if self.editing then
         local mine = e.full == ns.PlayerFullName()
+        local pronouns = ns.Profile:PronounsEnabled()
         if mine then
-            add(self.editAbout); add(self.editStatus); add(self.editSchedule); add(self.editDot)
+            add(self.editAbout); add(self.editStatus); add(self.editPronouns, pronouns)
+            add(self.editSchedule); add(self.editDot)
+        else
+            -- officers can clear what someone entered
+            add(self.clearPronouns, pronouns and ns.IsOfficer() and ns.Profile:OwnPronouns(e.full) ~= "")
         end
         add(self.alt, ns.DB:CanEditLinks())
         add(self.spec)
@@ -1751,10 +1813,16 @@ function DP:Refresh(forceText)
                 local text = PF:Status(e.full)
                 es.Box:SetText(text or "")
             end
+            local ep = self.editPronouns
+            if forceText or not ep.Box:HasFocus() then ep.Box:SetText(PF:OwnPronouns(e.full)) end
+            ep.Hint:SetText(e.isAlt and "Only this character. Leave it empty to show your main's."
+                or "Shown next to your name. Your alts show it too, unless they have their own.")
             ea.Hint:SetText(e.isAlt and "Only this character. Leave it empty to show your main's About me."
                 or "Your alts show this too, unless they have their own.")
             self:RefreshEditSchedule()
             self:RefreshDotEditor()
+        else
+            self.clearPronouns.Text:SetText(ns.Profile:OwnPronouns(e.full))
         end
         if ns.DB:CanEditLinks() then self:RefreshAlts(e) end
         self:RefreshSpec(e)

@@ -20,6 +20,7 @@ AU.CATEGORIES = {
     { key = "TI", label = "Tag icons" },
     { key = "PL", label = "Polls" },
     { key = "AB", label = "About me" },
+    { key = "PN", label = "Pronouns" },
     { key = "KT", label = "Kudos list" },
     { key = "KD", label = "Kudos descriptions" },
     { key = "GS", label = "Guild settings" },
@@ -120,6 +121,8 @@ function AU:Describe(e)
     elseif t == "GS" then
         if e.ref == "reviews" then
             return new == "0" and (RED .. "Guild reviews turned off|r for guildmates") or (GREEN .. "Guild reviews turned on|r for guildmates")
+        elseif e.ref == "pronouns" then
+            return new == "1" and (GREEN .. "Pronouns on profiles turned on|r") or (RED .. "Pronouns on profiles turned off|r")
         end
         return "Guild setting changed: " .. (e.ref or "?")
     elseif t == "AB" then
@@ -128,6 +131,12 @@ function AU:Describe(e)
             return RED .. "About me cleared|r" .. who
         end
         return "About me changed"
+    elseif t == "PN" then
+        if new == "" then
+            local who = e.author and e.member and e.author ~= e.member and (" by " .. ShortChar(e.author)) or ""
+            return RED .. "Pronouns cleared|r" .. who
+        end
+        return "Pronouns set to " .. new
     elseif t == "KT" then
         local o, n = ns.Sync.Codec.ParseKudosType(old), ns.Sync.Codec.ParseKudosType(new)
         if n and not o then return "Kudos added: " .. n.name end

@@ -1157,9 +1157,10 @@ function RV:ShowRowTooltip(row, e, hint)
         GameTooltip:AddDoubleLine(left, right, GOLD[1], GOLD[2], GOLD[3], 1, 1, 1)
     end
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-    GameTooltip:AddLine(e.short, ns.ClassColor(e.classFile))
-    GameTooltip:AddLine(("Level %d %s"):format(e.level, e.className), 1, 1, 1)
     local PF = ns.Profile
+    local pronouns = PF:Pronouns(e.full)
+    GameTooltip:AddLine(e.short .. (pronouns and ("  |cffb0b0b0(" .. pronouns .. ")|r") or ""), ns.ClassColor(e.classFile))
+    GameTooltip:AddLine(("Level %d %s"):format(e.level, e.className), 1, 1, 1)
     local status = PF:Status(e.full)
     if status then GameTooltip:AddLine("\"" .. status .. "\"", 1, 0.82, 0, true) end
     local hours = PF:Hours(e.full) -- local or server time, as your game clock is set
