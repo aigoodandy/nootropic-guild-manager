@@ -9,6 +9,7 @@
       tag:"world pvp"        quotes keep phrases together
       main:markpri           a main and all of their alts
       is:alt  is:main        only alts / only mains
+      is:addon               only members running Nootropic Guild Manager
       rating:4  rating<3     numeric filters (rating:N means N stars or more)
       level:60  level>=50
       -raiding               a leading minus excludes matches
@@ -209,7 +210,7 @@ function R:Decorate(e)
     s.zone  = e.zone:lower()
     s.note  = ((e.note or "") .. "\n" .. e.publicNote .. "\n" .. e.officerNote .. "\n" .. logText):lower()
     s.main  = (e.mainShort or e.short):lower()
-    s.is    = e.isAlt and "alt" or "main"
+    s.is    = (e.isAlt and "alt" or "main") .. (e.hasAddon and "\naddon" or "")
 end
 
 ------------------------------------------------------------------------

@@ -40,7 +40,9 @@ Existing Nootropic data is never overwritten by the import. Guildmates need the 
 
 - **Click a member** to open the detail panel beside the roster.
 - **Right-click a member** for quick tags, rating and main/alt (officers), whisper and invite.
+- **Tags column** shows each tag's icon, framed in the tag's color. Hover the member to see every tag's icon and name in the tooltip.
 - **Tags bar** under the search box filters by tags (members must have every selected tag).
+- **"x using Nootropic Guild Manager"** at the bottom of the window (it says your guild's name instead when that option is on): click it to list only guildmates running the addon, with the Version column turned on. It searches `is:addon`; clear the search to see everyone again. Options can hide it.
 
 **Character profile** (scrolls) — opens beside the roster:
 
@@ -105,8 +107,16 @@ Each message starts with `message:`. Lines you leave out mean "any"; `guild` is 
 
 Messages and keywords are saved per guild.
 
-**Reviews tab** (the last tab) — anonymous reviews of the guild.
+**Polls tab** — guild polls.
 
+- **Officers** create polls: a question (up to 120 characters) and 2 to 6 answers. Choose when voting closes in minutes, hours or days (1 week by default), and how many days the results stay after it closes (7 by default, 0 to 365). Officers can also close voting early or delete a poll.
+- **Everyone** running the addon can vote, and change their vote until the poll closes. Results (votes and percentages for each answer) show while it's open and after it closes, until its days are up; then the poll is deleted. Only votes cast before a poll closed are counted.
+- Open polls are listed first (closing soonest at the top), then closed ones. You get a chat message the first time you see a new poll you haven't voted on.
+- Votes are shared with everyone running the addon, like tags; they aren't secret ballots.
+
+**Reviews tab** (the last tab; called **Review Guild** for members) — anonymous reviews of the guild.
+
+- **Officers can turn reviews off** for the whole guild (the **Guildmates can review the guild** box on the tab, or in Options). While off, members don't see the Review Guild tab and can't write reviews; officers still see every review.
 - **Everyone** can rate the guild 1-5 stars and write a message (up to 500 characters), once every 7 days.
 - **Only officers** can read reviews. They see the average rating, how many reviews gave each number of stars, and every review from the last year, newest first. Click one to read it and see the officer comments.
 - **Officer comments**: officers can comment on a review; other officers see the comment with its author's name. You can delete your own comments, nobody else's.
@@ -114,7 +124,9 @@ Messages and keywords are saved per guild.
 - **How it stays anonymous**: a review never carries a name. Its id is random, it's dated by day only, and it isn't sent when you click Submit but 2-15 minutes later. It goes to a single officer running the addon (not the whole guild); that officer's copy saves it without a name and shares it with the other officers at low priority on the officer channel. If no officer with the addon is online, it waits (up to 30 days) and is sent when one is.
 - **What an addon can't hide**: the game itself attaches the sender's name to every addon message, so the receiving officer's game client briefly knows who sent it. Nootropic Guild Manager discards that name and never saves or shows it, but someone running their own tools to watch addon traffic at that moment could see it. The 7-day limit is remembered by your own copy of the addon (per account and guild), since the guild can't know who wrote what.
 
-**Tags tab** (officers only) — create, rename, recolor, reorder and delete tags. Tags are shared with everyone in the guild running the addon. Click a tag's name to see everyone who has it. Ten tags are created to start: Questing, Dungeons, Raiding, World PvP, Battlegrounds, Crafting, Gathering, Leveling, Roleplay, Social.
+**Tags tab** (officers only) — create, edit, reorder and delete tags. **New Tag** and **Edit** open the tag editor: a name, an **icon** (click it to pick any icon from the game's macro icon menu) and a **color** from a dropdown (Gold, Azure, Violet, Crimson, Ember, Jade, Moss, Frost, Rose, Silver), with a preview. Click a tag's icon in the list to change just the icon. Tags are shared with everyone in the guild running the addon. Click a tag's name to see everyone who has it. Ten tags are created to start, each with its own icon: Questing, Dungeons, Raiding, World PvP, Battlegrounds, Crafting, Gathering, Leveling, Roleplay, Social.
+
+Members can tag **themselves** (on their own profile or by right-clicking their own row); only officers can tag other people.
 
 **Audit tab** (officers only) — every synced change across the guild: when, who changed it, which character, and what changed (e.g. "Rating changed from ★★ to ★★★" shown as star icons, "+Raiding", "Marked as an alt of Markpri"). Search it, filter by kind of change (tags, rating, main/alt, spec, professions, officer log, tag list) or by character, and click a row to open that profile. Changes saved together (within one 15-second batch, see below) are grouped into one line; hover it to see each change, or untick **Group changes**. How long history is kept is set in Options.
 
@@ -125,8 +137,10 @@ Messages and keywords are saved per guild.
 | See roster, tags, mains/alts, specs, professions | yes | yes |
 | Add to or remove from the Do Not Whisper list | yes | yes |
 | Share recruitment statuses | yes | yes |
-| Write an anonymous guild review (every 7 days) | yes | yes |
-| Read reviews, comment on them | | yes |
+| Write an anonymous guild review (every 7 days, while reviews are on) | yes | yes |
+| Read reviews, comment on them, turn reviews on or off | | yes |
+| Vote in polls (and change the vote until it closes) | yes | yes |
+| Create, close and delete polls | | yes |
 | Edit their **own** tags, spec and professions | yes | yes |
 | Edit anyone's tags, spec, professions, mains/alts | | yes |
 | See and edit ratings | | yes |
@@ -148,9 +162,11 @@ Open from **Options > AddOns > Nootropic Guild Manager**, the gear button at the
 
 - **Addon Icon**: Ale Mug, Brewfest Stein, or your **Guild Emblem**. The choice applies to the window's top-left icon, the minimap button and the Guild & Communities shortcut. The emblem falls back to the mug when you're not in a guild or it has no tabard.
 - **Audit History**: keep 30, 60 or 90 days of change history. Older entries are deleted.
-- **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Tags, Audit, Reviews, Options, show/hide window, or nothing).
+- **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Polls, Tags, Audit, Reviews, Options, show/hide window, or nothing).
 - **Guildmate Locations**: share my location; show guildmates on the world map; custom dot colors (your dot and outline color).
-- **Use my guild's name in the window title**: "Knights of Azeroth Guild Manager" instead of "Nootropic Guild Manager".
+- **Use my guild's name in the window title**: "Knights of Azeroth Guild Manager" instead of "Nootropic Guild Manager", in the title and in the "x using ... Guild Manager" text at the bottom.
+- **Show how many guildmates use the addon**: the clickable "x using ... Guild Manager" text at the bottom of the window (on by default).
+- **Guild Settings** (officers, applies to the whole guild): **Guildmates can review the guild**.
 - **Show shortcut on the Guild & Communities window**: a side tab with the addon icon under the window's own tabs.
 - **Open Guild Manager**, **Reset Size and Position** and **Reset Roster Columns** buttons.
 
@@ -170,6 +186,7 @@ Type any words. A member is shown when every word matches their name, class, spe
 | `level>=55` | level filter |
 | `main:markpri` | Markpri and all their alts |
 | `is:alt` / `is:main` | only alts / only mains |
+| `is:addon` | only guildmates running Nootropic Guild Manager |
 | `-raiding` | exclude a match |
 
 `/ngm find <text>` opens the roster with a search already typed.
@@ -223,6 +240,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm options` | open the options |
 | `/ngm diag` | report what the Guild & Communities shortcut can see |
 | `/ngm sync` | sync now and show sync stats |
+| `/ngm polls` | open the Polls tab |
 | `/ngm audit` | open the Audit tab (officers) |
 | `/ngm reviews` | open the Reviews tab |
 | `/ngm minimap` | show or hide the minimap button |
@@ -233,8 +251,8 @@ A note on trust: the addon checks permissions before sending anything, and offic
 ```
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data)  Sync.lua (records, repair, transport)
-Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)
-UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  RosterView.lua  RecruitView.lua  MessagesView.lua  DetailPanel.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua
+Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)
+UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  RecruitView.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua
 ```
 
 ## Names in WoW: Forever

@@ -262,6 +262,7 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
     ns.Recruit:Init()
     ns.Location:Init()
     ns.Reviews:Init()
+    ns.Polls:Init()
     ns.Minimap:Init()
     ns.Options:Init()
     ns.Communities:Init()
@@ -282,6 +283,7 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm find <text>|r  - open with a search")
     ns:Print("  |cffffffff/ngm sync|r  - sync with guildmates now and show sync stats")
     ns:Print("  |cffffffff/ngm audit|r  - open the Audit tab (officers)")
+    ns:Print("  |cffffffff/ngm polls|r  - open the Polls tab (vote on guild polls)")
     ns:Print("  |cffffffff/ngm reviews|r  - open the Reviews tab (review the guild)")
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
     ns:Print("  |cffffffff/ngm recruit|r  - open the Recruitment tab")
@@ -318,8 +320,14 @@ SlashCmdList.NOOTROPICGM = function(msg)
     elseif cmd == "audit" then
         ns.UI:Show()
         ns.UI:SelectTab(ns.UI.TAB_AUDIT)
+    elseif cmd == "poll" or cmd == "polls" then
+        ns.UI:Show()
+        ns.UI:SelectTab(ns.UI.TAB_POLLS)
     elseif cmd == "review" or cmd == "reviews" then
         ns.UI:Show()
+        if not ns.UI:IsTabAvailable(ns.UI.TAB_REVIEWS) then
+            ns:Print("Guild reviews are turned off by the officers.")
+        end
         ns.UI:SelectTab(ns.UI.TAB_REVIEWS)
     elseif cmd == "minimap" then
         ns.Minimap:ToggleShown()

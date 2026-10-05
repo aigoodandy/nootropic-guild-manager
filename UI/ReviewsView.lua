@@ -46,8 +46,33 @@ function RW:Build(frame)
     self.summary:SetPoint("LEFT", self.avgStars, "RIGHT", 10, 0)
     self.breakdown = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.breakdown:SetPoint("LEFT", self.summary, "RIGHT", 14, 0)
-    self.keepNote = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    self.keepNote:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -40)
+
+    -- Officers: turn reviews on or off for the whole guild
+    local cb = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
+    cb:SetSize(24, 24)
+    local label = cb.Text or cb.text
+    if not label then
+        label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    end
+    label:SetFontObject("GameFontHighlightSmall")
+    label:ClearAllPoints()
+    label:SetPoint("LEFT", cb, "RIGHT", 2, 1)
+    label:SetText("Guildmates can review the guild")
+    cb:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -(math.ceil(label:GetStringWidth()) + 18), -34)
+    cb:SetScript("OnClick", function(self)
+        local on = self:GetChecked() and true or false
+        local ok, err = ns.DB:SetReviewsEnabled(on)
+        if not ok and err then
+            ns:Print("|cffff5555" .. err .. "|r")
+        else
+            ns:Print(on and "Guild reviews are on: guildmates see the Review Guild tab."
+                or "Guild reviews are off: guildmates no longer see the Review Guild tab.")
+        end
+        RW:Refresh()
+    end)
+    W.Tooltip(cb, "Guild reviews", "When off, guildmates don't see the Review Guild tab and can't write reviews.",
+        "Officers still see every review. Reviews are kept for a year.")
+    self.enableCheck = cb
 
     local inset = frame.Inset
     self:BuildList(page, inset)
@@ -57,6 +82,7 @@ function RW:Build(frame)
         if page:IsVisible() then ns.Debounce("reviewsview", 0.1, function() RW:Refresh() end) end
     end)
     ns:On("OFFICER_CHANGED", function() if page:IsVisible() then RW:Refresh() end end)
+    ns:On("GUILD_SETTINGS_CHANGED", function() if page:IsVisible() then RW:Refresh() end end)
 end
 
 function RW:BuildList(page, inset)
@@ -304,9 +330,13 @@ function RW:RefreshWrite()
     local wait = RVs:Wait()
     local inGuild = IsInGuild() and ns.DB:Guild() ~= nil
     self.submitBtn:SetEnabled(inGuild and wait <= 0 and self.rateStars.value > 0 and ns.Trim(text) ~= "")
+    local enabled = ns.DB:ReviewsEnabled()
+    if not enabled then self.submitBtn:SetEnabled(false) end
     local status
     if not inGuild then
         status = "|cff9d9d9dJoin a guild to review it.|r"
+    elseif not enabled then
+        status = "|cffff5555Guild reviews are turned off.|r |cff9d9d9dTick \"Guildmates can review the guild\" at the top to turn them back on.|r"
     elseif self.submitError then
         status = "|cffff5555" .. self.submitError .. "|r"
         self.submitError = nil
@@ -355,21 +385,22 @@ function RW:Refresh()
     local avg, n, by = ns.Reviews:Stats(list)
     self.avgStars:SetShown(officer and n > 0)
     self.avgStars:SetValue(math.floor(avg + 0.5))
+    self.enableCheck:SetShown(officer)
+    self.enableCheck:SetChecked(ns.DB:ReviewsEnabled())
     if not officer then
-        self.summary:SetText("Guild Reviews")
+        self.summary:SetText("Review the Guild")
         self.breakdown:SetText("")
-        self.keepNote:SetText("")
     elseif n == 0 then
         self.summary:SetText("No reviews yet")
         self.breakdown:SetText("")
-        self.keepNote:SetText("Officers only. Reviews are anonymous and kept for a year.")
     else
         self.summary:SetText(("%.1f average from %d review%s"):format(avg, n, n == 1 and "" or "s"))
         local parts = {}
         for s = 5, 1, -1 do parts[#parts + 1] = ("%d star%s: %d"):format(s, s == 1 and "" or "s", by[s]) end
         self.breakdown:SetText(table.concat(parts, "   "))
-        self.keepNote:SetText("Officers only. Kept for a year.")
     end
+    -- the breakdown would run into the on/off switch in a narrow window
+    self.breakdown:SetShown(self.frame:GetWidth() >= 940)
     if not officer then
         self.summary:ClearAllPoints()
         self.summary:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 84, -38)

@@ -25,12 +25,7 @@ function TV:Build(frame)
 
     local new = W.Button(page, "New Tag", 100, 22)
     new:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -32)
-    new:SetScript("OnClick", function()
-        W.Prompt("Name for the new tag:", "", function(text)
-            local _, err = ns.DB:CreateTag(text)
-            if err then ns:Print("|cffff5555" .. err .. "|r") end
-        end, D.MAX_TAG_LENGTH)
-    end)
+    new:SetScript("OnClick", function() ns.TagEditor:Open(nil) end)
 
     -- Tag list
     local inset = frame.Inset
@@ -91,15 +86,25 @@ local function BuildRow(row)
     row.Stripe:SetAllPoints()
     row.Stripe:SetColorTexture(1, 1, 1, 0.035)
 
-    row.Swatch = CreateFrame("Button", nil, row, "BackdropTemplate")
-    row.Swatch:SetSize(16, 16)
-    row.Swatch:SetPoint("LEFT", 10, 0)
-    row.Swatch:SetBackdrop({ bgFile = W.WHITE, edgeFile = W.WHITE, edgeSize = 1 })
-    row.Swatch:SetScript("OnClick", function(self) TV:ShowColorMenu(self, row.tag) end)
-    W.Tooltip(row.Swatch, "Change color")
+    -- the tag's icon with its color as a border; click to pick another icon
+    row.IconBtn = CreateFrame("Button", nil, row)
+    row.IconBtn:SetSize(22, 22)
+    row.IconBtn:SetPoint("LEFT", 8, 0)
+    row.IconBtn.Tag = W.TagIcon(row.IconBtn, 22)
+    row.IconBtn.Tag:SetAllPoints()
+    row.IconBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    row.IconBtn:SetScript("OnClick", function(self)
+        local tag = row.tag
+        if not tag then return end
+        ns.IconPicker:Open(D:TagIcon(tag), function(icon)
+            local _, err = ns.DB:SetTagIcon(tag.id, icon)
+            if err then ns:Print("|cffff5555" .. err .. "|r") end
+        end, self)
+    end)
+    W.Tooltip(row.IconBtn, "Change icon")
 
     row.Pill = W.Pill(row, 18, 16)
-    row.Pill:SetPoint("LEFT", row.Swatch, "RIGHT", 10, 0)
+    row.Pill:SetPoint("LEFT", row.IconBtn, "RIGHT", 10, 0)
     row.Pill:SetScript("OnClick", function()
         if row.tag then ns.UI:ShowRosterWithSearch(('tag:"%s"'):format(row.tag.name:lower())) end
     end)
@@ -118,16 +123,12 @@ local function BuildRow(row)
         end)
     end)
 
-    row.Rename = W.Button(row, "Rename", 70, 20)
+    row.Rename = W.Button(row, "Edit", 70, 20)
     row.Rename:SetPoint("RIGHT", row.Delete, "LEFT", -4, 0)
     row.Rename:SetScript("OnClick", function()
-        local tag = row.tag
-        if not tag then return end
-        W.Prompt(("Rename \"%s\" to:"):format(tag.name), tag.name, function(text)
-            local _, err = ns.DB:RenameTag(tag.id, text)
-            if err then ns:Print("|cffff5555" .. err .. "|r") end
-        end, D.MAX_TAG_LENGTH)
+        if row.tag then ns.TagEditor:Open(row.tag) end
     end)
+    W.Tooltip(row.Rename, "Edit tag", "Change the name, icon and color.")
 
     row.Down = SmallIconButton(row, "Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up", "Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down", "Move down")
     row.Down:SetPoint("RIGHT", row.Rename, "LEFT", -6, 0)
@@ -146,29 +147,12 @@ function TV:InitRow(row, item)
     local tag = item.tag
     row.tag = tag
     row.Stripe:SetShown(item.stripe)
-    local r, g, b = D:TagColor(tag.color)
-    row.Swatch:SetBackdropColor(r, g, b, 1)
-    row.Swatch:SetBackdropBorderColor(0, 0, 0, 1)
+    row.IconBtn.Tag:SetTag(tag)
     row.Pill:SetTag(tag)
     local n = ns.Roster:TagCount(tag.id)
     row.Count:SetText(n == 1 and "1 member" or (n .. " members"))
     row.Up:SetEnabled(not item.first)
     row.Down:SetEnabled(not item.last)
-end
-
-function TV:ShowColorMenu(owner, tag)
-    if not tag then return end
-    local items = { { text = "Tag color", isTitle = true } }
-    for i, c in ipairs(D.TAG_COLORS) do
-        local hex = ("%02x%02x%02x"):format(c[1] * 255, c[2] * 255, c[3] * 255)
-        items[#items + 1] = {
-            text = ("|cff%s%s|r"):format(hex, c.name),
-            radio = true,
-            checked = function() return tag.color == i end,
-            func = function() ns.DB:SetTagColor(tag.id, i) end,
-        }
-    end
-    W.ShowMenu(owner, items)
 end
 
 ------------------------------------------------------------------------
@@ -208,6 +192,7 @@ function TV:BuildHelp(page, inset, leftOf)
         "Mains and alts:",
         Y .. "main:markpri|r   Markpri and all their alts",
         Y .. "is:alt|r  " .. Y .. "is:main|r   only alts / only mains",
+        Y .. "is:addon|r   guildmates using the addon",
         "",
         "Numbers:",
         Y .. "rating:4|r   four stars or better",

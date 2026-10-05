@@ -80,6 +80,7 @@ end
 D.MINIMAP_ACTIONS = {
     { key = "roster",  label = "Open Roster" },
     { key = "recruit", label = "Open Recruitment" },
+    { key = "polls",   label = "Open Polls" },
     { key = "tags",    label = "Open Tags (officers)" },
     { key = "audit",   label = "Open Audit (officers)" },
     { key = "reviews", label = "Open Reviews" },
@@ -153,19 +154,52 @@ function D:TagColor(index)
     return c[1], c[2], c[3]
 end
 
--- { name, colorIndex }
+-- "|cffrrggbb" for a tag color
+function D:TagColorHex(index)
+    local r, g, b = self:TagColor(index)
+    return ("|cff%02x%02x%02x"):format(r * 255, g * 255, b * 255)
+end
+
+-- { name, colorIndex, icon }
 D.DEFAULT_TAGS = {
-    { "Questing",      1 },
-    { "Dungeons",      2 },
-    { "Raiding",       3 },
-    { "World PvP",     4 },
-    { "Battlegrounds", 5 },
-    { "Crafting",      6 },
-    { "Gathering",     7 },
-    { "Leveling",      8 },
-    { "Roleplay",      9 },
-    { "Social",        10 },
+    { "Questing",      1,  ICON .. "INV_Scroll_03" },
+    { "Dungeons",      2,  ICON .. "INV_Sword_04" },
+    { "Raiding",       3,  ICON .. "INV_Misc_Head_Dragon_01" },
+    { "World PvP",     4,  ICON .. "Ability_DualWield" },
+    { "Battlegrounds", 5,  ICON .. "INV_BannerPVP_02" },
+    { "Crafting",      6,  ICON .. "Trade_BlackSmithing" },
+    { "Gathering",     7,  ICON .. "Trade_Herbalism" },
+    { "Leveling",      8,  ICON .. "Ability_Mount_RidingHorse" },
+    { "Roleplay",      9,  ICON .. "Spell_Shadow_Charm" },
+    { "Social",        10, ICON .. "INV_Drink_05" },
 }
+
+-- Tag icons are stored as a file id ("134400") or a texture path.
+function D:ParseIcon(v)
+    if not v or v == "" then return nil end
+    local id = tonumber(v)
+    if id then return id end
+    if not v:find("\\", 1, true) then return ICON .. v end
+    return v
+end
+
+-- The icon to draw for a tag: its chosen icon, a default tag's own icon, or a question mark.
+function D:TagIcon(tag)
+    if tag.icon then return tag.icon end
+    local i = tag.id and tonumber(tag.id:match("^d(%d+)$"))
+    local def = i and self.DEFAULT_TAGS[i]
+    return def and def[3] or self.UNKNOWN_ICON
+end
+
+-- "|T...|t" for a tag icon in text (menus, tooltips).
+function D:TagIconString(tag, size)
+    return ("|T%s:%d:%d:0:0:64:64:5:59:5:59|t"):format(tostring(self:TagIcon(tag)), size or 14, size or 14)
+end
+
+-- Icon and colored name, for tooltips and menus.
+function D:TagLabel(tag, size)
+    return self:TagIconString(tag, size) .. " " .. self:TagColorHex(tag.color) .. tag.name .. "|r"
+end
 D.MAX_TAG_LENGTH = 24
 D.MAX_LOG_LENGTH = 140 -- fits one addon message
 

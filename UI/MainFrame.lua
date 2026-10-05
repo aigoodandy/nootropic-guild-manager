@@ -10,9 +10,9 @@ ns.UI = UI
 
 local FRAME_W, FRAME_H = 1000, 580
 local MIN_W, MIN_H, MAX_W, MAX_H = 640, 520, 1800, 1100
-local TAB_LABELS = { "Roster", "Recruitment", "Tags", "Audit", "Reviews" }
-UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_TAGS, UI.TAB_AUDIT, UI.TAB_REVIEWS = 1, 2, 3, 4, 5
-local OFFICER_TABS = { [3] = true, [4] = true } -- Tags and Audit
+local TAB_LABELS = { "Roster", "Recruitment", "Polls", "Tags", "Audit", "Reviews" }
+UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_POLLS, UI.TAB_TAGS, UI.TAB_AUDIT, UI.TAB_REVIEWS = 1, 2, 3, 4, 5, 6
+local OFFICER_TABS = { [4] = true, [5] = true } -- Tags and Audit
 
 ------------------------------------------------------------------------
 -- Creation
@@ -46,6 +46,7 @@ function UI:Create()
     -- Status line along the bottom edge
     self.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.status:SetPoint("BOTTOMLEFT", 14, 8)
+    self:BuildAddonCount(f)
     self.version = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.version:SetPoint("BOTTOMRIGHT", -14, 8)
     self.version:SetText("v" .. ns.version)
@@ -53,6 +54,7 @@ function UI:Create()
     ns.RosterView.LIST_WIDTH = math.floor(f:GetWidth() - ns.RosterView.LIST_INSET)
     ns.RosterView:Build(f)
     ns.RecruitView:Build(f)
+    ns.PollsView:Build(f)
     ns.TagsView:Build(f)
     ns.AuditView:Build(f)
     ns.ReviewsView:Build(f)
@@ -82,7 +84,11 @@ function UI:Create()
         UI:UpdateTitle() -- the guild name may have just arrived
         if f:IsShown() then UI:RefreshStatus() end
     end)
-    ns:On("SETTINGS_CHANGED", function() UI:UpdateTitle() end)
+    ns:On("SETTINGS_CHANGED", function()
+        UI:UpdateTitle()
+        UI:RefreshStatus()
+    end)
+    ns:On("GUILD_SETTINGS_CHANGED", function() UI:LayoutTabs() end)
 
     self:SelectTab(1)
     return f
@@ -182,6 +188,10 @@ function UI:BuildTabs(f)
 end
 
 function UI:IsTabAvailable(id)
+    if id == UI.TAB_REVIEWS then
+        -- officers can turn reviews off; then only officers see the tab
+        return ns.IsOfficer() or ns.DB:ReviewsEnabled()
+    end
     return not OFFICER_TABS[id] or ns.IsOfficer()
 end
 
@@ -189,6 +199,13 @@ end
 function UI:LayoutTabs()
     local f = self.frame
     if not (f and f.Tabs) then return end
+    -- officers read reviews; everyone else writes one
+    local reviews = f.Tabs[UI.TAB_REVIEWS]
+    local label = ns.IsOfficer() and "Reviews" or "Review Guild"
+    if reviews:GetText() ~= label then
+        reviews:SetText(label)
+        if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, reviews, 0) end
+    end
     local prev
     for i, tab in ipairs(f.Tabs) do
         tab:ClearAllPoints()
@@ -220,6 +237,7 @@ function UI:SelectTab(id)
 
     ns.RosterView.page:SetShown(id == UI.TAB_ROSTER)
     ns.RecruitView.page:SetShown(id == UI.TAB_RECRUIT)
+    ns.PollsView.page:SetShown(id == UI.TAB_POLLS)
     ns.TagsView.page:SetShown(id == UI.TAB_TAGS)
     ns.AuditView.page:SetShown(id == UI.TAB_AUDIT)
     ns.ReviewsView.page:SetShown(id == UI.TAB_REVIEWS)
@@ -242,16 +260,69 @@ function UI:UpdateTitle()
     if self.frame then W.SetTitle(self.frame, self:Title()) end
 end
 
+-- "x using <title>" after the status line. Click: roster of addon users with versions.
+function UI:BuildAddonCount(f)
+    local b = CreateFrame("Button", nil, f)
+    b:SetHeight(16)
+    b:SetPoint("LEFT", self.status, "RIGHT", 0, 0)
+    b.Text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.Text:SetPoint("LEFT", 0, 0)
+    b.Underline = b:CreateTexture(nil, "OVERLAY")
+    b.Underline:SetHeight(1)
+    b.Underline:SetColorTexture(1, 0.82, 0, 0.8)
+    b.Underline:Hide()
+    b:SetScript("OnEnter", function(self)
+        self.Underline:ClearAllPoints()
+        self.Underline:SetPoint("TOPLEFT", self.Text, "BOTTOMLEFT", self.dashWidth or 0, -1)
+        self.Underline:SetPoint("TOPRIGHT", self.Text, "BOTTOMRIGHT", 0, -1)
+        self.Underline:Show()
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("Who uses the addon?")
+        GameTooltip:AddLine("Click to list guildmates running it, with the version each one has.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function(self)
+        self.Underline:Hide()
+        GameTooltip:Hide()
+    end)
+    b:SetScript("OnClick", function() UI:ShowAddonUsers() end)
+    self.addonCount = b
+end
+
+-- Roster tab, Version column on, only members running the addon.
+function UI:ShowAddonUsers()
+    local hidden = ns.DB:Settings().hiddenColumns
+    if hidden.version ~= false then hidden.version = false end
+    self:Show()
+    self:SelectTab(UI.TAB_ROSTER)
+    ns.RosterView:Relayout()
+    ns.RosterView:SetSearch("is:addon")
+    ns.RosterView:Refresh()
+    ns.PlaySound("IG_CHARACTER_INFO_TAB")
+end
+
 function UI:RefreshStatus()
     if not self.status then return end
+    local count = self.addonCount
     if not IsInGuild() then
         self.status:SetText("Not in a guild")
+        count:Hide()
         return
     end
     local guild = GetGuildInfo("player") or "Guild"
     local total, online, withAddon = ns.Roster:Stats()
-    self.status:SetText(("|cffffd100%s|r   %d members  -  |cff40ff40%d online|r  -  %d using Nootropic Guild Manager")
-        :format(guild, total, online, withAddon))
+    self.status:SetText(("|cffffd100%s|r   %d members  -  |cff40ff40%d online|r"):format(guild, total, online))
+    if ns.DB:Settings().showAddonCount == false then
+        count:Hide()
+        return
+    end
+    -- the dash isn't part of the underline
+    local dash = "  -  "
+    count.Text:SetText(dash)
+    count.dashWidth = count.Text:GetStringWidth()
+    count.Text:SetText(dash .. ("%d using %s"):format(withAddon, self:Title()))
+    count:SetWidth(math.ceil(count.Text:GetStringWidth()) + 2)
+    count:Show()
 end
 
 ------------------------------------------------------------------------
