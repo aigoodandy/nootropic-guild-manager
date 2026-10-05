@@ -203,6 +203,31 @@ function O:BuildMain()
         end)
     self.communitiesCheck = L:Check("Shortcut on the Guild & Communities window",
         "A side tab with the addon icon.", function(on) ns.Communities:SetEnabled(on) end)
+
+    -- which side of the window the tabs are on
+    local ty = L:Row(30)
+    local sideLabel = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    sideLabel:SetPoint("TOPLEFT", 18, ty - 4)
+    sideLabel:SetText("Tabs on the")
+    local side = W.Button(L.panel, "", 100, 22)
+    side:SetPoint("TOPLEFT", 110, ty)
+    side:SetScript("OnClick", function(btn)
+        local items = { { text = "Tabs on the", isTitle = true } }
+        for _, s in ipairs({ { "right", "Right side" }, { "left", "Left side" } }) do
+            items[#items + 1] = { text = s[2], radio = true,
+                checked = function() return (ns.DB:Settings().tabSide or "right") == s[1] end,
+                func = function()
+                    ns.DB:Settings().tabSide = s[1]
+                    ns.UI:LayoutTabs()
+                    O:Refresh()
+                end }
+        end
+        W.ShowMenu(btn, items)
+    end)
+    local sideHint = L.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    sideHint:SetPoint("LEFT", side, "RIGHT", 10, 0)
+    sideHint:SetText("of the window. Just for you.")
+    self.tabSideBtn = side
     L:Space(4)
 
     L:Header("Minimap Button")
@@ -610,6 +635,7 @@ function O:Refresh()
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
     self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
     self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
+    self.tabSideBtn:SetText(s.tabSide == "left" and "Left side" or "Right side")
     self.minimapCheck:SetChecked(not s.minimap.hide)
     for _, b in ipairs(self.clickPickers) do b:SetText(D:MinimapActionLabel(s.minimap[b.key])) end
     local st = ns.Sync.stats

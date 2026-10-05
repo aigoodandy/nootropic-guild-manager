@@ -216,6 +216,17 @@ UI.DEFAULT_TAB_ICONS = {
     "Interface\\Icons\\INV_Scroll_05",                -- Reviews
 }
 
+-- Flips a texture left to right (keeps an atlas's own coordinates).
+local function Mirror(tex)
+    local ulx, uly, llx, lly, urx, ury, lrx, lry = tex:GetTexCoord()
+    tex:SetTexCoord(urx, ury, lrx, lry, ulx, uly, llx, lly)
+end
+
+-- Tabs on the left or right of the window (Options > Appearance; each player's own choice).
+function UI:TabsOnLeft()
+    return ns.DB:Settings().tabSide == "left"
+end
+
 local function CreateSideTab(f, i)
     local tab = CreateFrame("CheckButton", "NootropicGMFrameTab" .. i, f)
     if HasAtlas("common-sidetab") then
@@ -236,6 +247,7 @@ local function CreateSideTab(f, i)
             mask:SetSize(55, 60)
             mask:SetPoint("CENTER")
             tab.Icon:AddMaskTexture(mask)
+            tab.Mask = mask
         end
         tab.Selected = tab:CreateTexture(nil, "OVERLAY")
         tab.Selected:SetAtlas("common-sidetab-selected")
@@ -246,6 +258,9 @@ local function CreateSideTab(f, i)
         hl:SetAtlas("common-sidetab-hover")
         hl:SetSize(55, 60)
         hl:SetPoint("CENTER")
+        tab.Hl = hl
+        tab.atlases = { Bg = "common-sidetab", Selected = "common-sidetab-selected", Hl = "common-sidetab-hover", Mask = "common-sidetab-mask" }
+        tab.iconX = 4
         tab.gap = TAB_GAP
     else
         -- older clients: the spellbook's skill line tab
@@ -267,13 +282,34 @@ local function CreateSideTab(f, i)
     tab:SetID(i)
     -- shows or hides the selected art (instead of a checked texture)
     function tab:SetSelected(on) self.Selected:SetShown(on and true or false) end
+    -- Puts the tab's art the right way round for its side: the art opens
+    -- toward the window, so on the left it's mirrored.
+    function tab:SetSide(left)
+        if self.side == left then return end
+        self.side = left
+        if self.atlases then
+            for key, atlas in pairs(self.atlases) do
+                local tex = self[key]
+                if tex then
+                    if key == "Mask" then tex:SetAtlas(atlas, false) else tex:SetAtlas(atlas) end
+                    if left then pcall(Mirror, tex) end
+                end
+            end
+            self.Icon:ClearAllPoints()
+            self.Icon:SetPoint("CENTER", left and self.iconX or -self.iconX, 0)
+        else
+            self.Bg:SetTexCoord(left and 1 or 0, left and 0 or 1, 0, 1)
+            self.Bg:ClearAllPoints()
+            if left then self.Bg:SetPoint("TOPRIGHT", 3, 11) else self.Bg:SetPoint("TOPLEFT", -3, 11) end
+        end
+    end
     tab:SetScript("OnClick", function(self)
         UI:SelectTab(self:GetID())
         ns.PlaySound("IG_CHARACTER_INFO_TAB")
     end)
     tab:SetScript("OnEnter", function(self)
         local id = self:GetID()
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetOwner(self, self.side and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
         GameTooltip:AddLine(UI:TabTitle(id) .. (OFFICER_TABS[id] and " |cff9d9d9d(officers only)|r" or ""))
         GameTooltip:Show()
     end)
@@ -284,8 +320,6 @@ end
 function UI:BuildTabs(f)
     f.Tabs = {}
     for i in ipairs(TAB_LABELS) do f.Tabs[i] = CreateSideTab(f, i) end
-    -- keep the tabs on screen too when the window is dragged to the right edge
-    if f.SetClampRectInsets then f:SetClampRectInsets(0, UI.TAB_OUTSIDE, 0, 0) end
     self:LayoutTabs()
 end
 
@@ -322,14 +356,27 @@ end
 function UI:LayoutTabs()
     local f = self.frame
     if not (f and f.Tabs) then return end
+    local left = self:TabsOnLeft()
+    -- keep the tabs on screen when the window is dragged to that edge
+    if f.SetClampRectInsets then
+        if left then f:SetClampRectInsets(-UI.TAB_OUTSIDE, 0, 0, 0) else f:SetClampRectInsets(0, UI.TAB_OUTSIDE, 0, 0) end
+    end
     local prev
     for i, tab in ipairs(f.Tabs) do
+        tab:SetSide(left)
         W.SetIcon(tab.Icon, self:TabIcon(i))
         if tab.iconCoords then tab.Icon:SetTexCoord(unpack(tab.iconCoords)) end
         tab:ClearAllPoints()
         if self:IsTabAvailable(i) then
             if prev then
-                tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -tab.gap)
+                if left then
+                    tab:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, -tab.gap)
+                else
+                    tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -tab.gap)
+                end
+            elseif left then
+                -- below the round portrait in the top-left corner
+                tab:SetPoint("TOPRIGHT", f, "TOPLEFT", 2, -72)
             else
                 tab:SetPoint("TOPLEFT", f, "TOPRIGHT", -2, -48)
             end
