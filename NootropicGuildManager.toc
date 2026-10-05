@@ -28,6 +28,7 @@ Services\Audit.lua
 
 # Interface
 UI\Widgets.lua
+UI\Columns.lua
 UI\BrandIcon.lua
 UI\MemberPicker.lua
 UI\IconPicker.lua

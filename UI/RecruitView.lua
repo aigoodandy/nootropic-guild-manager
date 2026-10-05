@@ -13,18 +13,25 @@ ns.RecruitView = RCV
 local ROW_H = 26
 local PANEL_W = 360
 local FOOTER_H = 30
+-- Movable, resizable, hideable (UI/Columns.lua). The tick box stays first.
 local COLUMNS = {
-    { key = "pick",    label = "",         width = 28,  min = 28, locked = true },
+    { key = "pick",    label = "",         width = 28,  min = 28, locked = true, pinned = true, fixed = true },
     { key = "name",    label = "Name",     width = 120, min = 90, locked = true },
-    { key = "level",   label = "Lvl",      width = 34,  min = 30, justify = "CENTER", locked = true },
+    { key = "level",   label = "Lvl",      width = 34,  min = 30, justify = "CENTER", hidePriority = 4 },
     { key = "class",   label = "Class",    width = 80,  min = 60, hidePriority = 1 },
-    { key = "zone",    label = "Zone",     width = 120, min = 60, hidePriority = 2, flex = true },
+    { key = "zone",    label = "Zone",     width = 120, min = 60, hidePriority = 2 },
     { key = "status",  label = "Status",   width = 150, min = 80, hidePriority = 3 },
 }
-local COL = {}
-for _, c in ipairs(COLUMNS) do COL[c.key] = c end
 
-RCV.layoutVersion = 0
+RCV.cols = ns.Columns.New({
+    columns = COLUMNS,
+    store = function()
+        local s = ns.DB:Settings()
+        s.recruitColumns = s.recruitColumns or {}
+        return s.recruitColumns
+    end,
+    onChange = function() RCV:RedrawRows() end,
+})
 
 ------------------------------------------------------------------------
 -- Small helpers
@@ -336,12 +343,7 @@ function RCV:BuildList(page, inset)
     header:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -4)
     header:SetHeight(24)
     self.header = header
-    self.headers = {}
-    for _, c in ipairs(COLUMNS) do
-        local h = W.ColumnHeader(header, c.label, c.width, c.justify)
-        h:EnableMouse(false)
-        self.headers[c.key] = h
-    end
+    self.cols:BuildHeaders(header) -- right-click a header for the Columns menu
 
     local scrollBox = CreateFrame("Frame", nil, page, "WowScrollBoxList")
     scrollBox:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
@@ -452,69 +454,18 @@ function RCV:RefreshFooter()
     self.sendInfo:SetText(info)
 end
 
--- Fits columns into the list width, hiding low-priority ones when narrow.
+-- Fits the columns into the list width (UI/Columns.lua does the work).
 function RCV:Layout(listW)
-    local vis = {}
-    for i, c in ipairs(COLUMNS) do
-        c.order, c.autoHidden = i, false
-        vis[#vis + 1] = c
-    end
-    local function sum(field)
-        local n = 0
-        for _, c in ipairs(vis) do n = n + c[field] end
-        return n
-    end
-    while sum("min") > listW do
-        local victim, vi
-        for i, c in ipairs(vis) do
-            if not c.locked and (not victim or c.hidePriority < victim.hidePriority) then victim, vi = c, i end
-        end
-        if not victim then break end
-        victim.autoHidden = true
-        table.remove(vis, vi)
-    end
-    -- Bring back any hidden column that fits in the space left over.
-    local hidden = {}
-    for _, c in ipairs(COLUMNS) do if c.autoHidden then hidden[#hidden + 1] = c end end
-    table.sort(hidden, function(a, b) return a.hidePriority > b.hidePriority end)
-    for _, c in ipairs(hidden) do
-        if sum("min") + c.min <= listW then
-            c.autoHidden = false
-            vis[#vis + 1] = c
-        end
-    end
-    table.sort(vis, function(a, b) return a.order < b.order end)
-    for _, c in ipairs(COLUMNS) do c.shown = false end
-    local extra = listW - sum("width")
-    local flexShown = false
-    for _, c in ipairs(vis) do if c.flex then flexShown = true end end
-    local x = 0
-    for _, c in ipairs(vis) do
-        c.shown = true
-        c.w = c.width
-        if extra < 0 and not c.locked then
-            c.w = math.max(c.min, c.width + math.floor(extra * (c.width - c.min) / math.max(1, sum("width") - sum("min"))))
-        elseif extra > 0 and (c.flex or (not flexShown and c.key == "name")) then
-            c.w = c.width + extra
-        end
-        c.x = x
-        x = x + c.w
-    end
-    for _, c in ipairs(COLUMNS) do
-        local h = self.headers[c.key]
-        if c.shown then
-            h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", c.x, 0)
-            h:SetColumnWidth(c.w)
-            h:Show()
-        else
-            h:Hide()
-        end
-    end
     self.header:SetWidth(listW)
     self.scrollBox:SetWidth(listW)
     if self.footer then self.footer:SetWidth(listW) end
-    self.layoutVersion = self.layoutVersion + 1
+    self.cols:Layout(listW)
+end
+
+function RCV:RedrawRows()
+    if self.scrollBox and self.scrollBox.ForEachFrame then
+        self.scrollBox:ForEachFrame(function(row) if row.person then RCV:InitRow(row, row.person) end end)
+    end
 end
 
 function RCV:OnResize()
@@ -523,9 +474,7 @@ function RCV:OnResize()
     if listW == self.listW then return end
     self.listW = listW
     self:Layout(listW)
-    if self.scrollBox.ForEachFrame then
-        self.scrollBox:ForEachFrame(function(row) if row.person then RCV:InitRow(row, row.person) end end)
-    end
+    self:RedrawRows()
 end
 
 local function Text(parent, justify)
@@ -613,20 +562,7 @@ function RCV:InitRow(row, p)
         BuildRow(row)
         row.built = true
     end
-    if row.layoutVersion ~= self.layoutVersion then
-        for _, c in ipairs(COLUMNS) do
-            local cell = row.cells[c.key]
-            if c.shown then
-                cell:ClearAllPoints()
-                cell:SetPoint("LEFT", row, "LEFT", c.x, 0)
-                cell:SetWidth(c.w)
-                cell:Show()
-            else
-                cell:Hide()
-            end
-        end
-        row.layoutVersion = self.layoutVersion
-    end
+    self.cols:PlaceCells(row, row.cells, row)
     row.person = p
     row.Stripe:SetShown(p._stripe)
     W.SetClassIcon(row.ClassIcon, p.classFile)

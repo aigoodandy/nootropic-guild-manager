@@ -1,13 +1,15 @@
 --[[
     Nootropic Guild Manager - Compact roster
     A small guild roster window without tabs, opened with the Compact button
-    on the Roster tab. Shows First Name and Location by default; right-click
-    a column header (or use the Columns menu) to add Level, Class, Second
-    Name, Spec, Main / Alt or Rank. Search, Online only, sorting, the roster
-    tooltip and right-click menu all work as on the Roster tab. Click a name
-    to open their profile in the full window; the expand arrow goes back to it.
+    on the Roster tab. Shows First Name and Location by default. Columns move,
+    resize and hide like on the Roster tab (UI/Columns.lua): drag a header,
+    drag its edge, or right-click it to add Level, Class, Second Name, Spec,
+    Main / Alt or Rank. Search, Online only, sorting, the roster tooltip and
+    right-click menu all work as on the Roster tab. Click a name to open their
+    profile in the full window; the expand arrow goes back to it.
 
-    Saved in settings.compact = { columns, onlineOnly, sortKey, sortAsc, pos, size }
+    Saved in settings.compact = { cols = { order, widths, hidden }, onlineOnly,
+    sortKey, sortAsc, pos, size }
 ]]
 local _, ns = ...
 local W, D = ns.Widgets, ns.Data
@@ -17,38 +19,45 @@ ns.CompactRoster = CR
 local ROW_H = 20
 local MIN_W, MIN_H, MAX_W, MAX_H = 200, 200, 800, 1000
 
--- weight: share of the free width.  fixed: exact width.  Name is always shown.
+-- Name is always shown; it leaves room on the left for the class icon.
 local COLUMNS = {
-    { key = "name",   label = "Name",        weight = 1.0, locked = true },
-    { key = "second", label = "Second Name", weight = 0.8 },
-    { key = "level",  label = "Lvl",         fixed = 30, justify = "CENTER" },
-    { key = "class",  label = "Class",       weight = 0.7 },
-    { key = "spec",   label = "Spec",        weight = 0.7 },
-    { key = "zone",   label = "Location",    weight = 1.3 },
-    { key = "main",   label = "Main / Alt",  weight = 0.9 },
-    { key = "rank",   label = "Rank",        weight = 0.7 },
+    { key = "name",   label = "Name",        width = 96,  min = 70, locked = true, padL = 22, padR = 4 },
+    { key = "second", label = "Second Name", width = 80,  min = 56, hidePriority = 5, padL = 4, padR = 4 },
+    { key = "level",  label = "Lvl",         width = 30,  min = 26, justify = "CENTER", hidePriority = 2 },
+    { key = "class",  label = "Class",       width = 70,  min = 50, hidePriority = 3, padL = 4, padR = 4 },
+    { key = "spec",   label = "Spec",        width = 70,  min = 50, hidePriority = 4, padL = 4, padR = 4 },
+    { key = "zone",   label = "Location",    width = 110, min = 70, hidePriority = 7, padL = 4, padR = 4 },
+    { key = "main",   label = "Main / Alt",  width = 90,  min = 60, hidePriority = 6, padL = 4, padR = 4 },
+    { key = "rank",   label = "Rank",        width = 70,  min = 50, hidePriority = 1, padL = 4, padR = 4 },
 }
-local DEFAULT_SHOWN = { name = true, zone = true }
-
-CR.layoutVersion = 0
 
 function CR:Settings()
     local s = ns.DB:Settings()
     s.compact = s.compact or {}
     local c = s.compact
-    if not c.columns then
-        c.columns = {}
-        for k, v in pairs(DEFAULT_SHOWN) do c.columns[k] = v end
-    end
+    c.cols = c.cols or {}
     c.sortKey = c.sortKey or "name"
     if c.sortAsc == nil then c.sortAsc = true end
     c.size = c.size or { w = 280, h = 420 }
     return c
 end
 
-function CR:IsShownColumn(key)
-    return key == "name" or self:Settings().columns[key] == true
-end
+CR.cols = ns.Columns.New({
+    columns = COLUMNS,
+    store = function() return CR:Settings().cols end,
+    defaultHidden = { second = true, level = true, class = true, spec = true, main = true, rank = true },
+    onChange = function() CR:RedrawRows() end,
+    onSort = function(key)
+        local s = CR:Settings()
+        if s.sortKey == key then
+            s.sortAsc = not s.sortAsc
+        else
+            s.sortKey, s.sortAsc = key, not ns.Roster.DEFAULT_DESC[key]
+        end
+        ns.PlaySound("U_CHAT_SCROLL_BUTTON")
+        CR:Refresh()
+    end,
+})
 
 ------------------------------------------------------------------------
 -- Build
@@ -118,30 +127,10 @@ function CR:Build()
     local header = CreateFrame("Frame", nil, f)
     header:SetPoint("TOPLEFT", 10, -56)
     header:SetPoint("RIGHT", f, "RIGHT", -28, 0)
-    header:SetHeight(22)
+    header:SetHeight(24)
     self.header = header
-    self.headers = {}
-    for _, col in ipairs(COLUMNS) do
-        local h = W.ColumnHeader(header, col.label, 60, col.justify)
-        h:SetHeight(22)
-        h:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        h:SetScript("OnClick", function(self, button)
-            if button == "RightButton" then
-                CR:ShowColumnsMenu(self)
-                return
-            end
-            local s = CR:Settings()
-            if s.sortKey == col.key then
-                s.sortAsc = not s.sortAsc
-            else
-                s.sortKey, s.sortAsc = col.key, not ns.Roster.DEFAULT_DESC[col.key]
-            end
-            ns.PlaySound("U_CHAT_SCROLL_BUTTON")
-            CR:Refresh()
-        end)
-        W.Tooltip(h, col.label, "Click to sort. Right-click to choose columns.")
-        self.headers[col.key] = h
-    end
+    -- click to sort, right-click for columns, drag to move, edge to resize
+    self.cols:BuildHeaders(header)
 
     -- list
     local scrollBox = CreateFrame("Frame", nil, f, "WowScrollBoxList")
@@ -160,12 +149,9 @@ function CR:Build()
     self.emptyText:SetPoint("CENTER", scrollBox, "CENTER", 0, 0)
     self.emptyText:SetWidth(180)
 
-    -- footer: count and the Columns menu
+    -- footer: count (columns: right-click a header)
     self.count = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.count:SetPoint("BOTTOMLEFT", 14, 9)
-    local cols = W.Button(f, "Columns", 72, 18)
-    cols:SetPoint("BOTTOMRIGHT", -22, 6)
-    cols:SetScript("OnClick", function(self) CR:ShowColumnsMenu(self) end)
 
     -- resize grip
     f:SetResizable(true)
@@ -208,62 +194,14 @@ function CR:Layout()
     if not self.header then return end
     local avail = math.floor(self.header:GetWidth())
     if avail < 50 then avail = math.floor((self.frame:GetWidth() or 280) - 38) end
-    local fixed, weights = 0, 0
-    for _, col in ipairs(COLUMNS) do
-        if self:IsShownColumn(col.key) then
-            if col.fixed then fixed = fixed + col.fixed else weights = weights + col.weight end
-        end
-    end
-    local free = math.max(0, avail - fixed)
-    local x = 0
-    for _, col in ipairs(COLUMNS) do
-        local h = self.headers[col.key]
-        if self:IsShownColumn(col.key) then
-            col.w = col.fixed or math.floor(free * col.weight / math.max(weights, 0.01))
-            col.x, col.shown = x, true
-            x = x + col.w
-            h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", col.x, 0)
-            h:SetColumnWidth(col.w)
-            h:Show()
-        else
-            col.shown = false
-            h:Hide()
-        end
-    end
-    self.layoutVersion = self.layoutVersion + 1
+    self.cols:Layout(avail)
+    self:RedrawRows()
+end
+
+function CR:RedrawRows()
     if self.scrollBox and self.scrollBox.ForEachFrame then
         self.scrollBox:ForEachFrame(function(row) if row.entry then CR:InitRow(row, row.entry) end end)
     end
-end
-
-function CR:ShowColumnsMenu(owner)
-    local items = { { text = "Columns", isTitle = true } }
-    for _, col in ipairs(COLUMNS) do
-        if not col.locked then
-            items[#items + 1] = {
-                text = col.label,
-                checked = function() return CR:IsShownColumn(col.key) end,
-                func = function()
-                    local cols = CR:Settings().columns
-                    cols[col.key] = not CR:IsShownColumn(col.key) or nil
-                    CR:Layout()
-                    CR:Refresh()
-                end,
-            }
-        end
-    end
-    items[#items + 1] = { divider = true }
-    items[#items + 1] = {
-        text = "Name and Location only",
-        func = function()
-            local s = CR:Settings()
-            s.columns = { name = true, zone = true }
-            CR:Layout()
-            CR:Refresh()
-        end,
-    }
-    W.ShowMenu(owner, items)
 end
 
 ------------------------------------------------------------------------
@@ -306,30 +244,16 @@ local function BuildRow(row)
     row:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
-local function LayoutRow(row)
-    for _, col in ipairs(COLUMNS) do
-        local fs = row.cells[col.key]
-        if col.shown then
-            fs:ClearAllPoints()
-            local left = col.x + (col.key == "name" and 22 or 4)
-            fs:SetPoint("LEFT", row.Content, "LEFT", left, 0)
-            fs:SetWidth(math.max(10, col.w - (col.key == "name" and 24 or 8)))
-            fs:Show()
-        else
-            fs:Hide()
-        end
-    end
-    row.ClassIcon:ClearAllPoints()
-    row.ClassIcon:SetPoint("LEFT", row.Content, "LEFT", COLUMNS[1].x + 4, 0)
-    row.layoutVersion = CR.layoutVersion
-end
-
 function CR:InitRow(row, e)
     if not row.built then
         BuildRow(row)
         row.built = true
     end
-    if row.layoutVersion ~= self.layoutVersion then LayoutRow(row) end
+    if self.cols:PlaceCells(row, row.cells, row.Content) then
+        -- the class icon sits at the start of the Name column, wherever it moved
+        row.ClassIcon:ClearAllPoints()
+        row.ClassIcon:SetPoint("LEFT", row.Content, "LEFT", self.cols.byKey.name.x + 4, 0)
+    end
     row.entry = e
     row.Stripe:SetShown(e._cstripe)
     row.Content:SetAlpha(e.online and 1 or 0.55)
@@ -362,9 +286,7 @@ function CR:Refresh()
     for i, e in ipairs(list) do e._cstripe = (i % 2 == 0) end
     local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition
     self.scrollBox:SetDataProvider(CreateDataProvider(list), retain)
-    for key, h in pairs(self.headers) do
-        h:SetSortState(key == s.sortKey and (s.sortAsc and "asc" or "desc") or nil)
-    end
+    self.cols:SetSortState(s.sortKey, s.sortAsc)
     local total, online = ns.Roster:Stats()
     self.count:SetText(("%d shown  -  |cff40ff40%d online|r"):format(#list, online))
     if not IsInGuild() then
