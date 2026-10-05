@@ -288,11 +288,25 @@ local function CreateSideTab(f, i)
         if self.side == left then return end
         self.side = left
         if self.atlases then
+            -- the frame, selected border and hover glow are mirrored; the icon
+            -- never is
             for key, atlas in pairs(self.atlases) do
                 local tex = self[key]
-                if tex then
-                    if key == "Mask" then tex:SetAtlas(atlas, false) else tex:SetAtlas(atlas) end
+                if tex and key ~= "Mask" then
+                    tex:SetAtlas(atlas)
                     if left then pcall(Mirror, tex) end
+                end
+            end
+            -- the shaped trim can't be mirrored (the game then hides the whole
+            -- icon), so on the left the icon goes without it, a little smaller
+            -- so it sits inside the frame
+            if self.Mask then
+                if left then
+                    self.Icon:RemoveMaskTexture(self.Mask)
+                    self.Icon:SetSize(44, 44)
+                else
+                    self.Icon:AddMaskTexture(self.Mask)
+                    self.Icon:SetSize(50, 50)
                 end
             end
             self.Icon:ClearAllPoints()
