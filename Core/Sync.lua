@@ -48,6 +48,13 @@
                            kept until its results expire
       PV:<poll>:<member>   a member's vote in a poll   the member only
                            (only counted if cast before the poll closed)
+      AB:<member>          About me text            the member; officers may only clear it ("")
+      ST:<member>          status line              the member only
+      SC:<member>          usual online hours: 168 bits (Monday 00:00 UTC
+                           onward) as 42 hex digits   the member only
+      KT:<id>              kudos type (like a tag definition)   officers
+      KU:<member>:<type>:<id>  one anonymous kudos for <member>: no author,
+                           random id, kept 90 days   anyone in the guild
 
     Types with a ttl (or an expires function) expire: older records are
     deleted, left out of digests and repairs, and refused when they arrive.
@@ -94,10 +101,15 @@ S.TYPES = {
     GS = { scope = "guild",   officer = true, label = "Guild setting" },
     PL = { scope = "guild",   officer = true, label = "Poll" },
     PV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Poll vote" },
+    AB = { scope = "guild",   officer = true, self = true, label = "About me" },
+    ST = { scope = "guild",   selfOnly = true, noAudit = true, label = "Status" },
+    SC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Usually online" },
+    KT = { scope = "guild",   officer = true, label = "Kudos type" },
+    KU = { scope = "guild",   anyone = true, noAudit = true, ttl = 90 * 86400, low = true, immutable = true, anonymous = true, label = "Kudos" },
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
 -- Types whose key is not about one member.
-local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true }
+local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true }
 
 -- Orphaned poll votes (their poll is unknown) are kept this long.
 local ORPHAN_VOTE_TTL = 30 * 86400
@@ -145,7 +157,7 @@ function S.ParseKey(key)
     local typ, rest = key:match("^(%u+):(.*)$")
     if not typ or not S.TYPES[typ] then return nil end
     local member
-    if typ == "L" then
+    if typ == "L" or typ == "KU" then
         member = rest:match("^([^:]+):")
     elseif typ == "PV" then
         member = rest:match("^[^:]+:(.+)$")
@@ -230,6 +242,8 @@ function S:Accept(typ, member, def, rec, ctx)
     if expires and expires < Now() then return false end
     if def.anonymous and (rec.a or "") ~= "" then return false end -- reviews never carry a name
     if typ == "PV" and not self:VoteInTime(ctx.key, rec) then return false end
+    -- someone else's About me can only be cleared (officers), never rewritten
+    if typ == "AB" and rec.a ~= member and rec.v ~= "" then return false end
     return true
 end
 
@@ -444,6 +458,18 @@ function Codec.ParseLog(v)
     return { ts = tonumber(created), author = creator, text = text }
 end
 
+-- Kudos type: "color;order;retired;icon;name"
+function Codec.KudosType(color, order, retired, icon, name)
+    return ("%d;%s;%d;%s;%s"):format(color or 1, tostring(order or 0), retired and 1 or 0,
+        (Clean(icon or ""):gsub(";", "")), Clean(name))
+end
+function Codec.ParseKudosType(v)
+    local color, order, retired, icon, name = (v or ""):match("^(%d+);([%d%.%-]+);(%d);([^;]*);(.*)$")
+    if not color then return nil end
+    return { color = tonumber(color), order = tonumber(order) or 0, retired = retired == "1",
+        icon = ns.Data:ParseIcon(icon), name = name }
+end
+
 -- Poll: "closeAt;expireAt;deleted;question;option1;option2;..."
 local function PollText(s) return (Clean(s):gsub(";", ",")) end
 function Codec.Poll(p)
@@ -503,6 +529,10 @@ function S:Materialize(typ, key, member, rec)
     elseif typ == "GS" then
         ns.Debounce("guildsettings", 0.1, function() ns:Fire("GUILD_SETTINGS_CHANGED") end)
         return
+    elseif typ == "KT" or typ == "KU" then
+        if typ == "KT" then ns.DB.kudosCache = nil end
+        ns.Debounce("kudoschanged", 0.2, function() ns:Fire("KUDOS_CHANGED") end)
+        return
     elseif typ == "GR" or typ == "GC" then
         ns.Debounce("reviewschanged", 0.2, function() ns:Fire("REVIEWS_CHANGED") end)
         return
@@ -536,6 +566,12 @@ function S:Materialize(typ, key, member, rec)
             data.ts = rec.t
             m.auto = data
         end
+    elseif typ == "AB" then
+        m.about = v ~= "" and v or nil
+    elseif typ == "ST" then
+        m.status, m.statusAt = (v ~= "" and v or nil), rec.t
+    elseif typ == "SC" then
+        m.schedule = v ~= "" and v or nil
     elseif typ == "AV" then
         m.version = v ~= "" and v or nil
         ns.Debounce("versioncheck", 1, function() if ns.Roster.CheckVersion then ns.Roster:CheckVersion() end end)
@@ -561,6 +597,7 @@ function S:RebuildAll()
     if not g then return end
     for _, m in pairs(g.members) do
         m.tags, m.main, m.spec, m.profs, m.auto, m.rating, m.log, m.version = {}, nil, nil, nil, nil, 0, nil, nil
+        m.about, m.status, m.statusAt, m.schedule = nil, nil, nil, nil
     end
     for _, scope in ipairs({ "guild", "officer" }) do
         for key, rec in pairs(self:Store(scope)) do
@@ -929,6 +966,13 @@ function S:SeedDefaults()
         local key = "T:d" .. i
         if not store[key] then
             store[key] = { v = Codec.TagDef(def[2], i * 10, false, def[1]), t = 1, a = "" }
+        end
+    end
+    -- default kudos, the same way (identical everywhere, so they never conflict)
+    for i, def in ipairs(ns.Data.DEFAULT_KUDOS) do
+        local key = "KT:d" .. i
+        if not store[key] then
+            store[key] = { v = Codec.KudosType(def[2], i * 10, false, def[3], def[1]), t = 1, a = "" }
         end
     end
 end

@@ -19,6 +19,8 @@ AU.CATEGORIES = {
     { key = "T",  label = "Tag list" },
     { key = "TI", label = "Tag icons" },
     { key = "PL", label = "Polls" },
+    { key = "AB", label = "About me" },
+    { key = "KT", label = "Kudos list" },
     { key = "GS", label = "Guild settings" },
     { key = "DN", label = "Do Not Whisper" },
 }
@@ -119,6 +121,21 @@ function AU:Describe(e)
             return new == "0" and (RED .. "Guild reviews turned off|r for guildmates") or (GREEN .. "Guild reviews turned on|r for guildmates")
         end
         return "Guild setting changed: " .. (e.ref or "?")
+    elseif t == "AB" then
+        if new == "" then
+            local who = e.author and e.member and e.author ~= e.member and (" by " .. ShortChar(e.author)) or ""
+            return RED .. "About me cleared|r" .. who
+        end
+        return "About me changed"
+    elseif t == "KT" then
+        local o, n = ns.Sync.Codec.ParseKudosType(old), ns.Sync.Codec.ParseKudosType(new)
+        if n and not o then return "Kudos added: " .. n.name end
+        if o and n and n.retired ~= o.retired then
+            return (n.retired and (RED .. "Kudos retired:|r ") or (GREEN .. "Kudos brought back:|r ")) .. n.name
+        end
+        if o and n and o.name ~= n.name then return ("Kudos renamed from %s to %s"):format(o.name, n.name) end
+        if o and n and o.order ~= n.order then return "Kudos moved: " .. n.name end
+        return "Kudos changed: " .. (n and n.name or "?")
     elseif t == "PL" then
         local o, n = ns.Sync.Codec.ParsePoll(old), ns.Sync.Codec.ParsePoll(new)
         local q = n and n.question or (o and o.question) or "?"

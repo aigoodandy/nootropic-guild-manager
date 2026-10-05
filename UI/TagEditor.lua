@@ -106,6 +106,7 @@ function TE:Build()
     local roster = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     roster:SetPoint("LEFT", self.previewIcon, "RIGHT", 6, 0)
     roster:SetText("(roster column)")
+    self.rosterLabel = roster
 
     self.error = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.error:SetPoint("TOPLEFT", 26, -172)
@@ -123,9 +124,13 @@ function TE:Build()
     return f
 end
 
--- The icon shown: the one just picked, the tag's current icon, or a question mark.
+-- The icon shown: the one just picked, the current icon, or a question mark.
 function TE:DisplayIcon()
     if self.icon then return self.icon end
+    if self.kind == "kudos" then
+        local k = self.tagId and ns.Profile:KudosType(self.tagId)
+        return k and ns.Profile.KudosIcon(k) or D.UNKNOWN_ICON
+    end
     local tag = self.tagId and ns.DB:GetTag(self.tagId)
     return tag and D:TagIcon(tag) or D.UNKNOWN_ICON
 end
@@ -137,16 +142,26 @@ function TE:Update()
     self.iconButton:SetBackdropBorderColor(r, g, b, 1)
     self.colorButton:SetText(D:TagColorHex(self.color) .. (D.TAG_COLORS[self.color] or D.TAG_COLORS[1]).name .. "|r")
     local text = ns.Trim(self.nameBox:GetText())
-    local fake = { name = text ~= "" and text or "Tag name", color = self.color, icon = icon }
+    local fake = { name = text ~= "" and text or (self.kind == "kudos" and "Kudos name" or "Tag name"), color = self.color, icon = icon }
     self.preview:SetTag(fake)
     self.previewIcon:SetTag(fake)
+    -- kudos have no roster column
+    self.previewIcon:SetShown(self.kind ~= "kudos")
+    self.rosterLabel:SetShown(self.kind ~= "kudos")
     self.saveButton:SetEnabled(text ~= "")
 end
 
 function TE:Save()
     local text = self.nameBox:GetText()
     local _, err
-    if self.tagId then
+    if self.kind == "kudos" then
+        local PF = ns.Profile
+        if self.tagId then
+            _, err = PF:UpdateKudos(self.tagId, text, self.color, self.icon)
+        else
+            _, err = PF:CreateKudos(text, self.color, self.icon or D.UNKNOWN_ICON)
+        end
+    elseif self.tagId then
         _, err = ns.DB:UpdateTag(self.tagId, ns.Trim(text), self.color, self.icon)
     else
         _, err = ns.DB:CreateTag(text, self.color, self.icon)
@@ -158,21 +173,24 @@ function TE:Save()
     self.frame:Hide()
 end
 
--- tag: the tag to edit, or nil for a new one.
-function TE:Open(tag)
+-- tag: the tag (or kudos) to edit, or nil for a new one. kind: "tag" (default) or "kudos".
+function TE:Open(tag, kind)
     if not ns.DB:CanManageTags() then
-        ns:Print("|cffff5555Only officers can manage tags.|r")
+        ns:Print("|cffff5555Only officers can manage tags and kudos.|r")
         return
     end
     local f = self:Build()
+    self.kind = kind or "tag"
     self.tagId = tag and tag.id
     self.icon = nil
+    local count = self.kind == "kudos" and #ns.Profile:KudosTypes(true) or #ns.DB:GetTags()
     if tag then
         self.color = tag.color
     else
-        self.color = (#ns.DB:GetTags() % #D.TAG_COLORS) + 1
+        self.color = (count % #D.TAG_COLORS) + 1
     end
-    self.title:SetText(tag and ("Edit Tag: " .. tag.name) or "New Tag")
+    local noun = self.kind == "kudos" and "Kudos" or "Tag"
+    self.title:SetText(tag and ("Edit " .. noun .. ": " .. tag.name) or ("New " .. noun))
     self.nameBox:SetText(tag and tag.name or "")
     self.error:SetText("")
     f:ClearAllPoints()

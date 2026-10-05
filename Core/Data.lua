@@ -174,6 +174,21 @@ D.DEFAULT_TAGS = {
     { "Social",        10, ICON .. "INV_Drink_05" },
 }
 
+-- Default kudos: { name, colorIndex, icon }. Officers can rename, recolor,
+-- re-icon or retire them, and add their own (up to D.MAX_KUDOS active).
+D.DEFAULT_KUDOS = {
+    { "Great Tank",    2, "INV_Shield_06" },
+    { "Healer Hero",   6, "Spell_Nature_HealingTouch" },
+    { "Damage Dealer", 4, "INV_Sword_04" },
+    { "Group Leader",  5, "INV_BannerPVP_02" },
+    { "Helpful",       1, "Spell_Holy_SealOfSacrifice" },
+    { "Good Teacher",  3, "INV_Misc_Book_09" },
+    { "Generous",      7, "INV_Misc_Coin_02" },
+    { "Good Vibes",    8, "INV_Drink_05" },
+    { "Funny",         9, "INV_Misc_Head_Murloc_01" },
+}
+D.MAX_KUDOS = 12
+
 -- Tag icons are stored as a file id ("134400") or a texture path.
 function D:ParseIcon(v)
     if not v or v == "" then return nil end

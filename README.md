@@ -35,13 +35,18 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 - **Compact roster:** the red **Compact** button beside the close button (on the Roster tab) closes the big window and opens a small roster with no tabs that you can move and resize. It shows **First Name** and **Location**; right-click a column header to add Level, Class, Second Name, Spec, Main / Alt or Rank. Columns move (drag a header), resize (drag its edge) and hide just like on the Roster tab. It has its own search and **Online** box, sorts by clicking a header, and shows the same tooltip and right-click menu as the Roster tab. Click a name to open their profile in the full window, or the **expand arrow** to go back. `/ngm compact` shows or hides it.
 - **"x using Nootropic Guild Manager"** at the bottom of the window (it says your guild's name instead when that option is on): click it to list only guildmates running the addon, with the Version column turned on. It turns on **Filter > Only guildmates using the addon**; click **Clear** on the summary line to see everyone again. Options can hide it.
 
-**Character profile** (scrolls) — opens beside the roster:
+**Character profile** — opens beside the roster when you click a member. It reads like a profile card, with an **Edit** button when you can change it.
 
-- **Main & Alts** (editing: officers only) — on an alt: shows "Alt of <main>" (click the name to open that profile) with Change Main, Make This Main and Unlink. On a main: lists their alts with an X to unlink each, plus Add Alt and Mark as Alt of. Linking works from either side and both stay in sync. A searchable character picker opens for choosing.
-- **Specialization**, **Professions** (add them and set skill levels), **Tags**, and **Rating** (officers only; right-click the stars to clear). Officers can edit anyone; members can edit only their own tags, spec and professions.
-- **Private Notes** — only you ever see these; the box grows as you type.
-- **Change History** (officers only, at the bottom) — every synced change to this character: who, what and when. "View in Audit tab" opens the full list.
-- **Officer Log** — short timestamped entries with the author's name, newest first. Only visible to ranks that can read officer notes, and shared only with other officers running Nootropic Guild Manager.
+- **Header**: name, "Level 22 Feral Druid - Veteran" (with the spec icon), online status and zone, and their **map dot** in the colors you'd see on the map (click it to open the map where they are). Under it, one line for **main / alts** (click a name to open that profile).
+- **Status**: a short line they set ("Leveling to 30 this week, whisper me!") with how long ago they set it.
+- **About me**: a few lines they write about themselves (up to 300 characters). An alt without one shows its main's. **Officers can clear** someone's About me (for anything inappropriate) but never edit it; the Audit tab records who did.
+- **Tags**: only the tags they have.
+- **Kudos**: thank-you badges from guildmates with counts (e.g. "Helpful x12"), from the last 90 days. **+ Give Kudos** (also in the roster's right-click menu) gives one: each kudos once a week per person, never to yourself. **Kudos are anonymous**: no name is saved or shown, and a kudos is sent a few minutes after you give it. (Like guild reviews, the game itself attaches your name to addon messages, which the addon discards; someone watching addon traffic with their own tools could still see it.) Defaults: Great Tank, Healer Hero, Damage Dealer, Group Leader, Helpful, Good Teacher, Generous, Good Vibes and Funny.
+- **Usually online**: a one-line summary in **your** time (e.g. "Mon-Fri 6 pm-12 am - Sat-Sun 2 pm-12 am"). **Show week** unfolds a week grid with a **Your time / Server time** switch; hover a block for its times. Each person's hours are shared in UTC and converted for whoever looks, so different time zones just work, and they're shared again when daylight saving time changes.
+- **Tabs**: **Profile** (professions: primary first, then secondary; the ones their addon reports stay up to date by themselves), **Notes** (your **private notes** about them; only you ever see these), and **Officer** (officers only: **rating**, the **officer log** and **change history**).
+- **Edit** (your own characters, or anyone for officers): **About me**, **Status**, **Usually online** (folded at first; **Edit hours** shows the grid: click blocks or drag across them, use the **Weekday evenings** / **Weekends** / **Clear** presets, or click a day name to copy it), and your **map dot** colors (only your own profile); plus **specialization**, **tags** (all of them, click to turn on or off), **professions** (add, remove, set levels) and, for officers, **main & alt links**. **Done** goes back.
+
+Officers manage the **kudos list** on the Tags tab (**Tags / Kudos** switch at the top): add up to 12, edit their name, icon and color, reorder them, or **Retire** one (nobody can give it any more; ones already given stay until they're 90 days old; **Bring Back** undoes it).
 
 **Recruitment tab**
 
@@ -138,6 +143,8 @@ Members can tag **themselves** (on their own profile or by right-clicking their 
 | Read reviews, comment on them, turn reviews on or off | | yes |
 | Vote in polls (and change the vote until it closes) | yes | yes |
 | Create, close and delete polls | | yes |
+| Write your own About me, status and usual online hours; give anonymous kudos | yes | yes |
+| Clear someone's About me; manage the kudos list | | yes |
 | Edit their **own** tags, spec and professions | yes | yes |
 | Edit anyone's tags, spec, professions, mains/alts | | yes |
 | See and edit ratings | | yes |
@@ -165,7 +172,7 @@ Options has four pages in the game's AddOns list:
   - **Reset**: window size and position, list columns (roster, compact roster and recruitment list), and the compact roster and recruiting bar positions.
   - **About**: sync stats with a **Sync Now** button, **Open Guild Manager**, and the most useful commands.
 - **Recruiting** (saved per guild): the **recruitment whisper button on /who results** (on by default), **Auto-Invite** (invite on a keyword reply, ask me first, up to 5 keywords) and **Do Not Whisper** (on/off, up to 5 words, and the shared list). The Recruitment tab shows how these are set under **Replies**, with a **Reply Settings...** button that opens this page.
-- **Map**: share my location, show guildmates on the world map, and custom dot colors (your dot and outline color).
+- **Map**: share my location, show guildmates on the world map, and custom dot colors (whether you see guildmates' chosen colors). **Change My Dot...** opens your profile in Edit mode to pick your own.
 - **Officers**: **Guildmates can review the guild** (whole guild) and **Audit History** (keep 30, 60 or 90 days on your copy). Members see this page but can't change it.
 
 ## Searching
@@ -253,8 +260,8 @@ A note on trust: the addon checks permissions before sending anything, and offic
 ```
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data)  Sync.lua (records, repair, transport)
-Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)
-UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  CompactRoster.lua  ExportView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoWhisper.lua
+Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)  Profile.lua (About me, status, usually online, kudos)
+UI/        Widgets.lua  Columns.lua  ScheduleGrid.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  CompactRoster.lua  ExportView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoWhisper.lua
 ```
 
 ## Names in WoW: Forever

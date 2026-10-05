@@ -351,56 +351,18 @@ function O:BuildMap()
 
     L:Header("Dot Colors")
     self.customDotsCheck = L:Check("Custom dot colors",
-        "See the colors guildmates picked, and pick your own. Off: every dot is its class color.",
+        "See the dot colors guildmates picked. Off: every dot is its class color.",
         function(on) ns.Location:SetCustomDots(on) end)
 
-    -- my dot: fill and outline swatches, a preview and a reset
-    local Loc = ns.Location
-    local function myColors()
-        local me = ns.PlayerFullName()
-        local _, cls = UnitClass and UnitClass("player")
-        local fr, fg, fb = ns.ClassColor(cls)
-        local fill, outline = Loc:ChosenColors(me)
-        if fill then fr, fg, fb = Loc.RGB(fill) end
-        local br, bg, bb = 0, 0, 0
-        if outline then br, bg, bb = Loc.RGB(outline) end
-        return fr, fg, fb, br, bg, bb
-    end
-    local y = L:Row(32)
-    local panel = L.panel
-    local fillLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    fillLabel:SetPoint("TOPLEFT", 44, y - 4)
-    fillLabel:SetText("My dot")
-    self.fillSwatch = W.Swatch(panel, 18, function() local r, g, b = myColors() return r, g, b end,
-        function(r, g, b) Loc:SetMyColor("fill", r, g, b) O:RefreshDot() end)
-    self.fillSwatch:SetPoint("LEFT", fillLabel, "RIGHT", 8, 0)
-    local outLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    outLabel:SetPoint("LEFT", self.fillSwatch, "RIGHT", 18, 0)
-    outLabel:SetText("Outline")
-    self.outlineSwatch = W.Swatch(panel, 18, function() return select(4, myColors()) end,
-        function(r, g, b) Loc:SetMyColor("outline", r, g, b) O:RefreshDot() end)
-    self.outlineSwatch:SetPoint("LEFT", outLabel, "RIGHT", 8, 0)
-    local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-    local prevLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    prevLabel:SetPoint("LEFT", self.outlineSwatch, "RIGHT", 18, 0)
-    prevLabel:SetText("Preview")
-    local pv = CreateFrame("Frame", nil, panel)
-    pv:SetSize(20, 20)
-    pv:SetPoint("LEFT", prevLabel, "RIGHT", 8, 0)
-    pv.Border = pv:CreateTexture(nil, "ARTWORK", nil, 1)
-    pv.Border:SetTexture(CIRCLE)
-    pv.Border:SetAllPoints()
-    pv.Dot = pv:CreateTexture(nil, "ARTWORK", nil, 2)
-    pv.Dot:SetTexture(CIRCLE)
-    pv.Dot:SetSize(14, 14)
-    pv.Dot:SetPoint("CENTER")
-    self.dotPreview = pv
-    local resetDot = W.Button(panel, "Use Class Color", 130, 22)
-    resetDot:SetPoint("LEFT", pv, "RIGHT", 16, 0)
-    resetDot:SetScript("OnClick", function() Loc:ResetMyColors() O:RefreshDot() end)
-    W.Tooltip(resetDot, "Use class color", "Your dot goes back to your class color with a black outline.")
-    self.resetDot = resetDot
-    self.dotRow = { fillLabel, self.fillSwatch, outLabel, self.outlineSwatch, prevLabel, pv, resetDot }
+    -- your own dot is set on your profile (Edit), next to how guildmates see you
+    local y = L:Row(30)
+    local myDot = W.Button(L.panel, "Change My Dot...", 150, 22)
+    myDot:SetPoint("TOPLEFT", 18, y)
+    myDot:SetScript("OnClick", function() ns.DetailPanel:EditSelf() end)
+    W.Tooltip(myDot, "Change your dot", "Opens your profile in Edit mode, where you pick your dot's fill and outline colors.")
+    local hint = L.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    hint:SetPoint("LEFT", myDot, "RIGHT", 10, 0)
+    hint:SetText("Your own dot colors are set on your profile.")
     L:Finish()
     return outer
 end
@@ -502,7 +464,6 @@ function O:Refresh()
     self.shareCheck:SetChecked(s.shareLocation ~= false)
     self.mapCheck:SetChecked(s.showOnMap ~= false)
     self.customDotsCheck:SetChecked(s.customDots == true)
-    self:RefreshDot()
 
     -- officers
     local officer = ns.IsOfficer()
@@ -538,26 +499,6 @@ function O:RefreshRecruiting()
     end
     local n = #ns.Recruit:DNWList()
     self.dnwCount:SetText(n == 1 and "1 person on the list" or (n .. " people on the list"))
-end
-
--- Your dot's swatches and preview; only usable while custom colors are on.
-function O:RefreshDot()
-    if not self.dotRow then return end
-    local on = ns.Location:CustomDots()
-    for _, w in ipairs(self.dotRow) do w:SetAlpha(on and 1 or 0.35) end
-    self.fillSwatch:SetEnabled(on)
-    self.outlineSwatch:SetEnabled(on)
-    self.resetDot:SetEnabled(on)
-    self.fillSwatch:Update()
-    self.outlineSwatch:Update()
-    local _, cls = UnitClass and UnitClass("player")
-    local fr, fg, fb = ns.ClassColor(cls)
-    local fill, outline = ns.Location:ChosenColors(ns.PlayerFullName())
-    local br, bg, bb = 0, 0, 0
-    if on and fill then fr, fg, fb = ns.Location.RGB(fill) end
-    if on and outline then br, bg, bb = ns.Location.RGB(outline) end
-    self.dotPreview.Dot:SetVertexColor(fr, fg, fb)
-    self.dotPreview.Border:SetVertexColor(br, bg, bb, 0.9)
 end
 
 ------------------------------------------------------------------------
