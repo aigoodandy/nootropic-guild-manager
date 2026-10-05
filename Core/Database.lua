@@ -257,6 +257,79 @@ function DB:SetReviewsEnabled(on)
     return ns.Sync:Set("GS:reviews", on and "1" or "0")
 end
 
+-- Tabs: which ranks see each one, and its title. GS:tab_<key> =
+-- "<ranks>;<title>": ranks "*" (everyone) or rank numbers "1,2,4" (0 is
+-- the Guild Master, who always sees every tab); an empty title keeps the
+-- usual name. The Roster tab can be renamed but never hidden.
+DB.TAB_KEYS = { "roster", "recruit", "polls", "tags", "audit", "reviews" }
+DB.TAB_TITLE_MAX = 16
+
+-- allowed ranks ({ [rankIndex] = true }, or nil for everyone), title (or nil)
+function DB:TabSetting(key)
+    local v = ns.Sync:Value("GS:tab_" .. key)
+    if not v or v == "" then return nil, nil end
+    local ranks, title = v:match("^([^;]*);(.*)$")
+    if not ranks then return nil, nil end
+    local set
+    if ranks ~= "*" then
+        set = {}
+        for n in ranks:gmatch("%d+") do set[tonumber(n)] = true end
+    end
+    return set, (title ~= "" and title or nil)
+end
+
+local function SaveTab(key, set, title)
+    if not ns.IsOfficer() then return nil, "Only officers can change the tabs." end
+    local ranks = "*"
+    if set then
+        local list = {}
+        for n in pairs(set) do list[#list + 1] = n end
+        table.sort(list)
+        ranks = table.concat(list, ",")
+    end
+    title = ns.Trim(((title or ""):gsub("[;|\r\n\t]", ""))):sub(1, DB.TAB_TITLE_MAX)
+    local v = (ranks == "*" and title == "") and "" or (ranks .. ";" .. title)
+    return ns.Sync:Set("GS:tab_" .. key, v)
+end
+
+function DB:SetTabRanks(key, set)
+    local _, title = self:TabSetting(key)
+    if key == "roster" then set = nil end
+    return SaveTab(key, set, title)
+end
+
+function DB:SetTabTitle(key, title)
+    local set = self:TabSetting(key)
+    return SaveTab(key, set, title)
+end
+
+-- Your rank number in the guild (0 = Guild Master), or nil.
+function DB:MyRankIndex()
+    if not IsInGuild() then return nil end
+    local _, _, index = GetGuildInfo("player")
+    return index
+end
+
+-- Does your rank get this tab? (Officer-only tabs are checked separately.)
+function DB:TabAllowedForMe(key)
+    if key == "roster" then return true end
+    local set = self:TabSetting(key)
+    if not set then return true end
+    local rank = self:MyRankIndex()
+    if rank == nil or rank == 0 then return true end
+    return set[rank] == true
+end
+
+-- The guild's ranks: { { index = 0, name = "Guild Master" }, ... }
+function DB:GuildRanks()
+    local out = {}
+    local n = GuildControlGetNumRanks and GuildControlGetNumRanks() or 0
+    for i = 1, n do
+        out[#out + 1] = { index = i - 1, name = GuildControlGetRankName(i) or ("Rank " .. i) }
+    end
+    return out
+end
+
 ------------------------------------------------------------------------
 -- Members
 ------------------------------------------------------------------------

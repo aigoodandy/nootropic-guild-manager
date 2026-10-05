@@ -180,7 +180,8 @@ Options has four pages in the game's AddOns list:
   - **About**: sync stats with a **Sync Now** button, **Open Guild Manager**, and the most useful commands.
 - **Recruiting** (saved per guild): the **recruitment whisper button on /who results** (on by default), **Auto-Invite** (invite on a keyword reply, ask me first, up to 5 keywords) and **Do Not Whisper** (on/off, up to 5 words, and the shared list). The Recruitment tab shows how these are set under **Replies**, with a **Reply Settings...** button that opens this page.
 - **Map**: share my location, show guildmates on the world map, and custom dot colors (whether you see guildmates' chosen colors). **Change My Dot...** opens your profile in Edit mode to pick your own.
-- **Officers**: **Guildmates can review the guild** (whole guild) and **Audit History** (keep 30, 60 or 90 days on your copy). Members see this page but can't change it.
+- **Officers**: **Guildmates can review the guild** (whole guild), **Guildmates can add pronouns to their profile** (whole guild, off by default), **Tabs** (whole guild) and **Audit History** (keep 30, 60 or 90 days on your copy). Members see this page but can't change it.
+  - **Tabs**: give any tab a new **title** (up to 16 characters, e.g. rename Polls to "Charts"; leave it empty for the usual name) and choose **who sees it** by guild rank (all ranks, or tick the ranks). The Guild Master always sees every tab, the Roster tab is always shown to everyone, Tags and Audit only ever show to officers, and Reviews also follows the reviews switch.
 
 ## Searching
 

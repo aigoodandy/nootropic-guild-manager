@@ -84,7 +84,10 @@ function UI:Create()
 
     ns:On("ROSTER_UPDATED", function()
         UI:UpdateTitle() -- the guild name may have just arrived
-        if f:IsShown() then UI:RefreshStatus() end
+        if f:IsShown() then
+            UI:RefreshStatus()
+            UI:LayoutTabs() -- your rank may have changed
+        end
     end)
     ns:On("SETTINGS_CHANGED", function()
         UI:UpdateTitle()
@@ -194,7 +197,7 @@ function UI:BuildTabs(f)
         if OFFICER_TABS[i] then
             tab:HookScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_TOP")
-                GameTooltip:AddLine(label .. " |cff9d9d9d(officers only)|r")
+                GameTooltip:AddLine(UI:TabTitle(self:GetID()) .. " |cff9d9d9d(officers only)|r")
                 GameTooltip:Show()
             end)
             tab:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -206,6 +209,8 @@ function UI:BuildTabs(f)
 end
 
 function UI:IsTabAvailable(id)
+    -- officers choose which ranks see each tab (Options > Officers)
+    if id ~= UI.TAB_ROSTER and not ns.DB:TabAllowedForMe(ns.DB.TAB_KEYS[id]) then return false end
     if id == UI.TAB_REVIEWS then
         -- officers can turn reviews off; then only officers see the tab
         return ns.IsOfficer() or ns.DB:ReviewsEnabled()
@@ -213,16 +218,29 @@ function UI:IsTabAvailable(id)
     return not OFFICER_TABS[id] or ns.IsOfficer()
 end
 
+-- The tab's usual name (Reviews is "Review Guild" for non-officers, who
+-- write reviews rather than read them).
+function UI:DefaultTabTitle(id)
+    if id == UI.TAB_REVIEWS and not ns.IsOfficer() then return "Review Guild" end
+    return TAB_LABELS[id]
+end
+
+-- The title officers gave the tab, or its usual name.
+function UI:TabTitle(id)
+    local _, title = ns.DB:TabSetting(ns.DB.TAB_KEYS[id])
+    return title or self:DefaultTabTitle(id)
+end
+
 -- Shows only the tabs this player may use, packed left to right.
 function UI:LayoutTabs()
     local f = self.frame
     if not (f and f.Tabs) then return end
-    -- officers read reviews; everyone else writes one
-    local reviews = f.Tabs[UI.TAB_REVIEWS]
-    local label = ns.IsOfficer() and "Reviews" or "Review Guild"
-    if reviews:GetText() ~= label then
-        reviews:SetText(label)
-        if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, reviews, 0) end
+    for i, tab in ipairs(f.Tabs) do
+        local label = self:TabTitle(i)
+        if tab:GetText() ~= label then
+            tab:SetText(label)
+            if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
+        end
     end
     local prev
     for i, tab in ipairs(f.Tabs) do

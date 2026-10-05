@@ -370,6 +370,125 @@ end
 ------------------------------------------------------------------------
 -- Officers page
 ------------------------------------------------------------------------
+-- Tabs: a title box and a "who sees it" menu of guild ranks for each tab.
+local TAB_NOTES = {
+    roster = "Always shown to everyone.",
+    tags = "Only ever shown to officers.",
+    audit = "Only ever shown to officers.",
+    reviews = "Also follows the reviews switch above.",
+}
+
+local function RanksText(key)
+    if key == "roster" then return "Everyone" end
+    local set = ns.DB:TabSetting(key)
+    if not set then return "All ranks" end
+    local ranks, n = ns.DB:GuildRanks(), 0
+    for _, r in ipairs(ranks) do if r.index == 0 or set[r.index] then n = n + 1 end end
+    return ("%d of %d ranks"):format(n, #ranks)
+end
+
+function O:RankMenu(owner, key)
+    local DB = ns.DB
+    local items = { { text = "Who sees this tab", isTitle = true } }
+    items[#items + 1] = { text = "All ranks", radio = true,
+        checked = function() return DB:TabSetting(key) == nil end,
+        func = function()
+            local ok, err = DB:SetTabRanks(key, nil)
+            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+            O:Refresh()
+        end }
+    items[#items + 1] = { divider = true }
+    for _, r in ipairs(DB:GuildRanks()) do
+        local gm = r.index == 0
+        items[#items + 1] = {
+            text = r.name .. (gm and "  |cff9d9d9d(always)|r" or ""),
+            checked = function()
+                local set = DB:TabSetting(key)
+                return gm or not set or set[r.index] == true
+            end,
+            func = function()
+                if gm then return end -- the Guild Master always sees every tab
+                local set = DB:TabSetting(key)
+                if not set then -- from "all ranks": start with every rank ticked
+                    set = {}
+                    for _, x in ipairs(DB:GuildRanks()) do set[x.index] = true end
+                end
+                set[r.index] = not set[r.index] or nil
+                set[0] = true
+                local ok, err = DB:SetTabRanks(key, set)
+                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+                O:Refresh()
+            end,
+        }
+    end
+    W.ShowMenu(owner, items)
+end
+
+function O:BuildTabControls(L)
+    L:Header("Tabs  |cff9d9d9d(whole guild)|r")
+    L:Text("Rename a tab, or choose which ranks see it. Leave a title empty to keep the usual name. The Guild Master always sees every tab.")
+    local head = L:Row(18)
+    local function HeadText(text, x)
+        local fs = L.panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetPoint("TOPLEFT", x, head)
+        fs:SetText(text)
+    end
+    HeadText("Tab", 20)
+    HeadText("Title", 124)
+    HeadText("Who sees it", 270)
+    self.tabRows = {}
+    for i, key in ipairs(ns.DB.TAB_KEYS) do
+        local y = L:Row(28)
+        local name = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        name:SetPoint("TOPLEFT", 20, y - 4)
+        name:SetText(ns.UI:DefaultTabTitle(i) == "Review Guild" and "Reviews" or ns.UI:DefaultTabTitle(i))
+        local box = CreateFrame("EditBox", nil, L.panel, "InputBoxTemplate")
+        box:SetSize(130, 20)
+        box:SetPoint("TOPLEFT", 130, y - 1)
+        box:SetAutoFocus(false)
+        box:SetMaxLetters(ns.DB.TAB_TITLE_MAX)
+        local function save(self)
+            if self.saving then return end
+            self.saving = true
+            local _, current = ns.DB:TabSetting(key)
+            local text = ns.Trim(self:GetText() or "")
+            if text ~= (current or "") then
+                local ok, err = ns.DB:SetTabTitle(key, text)
+                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+            end
+            self.saving = false
+        end
+        box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+        box:SetScript("OnEscapePressed", function(self)
+            local _, current = ns.DB:TabSetting(key)
+            self:SetText(current or "")
+            self:ClearFocus()
+        end)
+        box:SetScript("OnEditFocusLost", function(self) save(self); O:Refresh() end)
+        W.Tooltip(box, "Tab title", ("Up to %d characters. Leave empty for \"%s\"."):format(ns.DB.TAB_TITLE_MAX, ns.UI:DefaultTabTitle(i)))
+        local ranks = W.Button(L.panel, "", 140, 22)
+        ranks:SetPoint("TOPLEFT", 270, y)
+        ranks:SetScript("OnClick", function(self) if key ~= "roster" then O:RankMenu(self, key) end end)
+        local note = L.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        note:SetPoint("LEFT", ranks, "RIGHT", 8, 0)
+        note:SetText(TAB_NOTES[key] or "")
+        self.tabRows[i] = { key = key, box = box, ranks = ranks }
+    end
+    L:Space(10)
+end
+
+function O:RefreshTabControls(officer)
+    for _, row in ipairs(self.tabRows or {}) do
+        local _, title = ns.DB:TabSetting(row.key)
+        if not row.box:HasFocus() then row.box:SetText(title or "") end
+        row.ranks:SetText(RanksText(row.key))
+        local usable = officer and ns.DB:Guild() ~= nil
+        row.box:SetEnabled(usable)
+        row.box:SetAlpha(usable and 1 or 0.45)
+        row.ranks:SetEnabled(usable and row.key ~= "roster")
+        row.ranks:SetAlpha((usable and row.key ~= "roster") and 1 or 0.45)
+    end
+end
 function O:BuildOfficers()
     local outer, L = NewPage("officers", "Officers", "For ranks that can read officer notes.")
     self.officerNote = L:Text("|cffff8080Only officers can change these.|r")
@@ -393,6 +512,8 @@ function O:BuildOfficers()
             O:Refresh()
         end)
     L:Space(4)
+
+    self:BuildTabControls(L)
 
     L:Header("Audit History  |cff9d9d9d(your copy)|r")
     L:Text("How long to keep the record of who changed what. Older entries are deleted.")
@@ -482,6 +603,7 @@ function O:Refresh()
     SetUsable(self.reviewsCheck, officer and ns.DB:Guild() ~= nil)
     self.pronounsCheck:SetChecked(ns.Profile:PronounsEnabled())
     SetUsable(self.pronounsCheck, officer and ns.DB:Guild() ~= nil)
+    self:RefreshTabControls(officer)
     for _, rb in ipairs(self.auditRadios) do
         rb:SetChecked((s.auditDays or 30) == rb.days)
         SetUsable(rb, officer)
