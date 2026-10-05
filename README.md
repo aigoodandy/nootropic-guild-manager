@@ -1,7 +1,5 @@
 # Nootropic Guild Manager
 
-*(formerly Guild Ledger)*
-
 A guild roster for **World of Warcraft: Forever** that shows each member's professions and specialization, links alts to their mains, tags what they enjoy, lets officers rate how well they play their class and keep a dated officer log, records an audit trail of every change, and searches all of it. Shared data stays in sync between everyone running the addon.
 
 ## Install
@@ -11,16 +9,6 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
    - After launch, use whichever `_classic..._` folder the Forever client installs into.
 2. Restart the game or `/reload`, and make sure Nootropic Guild Manager is enabled on the character select AddOns screen.
 3. If it shows as "out of date" after a patch, tick **Load out of date AddOns**, or update the `## Interface:` line in `NootropicGuildManager.toc` (`/dump select(4, GetBuildInfo())` prints your client's number).
-
-### Upgrading from Guild Ledger
-
-Your old data is stored under the old name, so bring it across once:
-
-1. Install `NootropicGuildManager` **alongside** the old `GuildLedger` folder (keep both enabled).
-2. Log in once. Chat says "Imported your Guild Ledger data."
-3. Log out, then delete the old `GuildLedger` folder.
-
-Existing Nootropic data is never overwritten by the import. Guildmates need the new version too: the two versions don't sync with each other.
 
 ## Opening it
 
@@ -205,7 +193,6 @@ Spec is detected from the modern specialization API when the client has it, othe
 - Links always point at the top-level main. Marking a character as an alt of someone's alt links it to that main instead.
 - Marking a main (who has alts) as an alt moves their whole family to the new main.
 - **Make This Main** swaps roles when a player changes which character they main.
-
 
 ## How syncing works
 
