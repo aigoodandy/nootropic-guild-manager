@@ -55,7 +55,9 @@
       SC:<member>          usual online hours: 168 bits (Monday 00:00 UTC
                            onward) as 42 hex digits   the member only
       KT:<id>              kudos type (like a tag definition)   officers
-      SD:<id>              custom guild stat everyone sees: "group;deleted;title;filter"   officers
+      PI:<pollId>          poll color and icon: "color;icon"   officers
+      SD:<id>              guild stat everyone sees:
+                           "v2;group;deleted;color;icon;title;filter"   officers
       SO:<id>              custom stat only officers see (officer scope), same value   officers
       KD:<id>              kudos description (tooltip text; none = the
                            default kudos' own text)   officers
@@ -113,13 +115,14 @@ S.TYPES = {
     SC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Usually online" },
     KT = { scope = "guild",   officer = true, label = "Kudos type" },
     KD = { scope = "guild",   officer = true, label = "Kudos description" },
+    PI = { scope = "guild",   officer = true, label = "Poll look" },
     SD = { scope = "guild",   officer = true, label = "Guild stat" },
     SO = { scope = "officer", officer = true, label = "Officer stat" },
     KU = { scope = "guild",   anyone = true, noAudit = true, ttl = 90 * 86400, low = true, immutable = true, anonymous = true, label = "Kudos" },
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
 -- Types whose key is not about one member.
-local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true, KD = true, SD = true, SO = true }
+local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true, KD = true, SD = true, SO = true, PI = true }
 
 -- Orphaned poll votes (their poll is unknown) are kept this long.
 local ORPHAN_VOTE_TTL = 30 * 86400
@@ -480,16 +483,34 @@ function Codec.ParseKudosType(v)
         icon = ns.Data:ParseIcon(icon), name = name }
 end
 
--- Custom stat: "group;deleted;title;filter" (the filter is a roster search
--- and may itself contain ";")
-function Codec.CustomStat(group, deleted, title, filter)
-    return ("%s;%d;%s;%s"):format(Clean(group or ""):gsub(";", ""), deleted and 1 or 0,
-        (Clean(title or ""):gsub(";", ",")), Clean(filter or ""))
+-- Stat: "v2;group;deleted;color;icon;title;filter" (the filter is a roster
+-- search and may itself contain ";"). Early 1.13 betas wrote
+-- "group;deleted;title;filter", still read.
+-- s: { group, deleted, color, icon, title, filter }
+function Codec.CustomStat(s)
+    return ("v2;%s;%d;%d;%s;%s;%s"):format((Clean(s.group or ""):gsub(";", "")), s.deleted and 1 or 0,
+        tonumber(s.color) or 1, (Clean(s.icon or ""):gsub(";", "")),
+        (Clean(s.title or ""):gsub(";", ",")), Clean(s.filter or ""))
 end
 function Codec.ParseCustomStat(v)
-    local group, deleted, title, filter = (v or ""):match("^([^;]*);(%d);([^;]*);(.*)$")
-    if not group then return nil end
-    return { group = group, deleted = deleted == "1", title = title, filter = filter }
+    v = v or ""
+    local group, deleted, color, icon, title, filter = v:match("^v2;([^;]*);(%d);(%d+);([^;]*);([^;]*);(.*)$")
+    if not group then
+        group, deleted, title, filter = v:match("^([^;]*);(%d);([^;]*);(.*)$")
+        if not group then return nil end
+    end
+    return { group = group, deleted = deleted == "1", color = tonumber(color),
+        icon = icon and icon ~= "" and ns.Data:ParseIcon(icon) or nil, title = title, filter = filter }
+end
+
+-- Poll look: "color;icon"
+function Codec.PollLook(color, icon)
+    return ("%d;%s"):format(tonumber(color) or 1, (Clean(icon or ""):gsub(";", "")))
+end
+function Codec.ParsePollLook(v)
+    local color, icon = (v or ""):match("^(%d+);(.*)$")
+    if not color then return nil end
+    return tonumber(color), icon ~= "" and ns.Data:ParseIcon(icon) or nil
 end
 
 -- Poll: "closeAt;expireAt;deleted;question;option1;option2;..."
@@ -545,7 +566,7 @@ function S:Materialize(typ, key, member, rec)
     if typ == "T" or typ == "TI" then
         self:Notify("tags")
         return
-    elseif typ == "PL" or typ == "PV" then
+    elseif typ == "PL" or typ == "PV" or typ == "PI" then
         ns.Debounce("pollschanged", 0.2, function() ns:Fire("POLLS_CHANGED") end)
         return
     elseif typ == "GS" then
@@ -997,11 +1018,14 @@ function S:SeedDefaults()
             store[key] = { v = Codec.TagDef(def[2], i * 10, false, def[1]), t = 1, a = "" }
         end
     end
-    -- default guild stats, the same way
+    -- default guild stats, the same way (time 2: replaces an untouched
+    -- default from an earlier beta, which was time 1)
     for i, def in ipairs(ns.Stats.DEFAULTS) do
         local key = "SD:d" .. i
-        if not store[key] then
-            store[key] = { v = Codec.CustomStat(def[2], false, def[1], ""), t = 1, a = "" }
+        local v = Codec.CustomStat({ title = def[1], group = def[2], color = def[3], icon = def[4] })
+        local cur = store[key]
+        if not cur or (cur.t < 2 and (cur.a or "") == "") then
+            store[key] = { v = v, t = 2, a = "" }
         end
     end
     -- default kudos, the same way (identical everywhere, so they never conflict)

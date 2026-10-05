@@ -172,7 +172,7 @@ function DB:CreateTag(name, color, icon)
     local tags = self:GetTags()
     local order = (#tags > 0 and tags[#tags].order or 0) + 10
     local id = "c" .. ns.Sync.Base36(self:Now()) .. ns.Sync.Base36(math.random(0, 1295))
-    color = color or (#tags % #ns.Data.TAG_COLORS) + 1
+    color = color or ns.Data:NextColor(#tags)
     local ok, serr = SaveTag(id, color, order, false, clean)
     if not ok then return nil, serr end
     if icon then self:SetTagIcon(id, icon) end

@@ -385,20 +385,11 @@ function TV:BuildEditor(page, inset)
     color.Arrow:SetPoint("RIGHT", -4, 0)
     color.Arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
     color:SetScript("OnClick", function(self)
-        local items = { { text = "Color", isTitle = true } }
-        for i, c in ipairs(D.TAG_COLORS) do
-            items[#items + 1] = {
-                text = D:TagColorHex(i) .. c.name .. "|r",
-                radio = true,
-                checked = function() return TV.draft and TV.draft.color == i end,
-                func = function()
-                    if not TV.draft then return end
-                    TV.draft.color = i
-                    TV:UpdateEditor()
-                end,
-            }
-        end
-        W.ShowMenu(self, items)
+        W.ShowColorMenu(self, function() return TV.draft and TV.draft.color end, function(i)
+            if not TV.draft then return end
+            TV.draft.color = i
+            TV:UpdateEditor()
+        end)
     end)
     self.colorButton = color
 
@@ -481,7 +472,7 @@ function TV:ResetDraft()
     if it then
         self.draft = { name = it.name, color = it.color, desc = it.desc or "" }
     else
-        self.draft = { name = "", color = (#AllItems() % #D.TAG_COLORS) + 1, desc = "" }
+        self.draft = { name = "", color = D:NextColor(#AllItems()), desc = "" }
     end
     self.err = nil
     self.filling = true
@@ -708,7 +699,7 @@ function TV:UpdateEditor()
     else
         self.iconLabel:SetPoint("TOPLEFT", self.nameBox, "BOTTOMLEFT", -6, -12)
     end
-    self.colorButton:SetText(D:TagColorHex(d.color) .. (D.TAG_COLORS[d.color] or D.TAG_COLORS[1]).name .. "|r")
+    self.colorButton:SetText(D:TagColorHex(d.color) .. D:ColorName(d.color) .. "|r")
 
     local item = SelectedItem()
     self.orderLabel:SetShown(it ~= nil)

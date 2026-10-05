@@ -140,18 +140,46 @@ end
 ------------------------------------------------------------------------
 -- Content tags
 ------------------------------------------------------------------------
+-- Colors for tags, kudos, polls and stats. Saved by number, so new ones go
+-- at the end. The first ten are the general colors new things cycle through;
+-- the class colors follow.
 D.TAG_COLORS = {
-    { name = "Gold",    1.00, 0.82, 0.00 },
-    { name = "Azure",   0.25, 0.60, 1.00 },
-    { name = "Violet",  0.64, 0.35, 1.00 },
-    { name = "Crimson", 0.92, 0.22, 0.22 },
-    { name = "Ember",   1.00, 0.50, 0.10 },
-    { name = "Jade",    0.20, 0.80, 0.55 },
-    { name = "Moss",    0.50, 0.78, 0.20 },
-    { name = "Frost",   0.40, 0.85, 0.95 },
-    { name = "Rose",    1.00, 0.45, 0.70 },
-    { name = "Silver",  0.72, 0.72, 0.72 },
+    { name = "Quest Gold",        1.00, 0.82, 0.00 },
+    { name = "Rare Blue",         0.25, 0.60, 1.00 },
+    { name = "Epic Purple",       0.64, 0.35, 1.00 },
+    { name = "Horde Red",         0.92, 0.22, 0.22 },
+    { name = "Legendary Orange",  1.00, 0.50, 0.10 },
+    { name = "Emerald Dream",     0.20, 0.80, 0.55 },
+    { name = "Murloc Green",      0.50, 0.78, 0.20 },
+    { name = "Northrend Ice",     0.40, 0.85, 0.95 },
+    { name = "Darnassus Rose",    1.00, 0.45, 0.70 },
+    { name = "Mithril Silver",    0.72, 0.72, 0.72 },
+    -- class colors
+    { name = "Warrior",      0.78, 0.61, 0.43, class = true },
+    { name = "Paladin",      0.96, 0.55, 0.73, class = true },
+    { name = "Hunter",       0.67, 0.83, 0.45, class = true },
+    { name = "Rogue",        1.00, 0.96, 0.41, class = true },
+    { name = "Priest",       1.00, 1.00, 1.00, class = true },
+    { name = "Death Knight", 0.77, 0.12, 0.23, class = true },
+    { name = "Shaman",       0.00, 0.44, 0.87, class = true },
+    { name = "Mage",         0.25, 0.78, 0.92, class = true },
+    { name = "Warlock",      0.53, 0.53, 0.93, class = true },
+    { name = "Monk",         0.00, 1.00, 0.60, class = true },
+    { name = "Druid",        1.00, 0.49, 0.04, class = true },
+    { name = "Demon Hunter", 0.64, 0.19, 0.79, class = true },
+    { name = "Evoker",       0.20, 0.58, 0.50, class = true },
 }
+D.BASE_COLORS = 10 -- new things cycle through the first ten
+
+-- The color a new tag, kudos, poll or stat starts with (the nth made).
+function D:NextColor(n)
+    return (n % self.BASE_COLORS) + 1
+end
+
+function D:ColorName(index)
+    local c = self.TAG_COLORS[index or 1] or self.TAG_COLORS[1]
+    return c.name
+end
 
 function D:TagColor(index)
     local c = self.TAG_COLORS[index or 1] or self.TAG_COLORS[1]

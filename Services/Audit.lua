@@ -148,6 +148,10 @@ function AU:Describe(e)
         if o and n and o.name ~= n.name then return ("Kudos renamed from %s to %s"):format(o.name, n.name) end
         if o and n and o.order ~= n.order then return "Kudos moved: " .. n.name end
         return "Kudos changed: " .. (n and n.name or "?")
+    elseif t == "PI" then
+        local rec = ns.Sync:Get("PL:" .. (e.ref or ""))
+        local poll = rec and ns.Sync.Codec.ParsePoll(rec.v)
+        return "Poll icon or color changed" .. (poll and (": \"" .. poll.question .. "\"") or "")
     elseif t == "SD" or t == "SO" then
         local o, n = ns.Sync.Codec.ParseCustomStat(old), ns.Sync.Codec.ParseCustomStat(new)
         local who = t == "SD" and "Guild stat" or "Officer stat"

@@ -228,16 +228,17 @@ end
 ------------------------------------------------------------------------
 -- The stats that come with the addon (SD:d1..d9): title, count by
 ------------------------------------------------------------------------
+-- title, count by, color (D.TAG_COLORS number), icon
 ST.DEFAULTS = {
-    { "What class is everyone?",           "class" },
-    { "What level is everyone?",           "level" },
-    { "Who holds which rank?",             "rank" },
-    { "Which professions do we have?",     "prof" },
-    { "How many are alts?",                "kind" },
-    { "Who uses Nootropic Guild Manager?", "addon" },
-    { "Which days is the guild online?",   "day" },
-    { "What time is the guild online?",    "time" },
-    { "Which kudos get given?",            "kudos" },
+    { "What class is everyone?",           "class", 1,  "Ability_Warrior_BattleShout" },
+    { "What level is everyone?",           "level", 6,  "Spell_ChargePositive" },
+    { "Who holds which rank?",             "rank",  4,  "INV_Shirt_GuildTabard_01" },
+    { "Which professions do we have?",     "prof",  5,  "Trade_BlackSmithing" },
+    { "How many are alts?",                "kind",  2,  "INV_Misc_Head_Human_01" },
+    { "Who uses Nootropic Guild Manager?", "addon", 7,  "INV_Misc_Gear_01" },
+    { "Which days is the guild online?",   "day",   8,  "INV_Misc_PocketWatch_01" },
+    { "What time is the guild online?",    "time",  3,  "Spell_Nature_TimeStop" },
+    { "Which kudos get given?",            "kudos", 9,  "INV_Misc_Gift_02" },
 }
 
 ------------------------------------------------------------------------
@@ -284,8 +285,18 @@ function ST:All()
     end
     for raw, def in pairs(MyStats() or {}) do
         if self:Group(def.group) then
-            out[#out + 1] = { id = "m:" .. raw, vis = "m", title = def.title, group = def.group, filter = def.filter, sort = SortKey(raw) }
+            out[#out + 1] = { id = "m:" .. raw, vis = "m", title = def.title, group = def.group, filter = def.filter,
+                color = def.color, icon = def.icon, sort = SortKey(raw) }
         end
+    end
+    -- stats saved before they had a look get one
+    for _, s in ipairs(out) do
+        if not s.color then
+            local n = 0
+            for i = 1, #s.id do n = n + s.id:byte(i) end -- the same color every time
+            s.color = D:NextColor(n)
+        end
+        s.icon = s.icon or D.UNKNOWN_ICON
     end
     table.sort(out, function(a, b)
         if a.vis ~= b.vis then return a.vis < b.vis end
@@ -314,7 +325,7 @@ local function Clean(text, max)
 end
 
 -- Saves a stat (new when id is nil). Returns its id.
-function ST:Save(id, title, group, filter, vis)
+function ST:Save(id, title, group, filter, vis, color, icon)
     if not ns.DB:Guild() then return nil, "You are not in a guild." end
     title, filter = Clean(title, self.TITLE_MAX), Clean(filter, self.FILTER_MAX)
     if title == "" then return nil, "Give it a title." end
@@ -331,11 +342,14 @@ function ST:Save(id, title, group, filter, vis)
         if not raw:match("^d%d+$") then raw = nil end
     end
     raw = raw or (ns.Sync.Base36(ns.DB:Now()) .. ns.Sync.Base36(math.random(0, 1295)))
+    color = tonumber(color) or (old and old.color) or 1
+    icon = icon or (old and old.icon) or D.UNKNOWN_ICON
     if vis == "m" then
-        MyStats()[raw] = { title = title, group = group, filter = filter }
+        MyStats()[raw] = { title = title, group = group, filter = filter, color = color, icon = icon }
         ns:Fire("STATS_CHANGED")
     else
-        local ok, err = ns.Sync:Set(SCOPES[vis] .. ":" .. raw, ns.Sync.Codec.CustomStat(group, false, title, filter))
+        local ok, err = ns.Sync:Set(SCOPES[vis] .. ":" .. raw, ns.Sync.Codec.CustomStat({
+            group = group, title = title, filter = filter, color = color, icon = tostring(icon) }))
         if not ok then return nil, err end
     end
     return vis .. ":" .. raw
@@ -351,7 +365,8 @@ function ST:Delete(id)
         ns:Fire("STATS_CHANGED")
         return true
     end
-    return ns.Sync:Set(SCOPES[c.vis] .. ":" .. raw, ns.Sync.Codec.CustomStat(c.group, true, c.title, c.filter))
+    return ns.Sync:Set(SCOPES[c.vis] .. ":" .. raw, ns.Sync.Codec.CustomStat({
+        group = c.group, deleted = true, title = c.title, filter = c.filter, color = c.color, icon = tostring(c.icon or "") }))
 end
 
 -- How many members a filter matches now.
@@ -400,7 +415,7 @@ function ST:Compute(id)
     local g = c and self:Group(c.group)
     if not g then return nil end
     local members = ns.Roster:Query(c.filter or "")
-    local s = { id = id, title = c.title, custom = c, pctOf = "members" }
+    local s = { id = id, title = c.title, custom = c, pctOf = "members", color = c.color, icon = c.icon }
     if g.compute then
         s.rows, s.total, s.pctOf, s.sub = g.compute(members)
     else

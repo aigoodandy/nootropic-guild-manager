@@ -451,6 +451,37 @@ function W.ShowMenu(owner, items)
     end
 end
 
+-- The color menu for tags, kudos, polls and stats: the general colors, then
+-- the class colors in a submenu. getCurrent() returns the chosen number;
+-- onPick(number) runs on a pick.
+function W.ShowColorMenu(owner, getCurrent, onPick)
+    local items, classes = { { text = "Color", isTitle = true } }, {}
+    for i, c in ipairs(D.TAG_COLORS) do
+        local item = {
+            text = D:TagColorHex(i) .. c.name .. "|r",
+            radio = true,
+            checked = function() return getCurrent() == i end,
+            func = function() onPick(i) end,
+        }
+        if c.class then classes[#classes + 1] = item else items[#items + 1] = item end
+    end
+    items[#items + 1] = { text = "Class Colors", submenu = classes }
+    W.ShowMenu(owner, items)
+end
+
+-- A dropdown-looking button for picking a color (text set by the caller).
+function W.ColorButton(parent, width)
+    local b = W.Button(parent, "", width or 140, 22)
+    b.Arrow = b:CreateTexture(nil, "OVERLAY")
+    b.Arrow:SetSize(18, 18)
+    b.Arrow:SetPoint("RIGHT", -4, 0)
+    b.Arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+    function b:SetColor(index)
+        self:SetText(D:TagColorHex(index) .. D:ColorName(index) .. "|r")
+    end
+    return b
+end
+
 ------------------------------------------------------------------------
 -- Popups
 ------------------------------------------------------------------------
