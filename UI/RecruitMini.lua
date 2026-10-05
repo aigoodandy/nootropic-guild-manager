@@ -51,10 +51,9 @@ function MR:Build()
     close:SetScript("OnClick", function() MR:Hide() end)
     W.Tooltip(close, "Hide", "Whispers already queued keep sending. /ngm mini brings the bar back.")
 
-    local expand = W.SizeButton(f, "expand", 26)
-    expand:SetPoint("RIGHT", close, "LEFT", -2, 0)
-    expand:SetScript("OnClick", function() MR:Expand() end)
-    W.Tooltip(expand, "Expand", "Back to the full Recruitment tab.")
+    local expand = W.SizeButton(f, "expand", 26, function() MR:Expand() end,
+        "Expand", "Back to the full Recruitment tab.")
+    expand:SetPoint("RIGHT", close, "LEFT", 0, 0)
 
     self.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.status:SetPoint("TOPLEFT", 12, -30)
@@ -95,7 +94,7 @@ function MR:Build()
     local selNew = W.Button(f, "Select New", 92, 22)
     selNew:SetPoint("LEFT", search, "RIGHT", 4, 0)
     selNew:SetScript("OnClick", function()
-        ns.Recruit:SelectNew(ns.Recruit:List())
+        ns.Recruit:SelectNew(ns.Recruit:List({ name = MR:NameFilter() }))
         MR:Refresh()
     end)
     W.Tooltip(selNew, "Select new players", "Ticks everyone found who nobody in the guild has whispered yet.")
@@ -132,6 +131,12 @@ function MR:RestorePosition()
     end
 end
 
+-- The Recruitment tab's Name filter (the bar shows the same players).
+function MR:NameFilter()
+    local r = ns.Recruit:Settings()
+    return r and r.query.name or ""
+end
+
 -- One line: what's happening right now.
 function MR:StatusText()
     local RC = ns.Recruit
@@ -145,7 +150,7 @@ function MR:StatusText()
     local last = RC.last
     if last and last.timedOut then return "|cffff8080No reply from /who - wait a few seconds.|r" end
     local ready = 0
-    for _, p in ipairs(RC:List({ hideContacted = true })) do
+    for _, p in ipairs(RC:List({ hideContacted = true, name = self:NameFilter() })) do
         if RC:CanSelect(p) then ready = ready + 1 end
     end
     local found = last and not last.timedOut and ("Last search: |cff40ff40%d new|r.  "):format(last.new or 0) or ""

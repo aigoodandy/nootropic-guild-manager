@@ -1,33 +1,35 @@
 --[[
-    Nootropic Guild Manager - Guild invite buttons on the game's /who window
-    Adds a small guild-invite button to each player row of the /who results
-    (the "Looking For Group" people search, or the classic Who list).
+    Nootropic Guild Manager - Recruitment whisper buttons on the game's /who window
+    Adds a small whisper button to each player row of the /who results (the
+    "Looking For Group" people search, or the classic Who list). A click sends
+    that player the recruitment whisper, exactly like the Recruitment tab:
+    custom messages when they're on, the Do Not Whisper list, players the guild
+    already contacted, and the paced whisper queue (Services/Recruit.lua).
 
     The window differs between clients, so nothing here depends on its frame
     names: after each /who search the addon looks for visible rows showing a
     player name from the results, then keeps watching those rows' parent
     (lists reuse rows while scrolling) while it's on screen.
 
-    Option: settings.whoInviteButton (on unless turned off in Options).
+    Option: settings.whoWhisperButton (on unless turned off in Options).
 ]]
 local _, ns = ...
 local W = ns.Widgets
 local WI = {}
-ns.WhoInvite = WI
+ns.WhoWhisper = WI
 
 local SIZE = 26
-local TABARD_ICONS = { "Interface\\Icons\\INV_Shirt_GuildTabard_01", "Interface\\GossipFrame\\TabardGossipIcon" }
+local WHISPER_ICONS = { "Interface\\Icons\\INV_Letter_15", "Interface\\Icons\\INV_Letter_01" }
 
 WI.containers = {} -- row parents we watch -> true
 WI.buttons = {}    -- row -> our button
-WI.invited = {}    -- lower-case name -> true (this session)
 
 function WI:Enabled()
-    return ns.DB:Settings().whoInviteButton ~= false
+    return ns.DB:Settings().whoWhisperButton ~= false
 end
 
 function WI:SetEnabled(on)
-    ns.DB:Settings().whoInviteButton = on and true or false
+    ns.DB:Settings().whoWhisperButton = on and true or false
     if on then self:Scan() end
     self:UpdateAll()
     ns:Fire("SETTINGS_CHANGED")
@@ -143,7 +145,7 @@ local function CreateButton(row)
     b:SetFrameLevel(row:GetFrameLevel() + 5)
     b.Icon = b:CreateTexture(nil, "ARTWORK")
     b.Icon:SetAllPoints()
-    for _, path in ipairs(TABARD_ICONS) do
+    for _, path in ipairs(WHISPER_ICONS) do
         if b.Icon:SetTexture(path) ~= false then break end
     end
     b.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -162,14 +164,19 @@ local function CreateButton(row)
     b.Check:Hide()
     if b.SetMotionScriptsWhileDisabled then b:SetMotionScriptsWhileDisabled(true) end -- tooltip says why it's off
 
+    b.Wait = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+    b.Wait:SetPoint("CENTER", 0, 0)
+    b.Wait:SetText("...")
+    b.Wait:Hide()
+
     b:SetScript("OnClick", function(self)
         local info = self.info
         if not info then return end
-        local ok, err = ns.Recruit:InviteFromWho(info.name, info)
+        local ok, err = ns.Recruit:WhisperFromWho(info)
         if ok then
-            WI.invited[info.name:lower()] = true
-            ns:Print(("Guild invite sent to %s."):format(ns.ShortName(info.name)))
             ns.PlaySound("U_CHAT_SCROLL_BUTTON")
+            -- keep the countdown (and Send Next, on click-only clients) on screen
+            if not (ns.UI.frame and ns.UI.frame:IsShown()) then ns.RecruitMini:Show() end
         elseif err then
             ns:Print("|cffff5555" .. err .. "|r")
         end
@@ -178,16 +185,27 @@ local function CreateButton(row)
     b:SetScript("OnEnter", function(self)
         local info = self.info
         if not info then return end
+        local RC = ns.Recruit
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        local guild = GetGuildInfo("player") or "your guild"
-        GameTooltip:AddLine(("Invite to <%s>"):format(guild))
+        GameTooltip:AddLine("Send recruitment whisper")
         GameTooltip:AddLine(ns.ShortName(info.name), ns.ClassColor(info.classFile))
-        if self.reason then
+        if self.state == "queued" then
+            GameTooltip:AddLine("Waiting in the whisper queue (whispers are spaced out).", 1, 0.82, 0, true)
+        elseif self.state == "sent" then
+            GameTooltip:AddLine("Whispered.", 0.4, 1, 0.4, true)
+        elseif self.reason then
             GameTooltip:AddLine(self.reason, 1, 0.5, 0.5, true)
-        elseif WI.invited[info.name:lower()] then
-            GameTooltip:AddLine("Invite sent. Click to send it again.", 0.4, 1, 0.4, true)
-        else
-            GameTooltip:AddLine("Click to send a guild invite.", 1, 1, 1, true)
+        end
+        if self.state == nil and not self.reason then
+            -- the message they'd get, as on the Recruitment tab
+            local p = { full = ns.NormalizeName(info.name), short = ns.ShortName(info.name), level = info.level,
+                classFile = info.classFile, className = info.className, zone = info.zone, race = info.race,
+                guild = info.guild ~= "" and info.guild or nil }
+            local text, rule = RC:TemplateFor(p)
+            local msg = RC:Format(text, p)
+            GameTooltip:AddLine("Message: " .. (rule and rule.name or "Default"), 1, 0.82, 0)
+            GameTooltip:AddLine(msg ~= "" and ("|cffff80ff" .. msg .. "|r") or "|cff9d9d9d(empty - write a message on the Recruitment tab)|r", 1, 1, 1, true)
+            GameTooltip:AddLine("Click to whisper. Whispers are spaced out like on the Recruitment tab.", 0.7, 0.7, 0.7, true)
         end
         GameTooltip:AddLine("Nootropic Guild Manager - turn off in Options.", 0.5, 0.5, 0.5, true)
         GameTooltip:Show()
@@ -216,23 +234,24 @@ function WI:UpdateButton(row)
     else
         b:SetPoint("RIGHT", row, "RIGHT", -10, 0)
     end
-    -- why it can't be used, if it can't
+    -- queued, already whispered, or why it can't be used
+    local RC = ns.Recruit
     local full = ns.NormalizeName(info.name)
-    local reason
-    if not ns.Recruit:CanInvite() then
-        reason = "Your guild rank can't invite new members."
-    elseif full and ns.Roster.byName[full] then
-        reason = "Already in your guild."
-    elseif info.guild ~= "" then
-        reason = ("Already in a guild: <%s>"):format(info.guild)
-    elseif ns.Recruit:IsDNW(full) then
-        reason = "On the Do Not Whisper list."
+    local r = RC:Settings()
+    local p = r and full and r.people[full]
+    local state
+    if full and RC:IsQueued(full) then
+        state = "queued"
+    elseif p and p.whispered then
+        state = "sent"
     end
-    b.reason = reason
-    b:SetEnabled(reason == nil)
-    b.Icon:SetDesaturated(reason ~= nil)
-    b.Icon:SetAlpha(reason and 0.5 or 1)
-    b.Check:SetShown(WI.invited[info.name:lower()] and true or false)
+    local reason = not state and full and RC:WhisperBlocked(full, p) or nil
+    b.state, b.reason = state, reason
+    b.Wait:SetShown(state == "queued")
+    b:SetEnabled(state == nil and reason == nil)
+    b.Icon:SetDesaturated(reason ~= nil or state == "queued")
+    b.Icon:SetAlpha((reason or state == "queued") and 0.5 or 1)
+    b.Check:SetShown(state == "sent")
     b:Show()
 end
 
@@ -288,13 +307,13 @@ function WI:Scan()
     self:UpdateAll()
 end
 
--- /ngm diag: what the invite buttons can see.
+-- /ngm diag: what the whisper buttons can see.
 function WI:Diagnose()
     local shown = 0
     for _, b in pairs(self.buttons) do if b:IsVisible() then shown = shown + 1 end end
     local containers = 0
     for _ in pairs(self.containers) do containers = containers + 1 end
-    ns:Print(("/who invite buttons: enabled=%s, results=%d, rows found last search=%s, lists=%d, buttons showing=%d%s"):format(
+    ns:Print(("/who whisper buttons: enabled=%s, results=%d, rows found last search=%s, lists=%d, buttons showing=%d%s"):format(
         tostring(self:Enabled()), self.resultCount or 0, tostring(self.lastFound or "none yet"), containers, shown,
         self.deep and ", nested rows" or ""))
     if (self.resultCount or 0) > 0 and (self.lastFound or 0) == 0 then

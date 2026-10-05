@@ -10,7 +10,7 @@
       keywords   = { "invite", ... }          -- up to 5
       autoInvite = true                       -- invite on a keyword reply
       inviteMode = "auto" | "confirm"         -- confirm = one-click popup
-      query      = { min, max, class, zone, step, guildOn, guild }
+      query      = { min, max, class, zone, step, guildOn, guild, name }
       people     = { ["Name-Realm"] = { level, classFile, className, zone, guild,
                      found, seen, whispered, replied, reply, invited, joined } }
       dnwEnabled = true                       -- watch replies for Do Not Whisper words
@@ -57,6 +57,7 @@ function RC:Settings()
     r.query = r.query or { min = 1, max = 60, step = false }
     if r.query.guildOn == nil then r.query.guildOn = false end
     r.query.guild = r.query.guild or ""
+    r.query.name = r.query.name or ""
     if r.dnwEnabled == nil then r.dnwEnabled = true end
     r.whisperMode = r.whisperMode or "auto" -- "click" if this client blocks timed whispers
     ns.Messages:Migrate(r)
@@ -165,17 +166,19 @@ function RC:IsContacted(p)
     return (c.whispered or c.invited or p.joined or self:IsDNW(p.full)) and true or false
 end
 
--- opts: { hideContacted = bool, text = "filter" }
+-- opts: { hideContacted = bool, text = "filter", name = "part of a name" }
 function RC:List(opts)
     opts = opts or {}
     local r = self:Settings()
     local out = {}
     if not r then return out end
     local text = opts.text and opts.text:lower() or ""
+    local name = opts.name and ns.Trim(opts.name):lower() or ""
     for full, p in pairs(r.people) do
         p.full = full
         local contacted = self:IsContacted(p)
         if not (opts.hideContacted and contacted)
+            and (name == "" or full:lower():find(name, 1, true))
             and (text == "" or (full:lower() .. " " .. (p.className or ""):lower() .. " " .. (p.zone or ""):lower()):find(text, 1, true)) then
             p.full = full
             p.short = ns.ShortName(full)
@@ -214,6 +217,8 @@ function RC:BuildQuery(q)
     local parts = {}
     local lo = math.max(1, tonumber(q.min) or 1)
     local hi = math.max(lo, tonumber(q.max) or lo)
+    local name = ns.Trim(q.name)
+    if name ~= "" then parts[#parts + 1] = ('n-"%s"'):format((name:gsub('"', ""))) end
     parts[#parts + 1] = ("%d-%d"):format(lo, hi)
     if q.class then parts[#parts + 1] = ('c-"%s"'):format(D:ClassName(q.class)) end
     local zone = ns.Trim(q.zone)
@@ -483,45 +488,6 @@ function RC:Invite(full, automatic)
     return true
 end
 
--- Invite button on the game's /who window: invites straight away (no whisper
--- needed, the click is the player's choice) and records it like any other
--- invite, so the Recruitment tab and the guild see "Invited".
--- info: { level, classFile, className, zone, race } from the /who results.
-function RC:InviteFromWho(name, info)
-    local full = ns.NormalizeName(name)
-    if not full then return false end
-    if not self:CanInvite() then return false, "Your guild rank can't invite new members." end
-    if ns.Roster.byName[full] then return false, ns.ShortName(full) .. " is already in your guild." end
-    if self:IsDNW(full) then
-        return false, ns.ShortName(full) .. " asked not to be contacted (Do Not Whisper list)."
-    end
-    local target = ns.ChatName(full)
-    if C_GuildInfo and C_GuildInfo.Invite then
-        C_GuildInfo.Invite(target)
-    elseif GuildInvite then
-        GuildInvite(target)
-    else
-        return false, "This game client has no guild invite."
-    end
-    local r = self:Settings()
-    if r then
-        local now = ns.DB:Now()
-        local p = r.people[full]
-        if not p then
-            p = { found = now }
-            r.people[full] = p
-        end
-        info = info or {}
-        p.level = info.level or p.level
-        p.classFile, p.className = info.classFile or p.classFile, info.className or p.className
-        p.zone, p.race = info.zone or p.zone, info.race or p.race
-        p.seen, p.invited = now, now
-        self:ShareStatus(full)
-    end
-    Changed()
-    return true
-end
-
 -- One-click confirmation (a click always counts as a player action).
 function RC:ConfirmInvite(full, reply)
     StaticPopup_Show("NOOTROPICGM_INVITE", ns.ShortName(full), reply or "", { full = full })
@@ -623,6 +589,63 @@ function RC:StartSending(order)
     self:Pump()
     Changed()
     return #self.queue
+end
+
+function RC:IsQueued(full)
+    for _, f in ipairs(self.queue) do if f == full then return true end end
+    return false
+end
+
+-- Why `full` can't get a recruitment whisper right now, or nil if they can.
+-- Same rules as ticking a player on the Recruitment tab.
+function RC:WhisperBlocked(full, p)
+    if not self:Settings() then return "Join a guild to recruit." end
+    if ns.Roster.byName[full] then return "Already in your guild." end
+    if self:IsDNW(full) then return "On the Do Not Whisper list." end
+    if p then
+        p.full = full
+        local c = self:Contact(p)
+        if c.by and (c.whispered or c.invited) then
+            return ("Already contacted by %s."):format(ns.ShortName(c.by))
+        end
+        if c.whispered then return "You already whispered them." end
+    end
+end
+
+-- Recruitment whisper from the game's /who window. Adds the player to the
+-- recruit list (so the guild sees their status) and to the paced whisper
+-- queue, using the same message rules as the Recruitment tab.
+-- info: { name, guild, level, classFile, className, zone, race } from /who.
+function RC:WhisperFromWho(info)
+    local r = self:Settings()
+    if not r then return false, "Join a guild to recruit." end
+    local full = ns.NormalizeName(info.name)
+    if not full then return false end
+    local reason = self:WhisperBlocked(full, r.people[full])
+    if reason then return false, ns.ShortName(full) .. ": " .. reason end
+    if self:IsQueued(full) then return true end
+    local now = ns.DB:Now()
+    local p = r.people[full]
+    if not p then
+        p = { found = now }
+        r.people[full] = p
+    end
+    p.level = info.level or p.level
+    p.classFile, p.className = info.classFile or p.classFile, info.className or p.className
+    p.zone, p.race = info.zone or p.zone, info.race or p.race
+    p.guild = (info.guild and info.guild ~= "") and info.guild or nil
+    p.seen, p.full, p.short = now, full, ns.ShortName(full)
+    if self:Format(self:TemplateFor(p), p) == "" then
+        return false, "Write a whisper message first (Recruitment tab)."
+    end
+    self.queue[#self.queue + 1] = full
+    self.queueTotal = (self.queueSent or 0) + #self.queue
+    if r.whisperMode == "click" then
+        self:SendNext(true) -- this click can send it, if the spacing allows
+    end
+    self:Pump()
+    Changed()
+    return true
 end
 
 function RC:StopSending()

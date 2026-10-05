@@ -40,7 +40,7 @@ function UI:Create()
 
     self:UpdateTitle()
     self:BuildPortrait(f)
-    self:BuildOptionsButton(f)
+    self:BuildMinimizeButton(f)
     self:RestorePosition()
 
     -- Status line along the bottom edge
@@ -101,32 +101,37 @@ function UI:BuildPortrait(f)
     self.portrait = ns.Brand:AttachPortrait(f)
 end
 
-function UI:BuildOptionsButton(f)
-    local b = CreateFrame("Button", nil, f)
-    b:SetSize(20, 20)
+-- Red minimize arrow beside the close button, on the Roster tab (compact
+-- roster) and the Recruitment tab (small recruiting bar).
+function UI:BuildMinimizeButton(f)
     local close = f.CloseButton or (f.GetName and _G[f:GetName() .. "CloseButton"])
+    local size = close and math.floor(close:GetWidth() + 0.5) or 24
+    if size < 16 then size = 24 end
+    local mini = W.SizeButton(f, "condense", size, function()
+        if UI.tab == UI.TAB_RECRUIT then
+            ns.RecruitMini:Minimize()
+        else
+            ns.CompactRoster:Minimize()
+        end
+    end)
     if close then
-        b:SetPoint("RIGHT", close, "LEFT", -2, 0)
+        mini:SetPoint("RIGHT", close, "LEFT", 0, 0)
     else
-        b:SetPoint("TOPRIGHT", -28, -4)
+        mini:SetPoint("TOPRIGHT", -28, -2)
     end
-    b:SetFrameLevel(f:GetFrameLevel() + 10)
-    b.Icon = b:CreateTexture(nil, "ARTWORK")
-    b.Icon:SetAllPoints()
-    b.Icon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
-    b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-    b:SetScript("OnClick", function() ns.Options:Open() end)
-    W.Tooltip(b, "Options", "Icon, minimap button and Guild & Communities shortcut.")
-    self.optionsButton = b
-
-    -- Recruitment tab only: shrink to the small recruiting bar
-    local mini = W.SizeButton(f, "condense", 22)
-    mini:SetPoint("RIGHT", b, "LEFT", -4, 0)
     mini:SetFrameLevel(f:GetFrameLevel() + 10)
-    mini:SetScript("OnClick", function() ns.RecruitMini:Minimize() end)
-    W.Tooltip(mini, "Minimize",
-        "Closes this window and shows a small recruiting bar you can move anywhere, so you can keep playing.",
-        "It can search, tick new players and send whispers. Its expand arrow brings you back here.")
+    mini.Button:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("Minimize")
+        if UI.tab == UI.TAB_RECRUIT then
+            GameTooltip:AddLine("A small recruiting bar you can move anywhere: search, tick new players and send whispers while you play.", 1, 1, 1, true)
+        else
+            GameTooltip:AddLine("A small guild roster you can move anywhere: names and locations.", 1, 1, 1, true)
+        end
+        GameTooltip:AddLine("Its expand arrow brings you back here.", 0.7, 0.7, 0.7, true)
+        GameTooltip:Show()
+    end)
+    mini.Button:HookScript("OnLeave", function() GameTooltip:Hide() end)
     mini:Hide()
     self.miniButton = mini
 end
@@ -250,7 +255,7 @@ function UI:SelectTab(id)
 
     ns.RosterView.page:SetShown(id == UI.TAB_ROSTER)
     ns.RecruitView.page:SetShown(id == UI.TAB_RECRUIT)
-    if self.miniButton then self.miniButton:SetShown(id == UI.TAB_RECRUIT) end
+    if self.miniButton then self.miniButton:SetShown(id == UI.TAB_RECRUIT or id == UI.TAB_ROSTER) end
     ns.PollsView.page:SetShown(id == UI.TAB_POLLS)
     ns.TagsView.page:SetShown(id == UI.TAB_TAGS)
     ns.AuditView.page:SetShown(id == UI.TAB_AUDIT)

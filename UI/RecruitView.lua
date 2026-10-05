@@ -189,6 +189,24 @@ function RCV:BuildSearchBar(page, frame)
     end)
     self.guildBox = guildBox
 
+    -- Name: filters the list as you type, and Search /who looks for it too
+    -- (first row, between Zone and Search)
+    local nameLabel = Label(page, "Name")
+    nameLabel:SetPoint("LEFT", self.zoneBox, "RIGHT", 10, 0)
+    local nameBox = InputBox(page, 100, 24)
+    nameBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
+    nameBox:HookScript("OnTextChanged", function(self, user)
+        local r = ns.Recruit:Settings()
+        if user and r then r.query.name = self:GetText() end
+        if user then ns.Debounce("recruitname", 0.15, function() RCV:Refresh() end) end
+    end)
+    W.Tooltip(nameBox, "Search by name",
+        "Shows only players in the list whose name contains this text.",
+        "Search /who also looks for it, so you can find a specific character. Clear it to see everyone again.")
+    self.nameBox = nameBox
+    self.searchBtn:ClearAllPoints()
+    self.searchBtn:SetPoint("LEFT", nameBox, "RIGHT", 10, 0)
+
     local clear = W.Button(page, "Clear New", 86, 20)
     clear:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -59)
     clear:SetScript("OnClick", function()
@@ -804,6 +822,7 @@ function RCV:LoadSettings()
     self.stepCheck:SetChecked(q.step)
     self.guildCheck:SetChecked(q.guildOn)
     if not self.guildBox:HasFocus() then self.guildBox:SetText(q.guild or "") end
+    if not self.nameBox:HasFocus() then self.nameBox:SetText(q.name or "") end
     self.guildBox:SetAlpha(q.guildOn and 1 or 0.5)
     self.dnwCheck:SetChecked(r.dnwEnabled)
     for i, eb in ipairs(self.dnwBoxes) do
@@ -842,7 +861,7 @@ function RCV:Refresh()
     local RC = ns.Recruit
     local r = RC:Settings()
 
-    local list = RC:List({ hideContacted = self.hideCheck:GetChecked() })
+    local list = RC:List({ hideContacted = self.hideCheck:GetChecked(), name = self.nameBox:GetText() })
     self.list = list
     for i, p in ipairs(list) do p._stripe = (i % 2 == 0) end
     local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition
@@ -850,6 +869,8 @@ function RCV:Refresh()
 
     if not r then
         self.emptyText:SetText("Join a guild to start recruiting.")
+    elseif #list == 0 and ns.Trim(self.nameBox:GetText()) ~= "" then
+        self.emptyText:SetText("Nobody in the list has that name. Click Search /who to look for them.")
     elseif #list == 0 then
         self.emptyText:SetText("Set a level range and click Search /who to find players without a guild.")
     else

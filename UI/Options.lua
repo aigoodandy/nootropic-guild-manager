@@ -1,7 +1,7 @@
 --[[
     Nootropic Guild Manager - Options
     A panel in the game's Options > AddOns list (also opened by /ngm options,
-    the gear button on the window, or right-clicking the minimap button).
+    or right-clicking the minimap button).
 ]]
 local _, ns = ...
 local W, D = ns.Widgets, ns.Data
@@ -234,9 +234,9 @@ function O:Build()
 
     -- Recruiting
     Header(panel, "Recruiting", y)
-    self.whoInviteCheck = Check(panel, "Guild invite button on /who results",
-        "Adds an invite button to each player in the game's /who (Looking For Group) search.", y - 20,
-        function(on) ns.WhoInvite:SetEnabled(on) end)
+    self.whoWhisperCheck = Check(panel, "Recruitment whisper button on /who results",
+        "Adds a button to each player in the game's /who (Looking For Group) search that sends them your recruitment whisper.", y - 20,
+        function(on) ns.WhoWhisper:SetEnabled(on) end)
     y = y - 70
 
     -- Guild-wide settings (officers change them for everyone)
@@ -313,7 +313,7 @@ function O:Refresh()
     self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
     self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
-    self.whoInviteCheck:SetChecked(s.whoInviteButton ~= false)
+    self.whoWhisperCheck:SetChecked(s.whoWhisperButton ~= false)
     local officer = ns.IsOfficer()
     self.reviewsCheck:SetChecked(ns.DB:ReviewsEnabled())
     self.reviewsCheck:SetEnabled(officer and ns.DB:Guild() ~= nil)

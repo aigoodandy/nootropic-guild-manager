@@ -33,6 +33,7 @@ UI\MemberPicker.lua
 UI\IconPicker.lua
 UI\TagEditor.lua
 UI\RosterView.lua
+UI\CompactRoster.lua
 UI\DetailPanel.lua
 UI\RecruitView.lua
 UI\RecruitMini.lua
@@ -46,4 +47,4 @@ UI\MinimapButton.lua
 UI\MapPins.lua
 UI\Options.lua
 UI\Communities.lua
-UI\WhoInvite.lua
+UI\WhoWhisper.lua

@@ -54,26 +54,54 @@ function W.Button(parent, text, width, height)
     return b
 end
 
--- Blizzard's red expand / condense arrow button (the same family as the red
--- close X). kind: "expand" or "condense". Uses the game's atlas when the
--- client has it, otherwise the older bigger/smaller panel buttons.
-function W.SizeButton(parent, kind, size)
-    local b = CreateFrame("Button", nil, parent)
-    b:SetSize(size or 24, size or 24)
-    local atlas = kind == "expand" and "RedButton-Expand" or "RedButton-Condense"
-    local hasAtlas = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
-    if hasAtlas then
-        b:SetNormalAtlas(atlas)
-        b:SetPushedAtlas(atlas .. "-Pressed")
-        b:SetDisabledAtlas(atlas .. "-Disabled")
-        b:SetHighlightAtlas("RedButton-Highlight", "ADD")
+-- Blizzard's red minimize ("condense") or expand arrow button, the same
+-- family as the red close X. Built from the game's own
+-- MaximizeMinimizeButtonFrameTemplate when the client has it (so the art is
+-- whatever this client uses), else the atlas, else the older panel buttons.
+-- Returns a frame to position; the click and tooltip are set here.
+function W.SizeButton(parent, kind, size, onClick, tipTitle, ...)
+    size = size or 24
+    local holder, button
+    local ok, frame = pcall(CreateFrame, "Frame", nil, parent, "MaximizeMinimizeButtonFrameTemplate")
+    if ok and frame and frame.MinimizeButton and frame.MaximizeButton then
+        holder = frame
+        holder:SetSize(size, size)
+        -- the template shows its Maximize (expand) button while "minimized"
+        -- and its Minimize button otherwise, and re-applies that when shown
+        local expand = kind == "expand"
+        holder.isMinimized = expand
+        if expand and holder.SetMinimizedLook then
+            holder:SetMinimizedLook()
+        elseif not expand and holder.SetMaximizedLook then
+            holder:SetMaximizedLook()
+        end
+        button = expand and frame.MaximizeButton or frame.MinimizeButton
+        local other = expand and frame.MinimizeButton or frame.MaximizeButton
+        other:Hide()
+        button:ClearAllPoints()
+        button:SetAllPoints(holder)
+        button:Show()
+        -- our click replaces the template's, so it never swaps the buttons
     else
-        local base = kind == "expand" and "Interface\\Buttons\\UI-Panel-BiggerButton-" or "Interface\\Buttons\\UI-Panel-SmallerButton-"
-        b:SetNormalTexture(base .. "Up")
-        b:SetPushedTexture(base .. "Down")
-        b:SetHighlightTexture(base .. "Highlight", "ADD")
+        button = CreateFrame("Button", nil, parent)
+        button:SetSize(size, size)
+        holder = button
+        local atlas = kind == "expand" and "RedButton-Expand" or "RedButton-Condense"
+        if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas) then
+            button:SetNormalAtlas(atlas)
+            button:SetPushedAtlas(atlas .. "-Pressed")
+            button:SetHighlightAtlas("RedButton-Highlight", "ADD")
+        else
+            local base = kind == "expand" and "Interface\\Buttons\\UI-Panel-BiggerButton-" or "Interface\\Buttons\\UI-Panel-SmallerButton-"
+            button:SetNormalTexture(base .. "Up")
+            button:SetPushedTexture(base .. "Down")
+            button:SetHighlightTexture(base .. "Highlight", "ADD")
+        end
     end
-    return b
+    button:SetScript("OnClick", function() if onClick then onClick() end end)
+    if tipTitle then W.Tooltip(button, tipTitle, ...) end
+    holder.Button = button
+    return holder
 end
 
 function W.Tooltip(frame, title, ...)

@@ -30,6 +30,7 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 - **Right-click a member** for quick tags, rating and main/alt (officers), whisper and invite.
 - **Tags column** shows each tag's icon, framed in the tag's color. Hover the member to see every tag's icon and name in the tooltip.
 - **Tags bar** under the search box filters by tags (members must have every selected tag).
+- **Compact roster:** the red **minimize arrow** beside the close button (on the Roster tab) closes the big window and opens a small roster with no tabs that you can move and resize. It shows **First Name** and **Location**; right-click a column header or use **Columns** to add Level, Class, Second Name, Spec, Main / Alt or Rank. It has its own search and **Online** box, sorts by clicking a header, and shows the same tooltip and right-click menu as the Roster tab. Click a name to open their profile in the full window, or the **expand arrow** to go back. `/ngm compact` shows or hides it.
 - **"x using Nootropic Guild Manager"** at the bottom of the window (it says your guild's name instead when that option is on): click it to list only guildmates running the addon, with the Version column turned on. It searches `is:addon`; clear the search to see everyone again. Options can hide it.
 
 **Character profile** (scrolls) — opens beside the roster:
@@ -42,14 +43,15 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 
 **Recruitment tab**
 
-1. Set a level range, optionally a class and zone, and click **Search /who** (it runs the game's own `/who` through a secure button, the approved way for addons, so it can't be used in combat). To keep you clear of spam detection, searches are limited to one every 15 seconds and 12 per 5 minutes; the button counts down until the next one is allowed. Everyone without a guild (who isn't already in yours) is added to the list. The game returns at most 50 players per search and limits how often you can search, so use narrow level ranges. Tick **Step levels** and keep clicking Search to sweep through every level.
+1. Set a level range, optionally a class, zone and **Name**, and click **Search /who** (it runs the game's own `/who` through a secure button, the approved way for addons, so it can't be used in combat). To keep you clear of spam detection, searches are limited to one every 15 seconds and 12 per 5 minutes; the button counts down until the next one is allowed. Everyone without a guild (who isn't already in yours) is added to the list. The game returns at most 50 players per search and limits how often you can search, so use narrow level ranges. Tick **Step levels** and keep clicking Search to sweep through every level.
+   - **Name:** type part of a character's name to show only matching players in the list right away; **Search /who** also looks for that name, so you can find a specific character. Clear it to see everyone again.
    - **Guild:** tick it and type a guild name to find members of that guild instead of players without one (for recruiting from other guilds). Matches the name or its beginning; your own guild is never included. Off by default.
 2. **Tick the players you want to message** (click the checkbox or anywhere on the row). **Select New** ticks every player nobody in the guild has contacted; **Clear** unticks all. Hover a row to read the message that player will get.
 3. Click **Send Whispers (N)**. Whispers go out one at a time, at least 12 seconds apart and no more than 40 per hour, so the game never sees the addon as a spammer. The button shows the countdown and turns into **Stop** while sending. If the game ever refuses an automatic whisper, the addon switches to click-to-send: the button becomes **Send Next** and each click sends one (same pacing).
 4. The Status column tracks each player: New, Queued, Whispered, Replied, Invited, and Joined! (detected automatically when they appear in your roster). Contacted players stay in the list so you never message anyone twice; **Clear New** removes only the uncontacted ones and **Hide contacted** filters them out.
    - **Statuses are shared with the guild.** When anyone running the addon whispers, hears back from, or invites a player, everyone else sees it ("Whispered 2 hr ago by Mira") and can't tick that player, so nobody is whispered twice by the same guild. Hover the row to read their reply. Shared statuses are kept for 7 days, then forgotten; your own list keeps your own history.
-5. **Keep playing while you recruit:** click the **minimize arrow** (top right of the window, next to the options gear, on the Recruitment tab) to close the big window and show a small recruiting bar you can drag anywhere. It shows what's happening (countdown to the next whisper, players found, how many are ready) and has **Search /who**, **Select New** and **Send / Stop / Send Next**, so you can search, tick and send without opening the window. Its **expand arrow** goes back to the full tab; the X hides the bar (queued whispers keep sending). If you close the main window while whispers are still being sent, the bar appears by itself. `/ngm mini` shows or hides it.
-6. **Invite from the game's /who window:** every player in the game's own /who search (the Looking For Group people search) gets a small guild-invite button (a tabard) beside the group-invite button. One click sends a guild invite, no whisper needed, and the player shows as Invited on the Recruitment tab for the whole guild. The button is grayed out (hover it to see why) for players already in a guild, members of yours, people on the Do Not Whisper list, or if your rank can't invite. On by default; **Options > Recruiting** turns it off. If the buttons don't appear, search with the window open and run `/ngm diag`.
+5. **Keep playing while you recruit:** click the red **minimize arrow** beside the close button (on the Recruitment tab) to close the big window and show a small recruiting bar you can drag anywhere. It shows what's happening (countdown to the next whisper, players found, how many are ready) and has **Search /who**, **Select New** and **Send / Stop / Send Next**, so you can search, tick and send without opening the window. Its **expand arrow** goes back to the full tab; the X hides the bar (queued whispers keep sending). If you close the main window while whispers are still being sent, the bar appears by itself. `/ngm mini` shows or hides it.
+6. **Whisper from the game's /who window:** every player in the game's own /who search (the Looking For Group people search) gets a small letter button beside the group-invite button. One click sends that player your recruitment whisper, exactly as from the Recruitment tab: your custom messages when **Use custom messages** is on (otherwise the Default message), with the same spacing between whispers (it joins the whisper queue, and the small recruiting bar appears if the main window is closed). Hover the button to read the message they'll get. The player is added to your Recruitment list and their status is shared with the guild. The button is grayed out (hover it to see why) for members of your guild, people on the Do Not Whisper list, and players you or a guildmate already contacted; it shows "..." while queued and a check once whispered. On by default; **Options > Recruiting** turns it off. If the buttons don't appear, search with the window open and run `/ngm diag`.
 7. **Invites only after a whisper** (on the Recruitment tab). Right-click a player to invite them; the option stays unavailable ("whisper them first") until they've been whispered. Right-click also offers a one-off custom whisper and removing them.
 
 **Default message** (right side): the whisper for anyone no custom message matches. These are filled in for you:
@@ -148,7 +150,7 @@ Both are on by default. Options has separate switches to stop sharing your own l
 
 ## Options
 
-Open from **Options > AddOns > Nootropic Guild Manager**, the gear button at the top of the window, `/ngm options`, shift-clicking the minimap button, or right-clicking the addon compartment entry.
+Open from **Options > AddOns > Nootropic Guild Manager**, `/ngm options`, shift-clicking the minimap button, or right-clicking the addon compartment entry.
 
 - **Addon Icon**: Ale Mug, Brewfest Stein, or your **Guild Emblem**. The choice applies to the window's top-left icon, the minimap button and the Guild & Communities shortcut. The emblem falls back to the mug when you're not in a guild or it has no tabard.
 - **Audit History**: keep 30, 60 or 90 days of change history. Older entries are deleted.
@@ -156,7 +158,7 @@ Open from **Options > AddOns > Nootropic Guild Manager**, the gear button at the
 - **Guildmate Locations**: share my location; show guildmates on the world map; custom dot colors (your dot and outline color).
 - **Use my guild's name in the window title**: "Knights of Azeroth Guild Manager" instead of "Nootropic Guild Manager", in the title and in the "x using ... Guild Manager" text at the bottom.
 - **Show how many guildmates use the addon**: the clickable "x using ... Guild Manager" text at the bottom of the window (on by default).
-- **Recruiting**: **Guild invite button on /who results** (on by default).
+- **Recruiting**: **Recruitment whisper button on /who results** (on by default).
 - **Guild Settings** (officers, applies to the whole guild): **Guildmates can review the guild**.
 - **Show shortcut on the Guild & Communities window**: a side tab with the addon icon under the window's own tabs.
 - **Open Guild Manager**, **Reset Size and Position** and **Reset Roster Columns** buttons.
@@ -230,6 +232,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm find <text>` | open with a search |
 | `/ngm recruit` | open the Recruitment tab |
 | `/ngm mini` | show or hide the small recruiting bar |
+| `/ngm compact` | show or hide the compact guild roster |
 | `/ngm options` | open the options |
 | `/ngm diag` | report what the Guild & Communities shortcut and the /who invite buttons can see |
 | `/ngm sync` | sync now and show sync stats |
@@ -245,7 +248,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data)  Sync.lua (records, repair, transport)
 Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)
-UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoInvite.lua
+UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  CompactRoster.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoWhisper.lua
 ```
 
 ## Names in WoW: Forever
