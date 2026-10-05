@@ -244,7 +244,7 @@ function P:Announce()
         if not seen[p.id] then
             seen[p.id] = Now()
             if p.open and not p.myVote and p.author ~= me then
-                ns:Print(("New guild poll: |cffffffff%s|r  Vote on the %s tab (|cffffffff/ngm polls|r). Closes in %s.")
+                ns:Print(("New guild poll: |cffffffff%s|r  Vote on the %s tab (|cffffffff/ngm insights|r). Closes in %s.")
                     :format(p.question, ns.TabName("polls"), P.FormatSpan(p.closeAt - Now())))
             end
         end

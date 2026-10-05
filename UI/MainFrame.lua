@@ -10,7 +10,7 @@ ns.UI = UI
 
 local FRAME_W, FRAME_H = 1000, 580
 local MIN_W, MIN_H, MAX_W, MAX_H = 640, 520, 1800, 1100
-local TAB_LABELS = { "Roster", "Recruitment", "Polls", "Tags", "Audit", "Reviews" }
+local TAB_LABELS = { "Roster", "Recruitment", "Insights", "Tags", "Audit", "Reviews" }
 UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_POLLS, UI.TAB_TAGS, UI.TAB_AUDIT, UI.TAB_REVIEWS = 1, 2, 3, 4, 5, 6
 local OFFICER_TABS = { [4] = true, [5] = true } -- Tags and Audit
 

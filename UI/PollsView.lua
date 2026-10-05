@@ -1,5 +1,6 @@
 --[[
-    Nootropic Guild Manager - Polls tab
+    Nootropic Guild Manager - Insights tab (goals, polls and stats; the
+    code still calls it the Polls tab: UI.TAB_POLLS, "polls")
     Everyone: see the guild's polls, vote (and change your vote) until a poll
     closes, and see the results, also after it closes.
     Officers: create polls, close voting early, delete polls.
@@ -278,7 +279,7 @@ function PV:BuildPanel(page, inset)
     local info = CreateFrame("Frame", nil, panel)
     info:SetAllPoints()
     self.infoPane = info
-    local ititle, iline = W.SectionHeader(info, "Guild Polls")
+    local ititle, iline = W.SectionHeader(info, "Guild Insights")
     ititle:SetPoint("TOPLEFT", 14, -12)
     iline:SetPoint("RIGHT", info, "RIGHT", -12, 0)
     self.infoText = Para(info, "GameFontHighlightSmall", IW)
@@ -1265,7 +1266,7 @@ function PV:Refresh()
     local list = inGuild and ns.Polls:List() or {}
     local open = 0
     for _, p in ipairs(list) do if p.open then open = open + 1 end end
-    self.summary:SetText("Guild Polls")
+    self.summary:SetText("Guild Insights")
     self.sub:SetText(#list == 0 and "" or (open == 1 and "1 open" or (open .. " open")) .. (#list > open and ("  -  " .. (#list - open) .. " closed") or ""))
     self.newBtn:SetShown(officer)
     self.newStatBtn:SetShown(inGuild)

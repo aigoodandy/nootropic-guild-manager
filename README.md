@@ -110,11 +110,11 @@ Each message starts with `message:`. Lines you leave out mean "any"; `guild` is 
 
 Messages and keywords are saved per guild.
 
-**Polls tab** — guild polls and guild stats.
+**Insights tab** — guild goals, polls and stats (officers can rename it; it used to be called Polls).
 
 - **Officers** create polls: a question (up to 120 characters) and 2 to 6 answers. Choose when voting closes in minutes, hours or days (1 week by default), and how many days the results stay after it closes (7 by default, 0 to 365). Officers can also close voting early or delete a poll.
 - **Everyone** running the addon can vote, and change their vote until the poll closes. Results (votes and percentages for each answer) show while it's open and after it closes, until its days are up; then the poll is deleted. Only votes cast before a poll closed are counted.
-- The list shows **Open Polls** (closing soonest at the top), then **Guild Stats**, then **Closed Polls**. The tab opens on an open poll you haven't voted on, if there is one. You get a chat message the first time you see a new poll you haven't voted on.
+- The list shows **Goals**, **Open Polls** (closing soonest at the top), the stats sections, then **Closed Polls**. The tab opens on an open poll you haven't voted on, if there is one. You get a chat message the first time you see a new poll you haven't voted on.
 - Votes are shared with everyone running the addon, like tags; they aren't secret ballots.
 - Each **poll answer** and **stat row** has its own **icon and color** (the same icon picker and colors as tags and kudos). The color is used for its bar and pie slice; the icon shows beside its name. In **New Poll**, each answer has an icon button and a color swatch. In **New Stat** / **Edit Stat**, the **Rows** list shows every row the stat has right now with its icon and color: class rows start with their class icon and color, professions, tags and kudos with their own icons. Click an icon to pick another (right-click for none), click a swatch for a color.
 - Every poll's results show as bars and a **pie chart**, each answer in its own color. Hover an answer to light up its slice, or a slice to light up its answer. When you open a poll or stat the bars grow and the pie sweeps in (under half a second); live updates just change the numbers.
@@ -178,13 +178,13 @@ Options has four pages in the game's AddOns list:
 
 - **Nootropic Guild Manager** (main page)
   - **Appearance**: the **addon icon** (Ale Mug, Brewfest Stein or your **Guild Emblem**, shown on the window, the minimap button and the Guild & Communities shortcut; the emblem falls back to the mug outside a guild or without a tabard), **use my guild's name in the window title** (also in the "x using ... Guild Manager" text), **show how many guildmates use the addon** (on by default), and the **shortcut on the Guild & Communities window**.
-  - **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Polls, Tags, Audit, Reviews, Options, show/hide window, or nothing).
+  - **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Insights, Tags, Audit, Reviews, Options, show/hide window, or nothing).
   - **Reset**: window size and position, list columns (roster, compact roster and recruitment list), and the compact roster and recruiting bar positions.
   - **About**: sync stats with a **Sync Now** button, **Open Guild Manager**, and the most useful commands.
 - **Recruiting** (saved per guild): the **recruitment whisper button on /who results** (on by default), **Auto-Invite** (invite on a keyword reply, ask me first, up to 5 keywords) and **Do Not Whisper** (on/off, up to 5 words, and the shared list). The Recruitment tab shows how these are set under **Replies**, with a **Reply Settings...** button that opens this page.
 - **Map**: share my location, show guildmates on the world map, and custom dot colors (whether you see guildmates' chosen colors). **Change My Dot...** opens your profile in Edit mode to pick your own.
 - **Officers**: **Guildmates can review the guild** (whole guild), **Guildmates can add pronouns to their profile** (whole guild, off by default), **Tabs** (whole guild) and **Audit History** (keep 30, 60 or 90 days on your copy). Members see this page but can't change it.
-  - **Tabs**: give any tab a new **title** (up to 16 characters, e.g. rename Polls to "Charts"; leave it empty for the usual name) and choose **who sees it** by guild rank (all ranks, or tick the ranks). The Guild Master always sees every tab, the Roster tab is always shown to everyone, Tags and Audit only ever show to officers, and Reviews also follows the reviews switch. Renamed tabs are used everywhere the addon names a tab: the minimap button's click choices, chat messages, tooltips and `/ngm` help.
+  - **Tabs**: give any tab a new **title** (up to 16 characters, e.g. rename Insights to "Charts"; leave it empty for the usual name) and choose **who sees it** by guild rank (all ranks, or tick the ranks). The Guild Master always sees every tab, the Roster tab is always shown to everyone, Tags and Audit only ever show to officers, and Reviews also follows the reviews switch. Renamed tabs are used everywhere the addon names a tab: the minimap button's click choices, chat messages, tooltips and `/ngm` help.
 
 ## Searching
 
@@ -261,7 +261,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm diag` | report what the Guild & Communities shortcut and the /who whisper buttons can see, and which name and version the addon uses for you |
 | `/ngm perf` | performance this session: memory use, sync traffic, stored records, and how often the roster and map dots were rebuilt and redrawn |
 | `/ngm sync` | sync now and show sync stats |
-| `/ngm polls` | open the Polls tab |
+| `/ngm insights` | open the Insights tab (`/ngm polls`, `/ngm stats` and `/ngm goals` work too) |
 | `/ngm audit` | open the Audit tab (officers) |
 | `/ngm reviews` | open the Reviews tab (Review Guild for members, while reviews are on) |
 | `/ngm minimap` | show or hide the minimap button |

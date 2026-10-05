@@ -1,6 +1,6 @@
 --[[
-    Nootropic Guild Manager - Goal page and goal form (on the Polls tab)
-    Shown in the Polls tab's right-hand panel when a goal is picked from the
+    Nootropic Guild Manager - Goal page and goal form (on the Insights tab)
+    Shown in the Insights tab's right-hand panel when a goal is picked from the
     list (UI/PollsView.lua keeps the list and decides what's shown):
       page   title, target date, a big bar (members matching / target), a bar
              for each part, who counts, and who's almost there (level goals)

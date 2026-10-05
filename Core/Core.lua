@@ -81,11 +81,11 @@ function ns.PerfReport()
 end
 
 ------------------------------------------------------------------------
--- Tab names in text ("Vote on the Polls tab"): the title officers gave the
+-- Tab names in text ("Vote on the Insights tab"): the title officers gave the
 -- tab in Options > Officers > Tabs, else its usual name. key: "roster",
 -- "recruit", "polls", "tags", "audit" or "reviews".
 ------------------------------------------------------------------------
-local USUAL_TAB_NAMES = { roster = "Roster", recruit = "Recruitment", polls = "Polls", tags = "Tags", audit = "Audit", reviews = "Reviews" }
+local USUAL_TAB_NAMES = { roster = "Roster", recruit = "Recruitment", polls = "Insights", tags = "Tags", audit = "Audit", reviews = "Reviews" }
 
 function ns.TabName(key)
     local UI, DB = ns.UI, ns.DB
@@ -368,7 +368,7 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm find <text>|r  - open with a search")
     ns:Print("  |cffffffff/ngm sync|r  - sync with guildmates now and show sync stats")
     ns:Print(("  |cffffffff/ngm audit|r  - open the %s tab (officers)"):format(ns.TabName("audit")))
-    ns:Print(("  |cffffffff/ngm polls|r  - open the %s tab (guild polls and stats)"):format(ns.TabName("polls")))
+    ns:Print(("  |cffffffff/ngm insights|r  - open the %s tab (goals, polls and stats)"):format(ns.TabName("polls")))
     ns:Print(("  |cffffffff/ngm reviews|r  - open the %s tab (review the guild)"):format(ns.TabName("reviews")))
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
     ns:Print(("  |cffffffff/ngm recruit|r  - open the %s tab"):format(ns.TabName("recruit")))
@@ -419,7 +419,7 @@ SlashCmdList.NOOTROPICGM = function(msg)
     elseif cmd == "audit" then
         ns.UI:Show()
         ns.UI:SelectTab(ns.UI.TAB_AUDIT)
-    elseif cmd == "poll" or cmd == "polls" then
+    elseif cmd == "insights" or cmd == "poll" or cmd == "polls" or cmd == "stats" or cmd == "goals" then
         ns.UI:Show()
         ns.UI:SelectTab(ns.UI.TAB_POLLS)
     elseif cmd == "review" or cmd == "reviews" then

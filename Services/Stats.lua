@@ -1,6 +1,6 @@
 --[[
     Nootropic Guild Manager - Guild stats
-    Charts shown on the Polls tab like polls nobody votes on. A stat is a
+    Charts shown on the Insights tab like polls nobody votes on. A stat is a
     title, what to count by (class, race, level...) and optional filters (a
     roster search). Its rows (a label, a count and a color) are worked out
     live from the roster by each copy of the addon; only the stat's title,
