@@ -1,8 +1,10 @@
 --[[
     Nootropic Guild Manager - Icon picker
     A grid of every icon the game's macro icon menu offers (the same lists
-    the macro window reads), used to choose a tag's icon. The Paste box takes
-    an icon found outside the game: its name, file number or a Wowhead link.
+    the macro window reads), used to choose a tag's icon. The Search box
+    finds icons by the names of spells and items that use them (see Search
+    below); the Paste box takes an icon found outside the game: its name,
+    file number or a Wowhead link.
 ]]
 local _, ns = ...
 local W, D = ns.Widgets, ns.Data
@@ -64,7 +66,7 @@ end
 function IP:Build()
     if self.frame then return self.frame end
     local f = CreateFrame("Frame", "NootropicGMIconPicker", UIParent, "BackdropTemplate")
-    f:SetSize(GRID_W + 52, 456)
+    f:SetSize(GRID_W + 52, 488)
     f:SetFrameStrata("FULLSCREEN_DIALOG")
     f:SetToplevel(true)
     f:SetClampedToScreen(true)
@@ -87,13 +89,32 @@ function IP:Build()
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
 
+    -- Search box: icons used by spells or items with these words in their name
+    local searchLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    searchLabel:SetPoint("TOPLEFT", 22, -48)
+    searchLabel:SetText("Search")
+    local search = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+    search:SetSize(300, 20)
+    search:SetPoint("LEFT", searchLabel, "RIGHT", 12, 0)
+    search:SetAutoFocus(false)
+    search:SetMaxLetters(60)
+    search:SetScript("OnTextChanged", function() ns.Debounce("iconsearch", 0.15, function() IP:ApplySearch() end) end)
+    search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    search:SetScript("OnEscapePressed", function(self)
+        if self:GetText() ~= "" then self:SetText("") else self:ClearFocus() end
+    end)
+    W.Tooltip(search, "Search icons", "Finds the icons of spells and items whose names have every word you type, like \"fire bolt\" or \"murloc\".",
+        "Item types work too: sword, plate, potion, herb...")
+    self.searchBox = search
+
     -- Paste box: an icon found outside the game (name, file number or link)
     local pasteLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    pasteLabel:SetPoint("TOPLEFT", 22, -48)
+    pasteLabel:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", 0, -18)
     pasteLabel:SetText("Paste")
     local paste = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
     paste:SetSize(208, 20)
-    paste:SetPoint("LEFT", pasteLabel, "RIGHT", 12, 0)
+    paste:SetPoint("LEFT", search, "LEFT", 0, 0)
+    paste:SetPoint("TOP", pasteLabel, "TOP", 0, 4)
     paste:SetAutoFocus(false)
     paste:SetMaxLetters(200)
     paste:SetScript("OnTextChanged", function() IP:UpdatePaste() end)
@@ -114,10 +135,12 @@ function IP:Build()
     self.useButton = use
 
     self.count = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    self.count:SetPoint("TOPLEFT", 20, -76)
+    self.count:SetPoint("TOPLEFT", 20, -108)
+    self.indexStatus = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.indexStatus:SetPoint("TOPRIGHT", -36, -108)
 
     local scrollBox = CreateFrame("Frame", nil, f, "WowScrollBoxList")
-    scrollBox:SetPoint("TOPLEFT", 18, -92)
+    scrollBox:SetPoint("TOPLEFT", 18, -124)
     scrollBox:SetPoint("BOTTOMLEFT", 18, 48)
     scrollBox:SetWidth(GRID_W)
     local scrollBar = CreateFrame("EventFrame", nil, f, "MinimalScrollBar")
@@ -220,6 +243,8 @@ local function BuildRow(row)
         b.Selected:SetBlendMode("ADD")
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
         b:SetScript("OnClick", function(self) IP:Choose(self.icon) end)
+        b:SetScript("OnEnter", function(self) IP:ShowIconTooltip(self) end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         row.buttons[i] = b
     end
 end
@@ -243,6 +268,171 @@ function IP:InitRow(row, item)
 end
 
 ------------------------------------------------------------------------
+-- Search: the game knows every spell's and item's icon, but icons have no
+-- names of their own. The first time the picker opens in a session, the
+-- addon reads through the game's spells (name and icon) and items (type,
+-- such as "Sword" or "Potion", and icon) a little each frame, and keeps
+-- what it finds in memory (never saved):
+--   names[icon]  up to MAX_NAMES spell names that use it (for the tooltip)
+--   words[icon]  everything searchable about it, lowercase
+-- Item names aren't asked for: the server would have to send each one.
+------------------------------------------------------------------------
+local MAX_SPELL_ID = 600000
+local MAX_ITEM_ID = 250000
+local MAX_NAMES = 8
+local MAX_WORDS = 600 -- characters kept per icon
+local FRAME_BUDGET = 6 -- milliseconds of scanning per frame
+
+IP.names, IP.words = {}, {}
+
+local function SpellInfo(id)
+    if C_Spell and C_Spell.GetSpellInfo then
+        local info = C_Spell.GetSpellInfo(id)
+        if info then return info.name, info.iconID end
+        return nil
+    end
+    if GetSpellInfo then
+        local name, _, icon = GetSpellInfo(id)
+        return name, icon
+    end
+end
+
+local function ItemInfo(id)
+    local fn = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if not fn then return nil end
+    local _, itemType, subType, _, icon = fn(id)
+    return icon, itemType, subType
+end
+
+local function AddWords(icon, text)
+    if not icon or not text or text == "" then return end
+    local w = IP.words[icon]
+    text = text:lower()
+    if not w then
+        IP.words[icon] = text
+    elseif #w < MAX_WORDS and not w:find(text, 1, true) then
+        IP.words[icon] = w .. "\n" .. text
+    end
+end
+
+local function AddName(icon, name)
+    if not icon or not name or name == "" then return end
+    local list = IP.names[icon]
+    if not list then
+        list = {}
+        IP.names[icon] = list
+    end
+    if #list < MAX_NAMES then
+        for _, n in ipairs(list) do if n == name then return end end
+        list[#list + 1] = name
+    end
+    AddWords(icon, name)
+end
+
+function IP:StartIndex()
+    if self.indexing or self.indexed then return end
+    self.indexing = true
+    local spellId, itemId = 1, 1
+    local driver = self.indexDriver or CreateFrame("Frame")
+    self.indexDriver = driver
+    local lastShown = 0
+    driver:SetScript("OnUpdate", function()
+        local stop = debugprofilestop() + FRAME_BUDGET
+        while debugprofilestop() < stop do
+            if spellId <= MAX_SPELL_ID then
+                local ok, name, icon = pcall(SpellInfo, spellId)
+                if ok and name then AddName(icon, name) end
+                spellId = spellId + 1
+            elseif itemId <= MAX_ITEM_ID then
+                local ok, icon, itemType, subType = pcall(ItemInfo, itemId)
+                if ok and icon then
+                    AddWords(icon, subType)
+                    AddWords(icon, itemType)
+                end
+                itemId = itemId + 1
+            else
+                driver:SetScript("OnUpdate", nil)
+                IP.indexing, IP.indexed = false, true
+                IP:UpdateIndexStatus()
+                if IP.frame and IP.frame:IsShown() and IP.searchBox:GetText() ~= "" then IP:ApplySearch() end
+                return
+            end
+        end
+        -- progress, and fresh results while someone is searching
+        local now = GetTime()
+        if now - lastShown > 0.5 then
+            lastShown = now
+            IP.progress = (spellId + itemId) / (MAX_SPELL_ID + MAX_ITEM_ID)
+            IP:UpdateIndexStatus()
+            if IP.frame and IP.frame:IsShown() and IP.searchBox:GetText() ~= "" then IP:ApplySearch() end
+        end
+    end)
+end
+
+function IP:UpdateIndexStatus()
+    if not self.indexStatus then return end
+    if self.indexing then
+        self.indexStatus:SetText(("Indexing spells and items... %d%%"):format(math.floor((self.progress or 0) * 100)))
+    else
+        self.indexStatus:SetText("")
+    end
+end
+
+-- Shows these icons in the grid.
+function IP:ShowIcons(icons)
+    local rows = {}
+    for i = 1, #icons, COLS do
+        local r = {}
+        for j = 0, COLS - 1 do r[#r + 1] = icons[i + j] end
+        rows[#rows + 1] = { icons = r }
+    end
+    self.shown = icons
+    self.scrollBox:SetDataProvider(CreateDataProvider(rows))
+end
+
+-- Filters the grid by the search box (every word must match).
+function IP:ApplySearch()
+    if not self.frame then return end
+    local all = self:Icons()
+    local text = ns.Trim(self.searchBox:GetText() or ""):lower()
+    if text == "" then
+        self:ShowIcons(all)
+        self.count:SetText(("%d icons"):format(#all))
+        return
+    end
+    local terms = {}
+    for word in text:gmatch("%S+") do terms[#terms + 1] = word end
+    local out, words = {}, self.words
+    for _, icon in ipairs(all) do
+        local w = words[icon]
+        if w then
+            local ok = true
+            for _, t in ipairs(terms) do
+                if not w:find(t, 1, true) then ok = false break end
+            end
+            if ok then out[#out + 1] = icon end
+        end
+    end
+    self:ShowIcons(out)
+    self.count:SetText(("%d of %d icons match"):format(#out, #all) .. (self.indexing and "  |cff9d9d9d(still indexing)|r" or ""))
+end
+
+function IP:ShowIconTooltip(button)
+    local icon = button.icon
+    if not icon then return end
+    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(("|T%s:40:40:0:0:64:64:5:59:5:59|t"):format(tostring(icon)))
+    local names = self.names[icon]
+    if names and #names > 0 then
+        GameTooltip:AddLine("Used by: " .. table.concat(names, ", ") .. (#names >= MAX_NAMES and "..." or ""), 1, 1, 1, true)
+    elseif self.indexing then
+        GameTooltip:AddLine("Still indexing spells and items.", 0.7, 0.7, 0.7)
+    end
+    if type(icon) == "number" then GameTooltip:AddLine("Icon " .. icon, 0.6, 0.6, 0.6) end
+    GameTooltip:Show()
+end
+
+------------------------------------------------------------------------
 -- Public
 ------------------------------------------------------------------------
 function IP:Choose(icon)
@@ -258,16 +448,13 @@ function IP:Open(current, onPick, anchor)
     local f = self:Build()
     self.current, self.onPick = current, onPick
     local icons = self:Icons()
-    local rows = {}
-    for i = 1, #icons, COLS do
-        local r = {}
-        for j = 0, COLS - 1 do r[#r + 1] = icons[i + j] end
-        rows[#rows + 1] = { icons = r }
-    end
+    self.searchBox:SetText("")
+    self:ShowIcons(icons)
     self.count:SetText(("%d icons"):format(#icons))
-    self.scrollBox:SetDataProvider(CreateDataProvider(rows))
     self.pasteBox:SetText("")
     self:UpdatePaste()
+    self:StartIndex()
+    self:UpdateIndexStatus()
     f:ClearAllPoints()
     if anchor then
         f:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 8, 0)
