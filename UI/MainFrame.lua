@@ -74,6 +74,8 @@ function UI:Create()
     end, "opening the window"))
     f:SetScript("OnHide", ns.Safe(function()
         ns.PlaySound("IG_CHARACTER_INFO_CLOSE")
+        -- whispers still going out: keep the controls on screen in the small bar
+        if ns.Recruit:IsSending() and not ns.RecruitMini:IsShown() then ns.RecruitMini:Show() end
     end, "closing the window"))
     ns:On("OFFICER_CHANGED", function()
         UI:LayoutTabs()

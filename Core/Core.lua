@@ -284,6 +284,7 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm reviews|r  - open the Reviews tab (review the guild)")
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
     ns:Print("  |cffffffff/ngm recruit|r  - open the Recruitment tab")
+    ns:Print("  |cffffffff/ngm mini|r  - show or hide the small recruiting bar")
     ns:Print("  |cffffffff/ngm options|r  - open the options")
     ns:Print("  |cffffffff/ngm diag|r  - troubleshoot the Guild & Communities shortcut")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
@@ -307,6 +308,8 @@ SlashCmdList.NOOTROPICGM = function(msg)
     elseif cmd == "recruit" then
         ns.UI:Show()
         ns.UI:SelectTab(ns.UI.TAB_RECRUIT)
+    elseif cmd == "mini" then
+        ns.RecruitMini:Toggle()
     elseif cmd == "sync" then
         ns.Comm:Report()
         local started = ns.Sync:Exchange(true)

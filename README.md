@@ -48,7 +48,8 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 3. Click **Send Whispers (N)**. Whispers go out one at a time, at least 12 seconds apart and no more than 40 per hour, so the game never sees the addon as a spammer. The button shows the countdown and turns into **Stop** while sending. If the game ever refuses an automatic whisper, the addon switches to click-to-send: the button becomes **Send Next** and each click sends one (same pacing).
 4. The Status column tracks each player: New, Queued, Whispered, Replied, Invited, and Joined! (detected automatically when they appear in your roster). Contacted players stay in the list so you never message anyone twice; **Clear New** removes only the uncontacted ones and **Hide contacted** filters them out.
    - **Statuses are shared with the guild.** When anyone running the addon whispers, hears back from, or invites a player, everyone else sees it ("Whispered 2 hr ago by Mira") and can't tick that player, so nobody is whispered twice by the same guild. Hover the row to read their reply. Shared statuses are kept for 7 days, then forgotten; your own list keeps your own history.
-5. **Invites only after a whisper.** Right-click a player to invite them; the option stays unavailable ("whisper them first") until they've been whispered. Right-click also offers a one-off custom whisper and removing them.
+5. **Keep playing while you recruit:** click **Minimize** (top right of the tab) to close the big window and show a small recruiting bar you can drag anywhere. It shows what's happening (countdown to the next whisper, players found, how many are ready) and has **Search /who**, **Select New** and **Send Whispers / Stop / Send Next**, so you can search, tick and send without opening the window. **Expand** goes back to the full tab; the X hides the bar (queued whispers keep sending). If you close the main window while whispers are still being sent, the bar appears by itself. `/ngm mini` shows or hides it.
+6. **Invites only after a whisper.** Right-click a player to invite them; the option stays unavailable ("whisper them first") until they've been whispered. Right-click also offers a one-off custom whisper and removing them.
 
 **Default message** (right side): the whisper for anyone no custom message matches. These are filled in for you:
 
@@ -226,6 +227,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm` | open or close |
 | `/ngm find <text>` | open with a search |
 | `/ngm recruit` | open the Recruitment tab |
+| `/ngm mini` | show or hide the small recruiting bar |
 | `/ngm options` | open the options |
 | `/ngm diag` | report what the Guild & Communities shortcut can see |
 | `/ngm sync` | sync now and show sync stats |
@@ -241,7 +243,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data)  Sync.lua (records, repair, transport)
 Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)
-UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  RecruitView.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua
+UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua
 ```
 
 ## Names in WoW: Forever

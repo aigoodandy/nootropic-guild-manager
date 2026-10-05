@@ -189,8 +189,15 @@ function RCV:BuildSearchBar(page, frame)
     end)
     self.guildBox = guildBox
 
+    local mini = W.Button(page, "Minimize", 80, 20)
+    mini:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -59)
+    mini:SetScript("OnClick", function() ns.RecruitMini:Minimize() end)
+    W.Tooltip(mini, "Minimize",
+        "Closes this window and shows a small recruiting bar you can move anywhere, so you can keep playing.",
+        "It can search, tick new players and send whispers. Click Expand on it to come back here.")
+
     local clear = W.Button(page, "Clear New", 86, 20)
-    clear:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -59)
+    clear:SetPoint("RIGHT", mini, "LEFT", -6, 0)
     clear:SetScript("OnClick", function()
         W.Confirm("Remove everyone you haven't contacted from the list?", function() ns.Recruit:ClearUncontacted() end)
     end)
@@ -291,7 +298,9 @@ function RCV:BuildFooter(page, inset)
     self.sendInfo:SetPoint("RIGHT", send, "LEFT", -8, 0)
 end
 
-function RCV:OnSendClicked()
+-- Send / Stop / Send Next, shared by the footer and the mini recruiter.
+-- order: the list as shown (whispers go out in that order), or nil.
+function RCV:OnSendClicked(order)
     local RC = ns.Recruit
     local r = RC:Settings()
     if RC:IsSending() then
@@ -302,13 +311,14 @@ function RCV:OnSendClicked()
             ns:Print("Stopped sending whispers.")
         end
     else
-        local n = RC:StartSending(self.list)
+        local n = RC:StartSending(order or self.list)
         if n == 0 then ns:Print("Tick the players you want to whisper first (or click Select New).") end
     end
     self:Refresh()
 end
 
-function RCV:RefreshFooter()
+-- The Send button's text, whether it's clickable, and a status line.
+function RCV:SendState()
     local RC = ns.Recruit
     local r = RC:Settings()
     local selected = RC:SelectedCount()
@@ -316,22 +326,23 @@ function RCV:RefreshFooter()
     if RC:IsSending() then
         local left = #RC.queue
         if r and r.whisperMode == "click" then
-            self.sendBtn:SetText(wait > 0 and ("Wait %ds"):format(math.ceil(wait)) or "Send Next")
-            self.sendBtn:SetEnabled(true)
-            self.sendInfo:SetText(("%d waiting - click Send Next for each"):format(left))
-        else
-            self.sendBtn:SetText("Stop")
-            self.sendInfo:SetText(("Sending: %d left, next in %ds"):format(left, math.ceil(wait)))
+            return wait > 0 and ("Wait %ds"):format(math.ceil(wait)) or "Send Next", true,
+                ("%d waiting - click Send Next for each"):format(left)
         end
-    else
-        self.sendBtn:SetText(selected > 0 and ("Send Whispers (%d)"):format(selected) or "Send Whispers")
-        self.sendBtn:SetEnabled(selected > 0)
-        if wait > 0 and #RC.sentTimes >= RC.WHISPER_MAX then
-            self.sendInfo:SetText(("Hourly limit reached - %d min"):format(math.ceil(wait / 60)))
-        else
-            self.sendInfo:SetText(selected > 0 and (selected .. " selected") or "Tick players to whisper")
-        end
+        return "Stop", true, ("Sending: %d left, next in %ds"):format(left, math.ceil(wait))
     end
+    local text = selected > 0 and ("Send Whispers (%d)"):format(selected) or "Send Whispers"
+    if wait > 0 and #RC.sentTimes >= RC.WHISPER_MAX then
+        return text, selected > 0, ("Hourly limit reached - %d min"):format(math.ceil(wait / 60))
+    end
+    return text, selected > 0, selected > 0 and (selected .. " selected") or "Tick players to whisper"
+end
+
+function RCV:RefreshFooter()
+    local text, enabled, info = self:SendState()
+    self.sendBtn:SetText(text)
+    self.sendBtn:SetEnabled(enabled)
+    self.sendInfo:SetText(info)
 end
 
 -- Fits columns into the list width, hiding low-priority ones when narrow.
@@ -816,6 +827,15 @@ end
 ------------------------------------------------------------------------
 -- Refresh
 ------------------------------------------------------------------------
+-- The Search button's text and whether it's clickable (shared with the mini recruiter).
+function RCV:SearchState()
+    local RC = ns.Recruit
+    local wait = RC:CooldownRemaining()
+    if RC.searching then return "Searching...", false end
+    if wait > 0 then return ("Wait %ds"):format(math.ceil(wait)), false end
+    return "Search /who", RC:Settings() ~= nil
+end
+
 -- Keep refreshing every second while a countdown is visible.
 function RCV:IsShownTicking()
     local RC = ns.Recruit
@@ -841,23 +861,9 @@ function RCV:Refresh()
         self.emptyText:SetText("")
     end
 
-    local wait = RC:CooldownRemaining()
-    self.searchBtn:SetEnabled(r ~= nil and not RC.searching and wait <= 0)
-    if RC.searching then
-        self.searchBtn:SetText("Searching...")
-    elseif wait > 0 then
-        self.searchBtn:SetText(("Wait %ds"):format(math.ceil(wait)))
-        -- tick the countdown while the tab is open
-        if not self.ticking then
-            self.ticking = true
-            C_Timer.After(1, function()
-                RCV.ticking = false
-                if RCV.page:IsVisible() then RCV:Refresh() end
-            end)
-        end
-    else
-        self.searchBtn:SetText("Search /who")
-    end
+    local searchText, searchOn = self:SearchState()
+    self.searchBtn:SetText(searchText)
+    self.searchBtn:SetEnabled(searchOn)
 
     local last = RC.last
     if RC.searching then
