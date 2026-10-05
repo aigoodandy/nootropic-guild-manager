@@ -16,6 +16,7 @@ local SIZE = 32
 local GAP = 4
 local ROW_H = SIZE + GAP
 local GRID_W = COLS * (SIZE + GAP)
+local VISIBLE_ROWS = 5
 
 -- Every macro icon (file ids on current clients, texture names on older ones).
 function IP:Icons()
@@ -66,7 +67,9 @@ end
 function IP:Build()
     if self.frame then return self.frame end
     local f = CreateFrame("Frame", "NootropicGMIconPicker", UIParent, "BackdropTemplate")
-    f:SetSize(GRID_W + 52, 488)
+    -- tall enough for VISIBLE_ROWS rows of icons (the grid starts 124 from
+    -- the top and ends 48 from the bottom)
+    f:SetSize(GRID_W + 52, 124 + VISIBLE_ROWS * ROW_H + 48)
     f:SetFrameStrata("FULLSCREEN_DIALOG")
     f:SetToplevel(true)
     f:SetClampedToScreen(true)
