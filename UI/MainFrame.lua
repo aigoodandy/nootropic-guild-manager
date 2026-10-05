@@ -297,14 +297,23 @@ local function CreateSideTab(f, i)
                     if left then pcall(Mirror, tex) end
                 end
             end
-            -- the shaped trim can't be mirrored (the game then hides the whole
-            -- icon), so on the left the icon goes without it, a little smaller
-            -- so it sits inside the frame
+            -- The shaped trim can't be mirrored (the game then hides the whole
+            -- icon), but it can be turned: the tab is the same shape top and
+            -- bottom, so half a turn gives the left-side shape. Where turning
+            -- isn't possible, the icon goes untrimmed and a little smaller.
             if self.Mask then
-                if left then
+                self.Mask:SetAtlas(self.atlases.Mask, false)
+                local turned = false
+                if left and self.Mask.SetRotation then
+                    turned = pcall(self.Mask.SetRotation, self.Mask, math.pi)
+                elseif self.Mask.SetRotation then
+                    pcall(self.Mask.SetRotation, self.Mask, 0)
+                end
+                if left and not turned then
                     self.Icon:RemoveMaskTexture(self.Mask)
                     self.Icon:SetSize(44, 44)
                 else
+                    self.Icon:RemoveMaskTexture(self.Mask)
                     self.Icon:AddMaskTexture(self.Mask)
                     self.Icon:SetSize(50, 50)
                 end
