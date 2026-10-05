@@ -56,9 +56,10 @@
       SC:<member>          usual online hours: 168 bits (Monday 00:00 UTC
                            onward) as 42 hex digits   the member only
       KT:<id>              kudos type (like a tag definition)   officers
-      PI:<pollId>          each answer's color and icon: "o;1=color:icon~2=..."   officers
+      PI:<pollId>          each answer's color and icon, and the layout:
+                           "o2;layout;1=color:icon~2=..."   officers
       SD:<id>              guild stat everyone sees:
-                           "v3;group;deleted;title;looks;filter" (looks: each
+                           "v4;group;deleted;layout;title;looks;filter" (looks: each
                            row's color and icon, "Mage=8:icon~...")   officers
       SO:<id>              custom stat only officers see (officer scope), same value   officers
       GD:<id>              guild goal everyone sees:
@@ -521,17 +522,24 @@ function Codec.ParseLooks(v)
 end
 Codec.LookLabel = LookLabel
 
--- Stat: "v3;group;deleted;title;looks;filter" (the filter is a roster
--- search and may itself contain ";"). Earlier 1.13 betas wrote
--- "v2;group;deleted;color;icon;title;filter" and "group;deleted;title;filter",
--- still read.  s: { group, deleted, title, looks, filter }
+-- Stat: "v4;group;deleted;layout;title;looks;filter" (the filter is a roster
+-- search and may itself contain ";"). layout: how it's drawn (barspie, bars,
+-- pie, columns, number). Earlier 1.13 betas wrote "v3;group;deleted;title;
+-- looks;filter", "v2;group;deleted;color;icon;title;filter" and
+-- "group;deleted;title;filter", still read.
+-- s: { group, deleted, layout, title, looks, filter }
 function Codec.CustomStat(s)
-    return ("v3;%s;%d;%s;%s;%s"):format((Clean(s.group or ""):gsub(";", "")), s.deleted and 1 or 0,
-        (Clean(s.title or ""):gsub(";", ",")), Codec.Looks(s.looks), Clean(s.filter or ""))
+    return ("v4;%s;%d;%s;%s;%s;%s"):format((Clean(s.group or ""):gsub(";", "")), s.deleted and 1 or 0,
+        (Clean(s.layout or ""):gsub(";", "")), (Clean(s.title or ""):gsub(";", ",")), Codec.Looks(s.looks), Clean(s.filter or ""))
 end
 function Codec.ParseCustomStat(v)
     v = v or ""
-    local group, deleted, title, looks, filter = v:match("^v3;([^;]*);(%d);([^;]*);([^;]*);(.*)$")
+    local group, deleted, layout, title, looks, filter = v:match("^v4;([^;]*);(%d);([^;]*);([^;]*);([^;]*);(.*)$")
+    if group then
+        return { group = group, deleted = deleted == "1", layout = layout ~= "" and layout or nil, title = title,
+            looks = Codec.ParseLooks(looks), filter = filter }
+    end
+    group, deleted, title, looks, filter = v:match("^v3;([^;]*);(%d);([^;]*);([^;]*);(.*)$")
     if not group then
         group, deleted, title, filter = v:match("^v2;([^;]*);(%d);%d+;[^;]*;([^;]*);(.*)$")
     end
@@ -568,14 +576,18 @@ function Codec.ParseGoal(v)
         title = title, parts = list, filter = filter }
 end
 
--- Poll answer looks (PI:<pollId>): "o;" .. looks keyed by answer number.
--- (An early beta wrote "color;icon" for the whole poll; ignored.)
-function Codec.PollLooks(looks)
-    return "o;" .. Codec.Looks(looks)
+-- Poll answer looks and layout (PI:<pollId>): "o2;layout;looks", looks
+-- keyed by answer number. Earlier betas wrote "o;looks" (and "color;icon"
+-- for the whole poll, ignored). Returns looks, layout (or nil).
+function Codec.PollLooks(looks, layout)
+    return "o2;" .. (Clean(layout or ""):gsub(";", "")) .. ";" .. Codec.Looks(looks)
 end
 function Codec.ParsePollLooks(v)
-    local rest = (v or ""):match("^o;(.*)$")
-    return rest and Codec.ParseLooks(rest) or {}
+    v = v or ""
+    local layout, rest = v:match("^o2;([^;]*);(.*)$")
+    if layout then return Codec.ParseLooks(rest), layout ~= "" and layout or nil end
+    rest = v:match("^o;(.*)$")
+    return rest and Codec.ParseLooks(rest) or {}, nil
 end
 
 -- Poll: "closeAt;expireAt;deleted;question;option1;option2;..."
@@ -1085,14 +1097,14 @@ function S:SeedDefaults()
             store[key] = { v = Codec.TagDef(def[2], i * 10, false, def[1]), t = 1, a = "" }
         end
     end
-    -- default guild stats, the same way (time 3: replaces an untouched
-    -- default from an earlier beta, which were times 1 and 2)
+    -- default guild stats, the same way (time 4: replaces an untouched
+    -- default from an earlier beta, which were times 1 to 3)
     for i, def in ipairs(ns.Stats.DEFAULTS) do
         local key = "SD:d" .. i
-        local v = Codec.CustomStat({ title = def[1], group = def[2] })
+        local v = Codec.CustomStat({ title = def[1], group = def[2], layout = def[3] })
         local cur = store[key]
-        if not cur or (cur.t < 3 and (cur.a or "") == "") then
-            store[key] = { v = v, t = 3, a = "" }
+        if not cur or (cur.t < 4 and (cur.a or "") == "") then
+            store[key] = { v = v, t = 4, a = "" }
         end
     end
     -- default kudos, the same way (identical everywhere, so they never conflict)

@@ -242,18 +242,18 @@ function ST:Group(key)
 end
 
 ------------------------------------------------------------------------
--- The stats that come with the addon (SD:d1..d9): title, count by
+-- The stats that come with the addon (SD:d1..d9): title, count by, layout
 ------------------------------------------------------------------------
 ST.DEFAULTS = {
-    { "What class is everyone?",           "class" },
-    { "What level is everyone?",           "level" },
-    { "Who holds which rank?",             "rank" },
-    { "Which professions do we have?",     "prof" },
-    { "How many are alts?",                "kind" },
-    { "Who uses Nootropic Guild Manager?", "addon" },
-    { "Which days is the guild online?",   "day" },
-    { "What time is the guild online?",    "time" },
-    { "Which kudos get given?",            "kudos" },
+    { "What class is everyone?",           "class", "pie" },
+    { "What level is everyone?",           "level", "columns" },
+    { "Who holds which rank?",             "rank",  "bars" },
+    { "Which professions do we have?",     "prof",  "bars" },
+    { "How many are alts?",                "kind",  "number" },
+    { "Who uses Nootropic Guild Manager?", "addon", "number" },
+    { "Which days is the guild online?",   "day",   "columns" },
+    { "What time is the guild online?",    "time",  "columns" },
+    { "Which kudos get given?",            "kudos", "barspie" },
 }
 
 ------------------------------------------------------------------------
@@ -302,7 +302,7 @@ function ST:All()
     for raw, def in pairs(MyStats() or {}) do
         if self:Group(def.group) then
             out[#out + 1] = { id = "m:" .. raw, vis = "m", title = def.title, group = def.group, filter = def.filter,
-                looks = def.looks or {}, sort = SortKey(raw) }
+                looks = def.looks or {}, layout = def.layout, sort = SortKey(raw) }
         end
     end
     table.sort(out, function(a, b)
@@ -342,7 +342,7 @@ end
 
 -- Saves a stat (new when id is nil). looks: each row's color and icon.
 -- Returns its id.
-function ST:Save(id, title, group, filter, vis, looks)
+function ST:Save(id, title, group, filter, vis, looks, layout)
     if not ns.DB:Guild() then return nil, "You are not in a guild." end
     title, filter = Clean(title, self.TITLE_MAX), Clean(filter, self.FILTER_MAX)
     if title == "" then return nil, "Give it a title." end
@@ -360,12 +360,13 @@ function ST:Save(id, title, group, filter, vis, looks)
     end
     raw = raw or (ns.Sync.Base36(ns.DB:Now()) .. ns.Sync.Base36(math.random(0, 1295)))
     looks = TrimLooks(looks or (old and old.looks))
+    layout = layout or (old and old.layout)
     if vis == "m" then
-        MyStats()[raw] = { title = title, group = group, filter = filter, looks = looks }
+        MyStats()[raw] = { title = title, group = group, filter = filter, looks = looks, layout = layout }
         ns:Fire("STATS_CHANGED")
     else
         local ok, err = ns.Sync:Set(SCOPES[vis] .. ":" .. raw, ns.Sync.Codec.CustomStat({
-            group = group, title = title, filter = filter, looks = looks }))
+            group = group, title = title, filter = filter, looks = looks, layout = layout }))
         if not ok then return nil, err end
     end
     return vis .. ":" .. raw
@@ -382,7 +383,7 @@ function ST:Delete(id)
         return true
     end
     return ns.Sync:Set(SCOPES[c.vis] .. ":" .. raw, ns.Sync.Codec.CustomStat({
-        group = c.group, deleted = true, title = c.title, filter = c.filter, looks = c.looks }))
+        group = c.group, deleted = true, title = c.title, filter = c.filter, looks = c.looks, layout = c.layout }))
 end
 
 -- How many members a filter matches now.
@@ -456,7 +457,7 @@ function ST:Compute(id)
     local c = self:Get(id)
     local g = c and self:Group(c.group)
     if not g then return nil end
-    local s = { id = id, title = c.title, custom = c }
+    local s = { id = id, title = c.title, custom = c, layout = c.layout or "barspie" }
     s.rows, s.total, s.pctOf, s.sub = self:Rows(c.group, c.filter, c.looks)
     if (c.filter or "") ~= "" then s.sub = s.sub .. ("  |cff9d9d9dFilters: %s|r"):format(c.filter) end
     local notes = {}

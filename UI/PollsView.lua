@@ -309,6 +309,15 @@ function PV:BuildDetail(panel)
     scroll:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then c:SetWidth(w) end end)
     self.dScroll, self.dContent = scroll, c
 
+    -- Layout: how the results are drawn (for whoever may edit it)
+    local layoutBtn = PV.DropButton and PV.DropButton(d, 150) or W.Button(d, "", 150, 20)
+    layoutBtn:SetHeight(20)
+    layoutBtn:SetPoint("TOPRIGHT", d, "TOPRIGHT", -32, -8)
+    layoutBtn:SetFrameLevel(scroll:GetFrameLevel() + 5)
+    layoutBtn:SetScript("OnClick", function(btn) PV:LayoutMenu(btn) end)
+    W.Tooltip(layoutBtn, "Layout", "How the results are drawn: bars, a pie, columns or one big number.")
+    self.layoutBtn = layoutBtn
+
     local title, line = W.SectionHeader(c, "Poll")
     title:SetPoint("TOPLEFT", 14, -12)
     line:SetPoint("RIGHT", c, "RIGHT", -12, 0)
@@ -333,6 +342,7 @@ function PV:BuildDetail(panel)
     self.pie = pie
 
     self:BuildStatRows(c)
+    ns.ChartLayouts:Build(c)
 
     self.optionRows = {}
     for i = 1, ns.Polls.MAX_OPTIONS do
@@ -509,12 +519,49 @@ function PV:BuildStatRows(d)
 end
 
 ------------------------------------------------------------------------
+-- Layout (how a poll's or stat's results are drawn)
+------------------------------------------------------------------------
+-- A layout menu: getCurrent() returns the chosen key, onPick(key) runs on a pick.
+function PV.ShowLayoutMenu(owner, getCurrent, onPick)
+    local items = { { text = "Layout", isTitle = true } }
+    for _, l in ipairs(ns.ChartLayouts.LAYOUTS) do
+        items[#items + 1] = { text = l.label, radio = true,
+            checked = function() return (getCurrent() or "barspie") == l.key end,
+            func = function() onPick(l.key) end }
+    end
+    W.ShowMenu(owner, items)
+end
+
+-- The page's Layout button: shown to whoever may edit what's shown.
+function PV:RefreshLayoutButton(canEdit, layout)
+    self.layoutBtn:SetShown(canEdit and true or false)
+    self.layoutBtn:SetText(ns.ChartLayouts.Label(layout))
+end
+
+function PV:LayoutMenu(owner)
+    local s, p = self.stat, self.current
+    PV.ShowLayoutMenu(owner, function() return s and s.layout or p and p.layout end, function(key)
+        local ok, err
+        if s and s.custom then
+            local c = s.custom
+            ok, err = ns.Stats:Save(c.id, c.title, c.group, c.filter, c.vis, c.looks, key)
+        elseif p then
+            ok, err = ns.Polls:SetLayout(p.id, key)
+        end
+        if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+        PV.animateNext = true -- show the new layout growing in
+        PV:Refresh()
+    end)
+end
+
+------------------------------------------------------------------------
 -- Hovering a result: the row and its pie slice light up together
 ------------------------------------------------------------------------
 -- index: the answer / stat row (nil = nothing). from: "row" or "pie".
 function PV:HoverResult(index, from)
-    local rows = self.stat and self.statRows or self.optionRows
-    for i, r in ipairs(rows) do
+    -- the bars, or the frames of the layout drawn (legend lines, columns...)
+    local rows = self.hoverRows or (self.stat and self.statRows or self.optionRows)
+    for i, r in pairs(rows) do
         if i == index then r:LockHighlight() else r:UnlockHighlight() end
     end
     self.pie:SetHighlight(index)
@@ -666,6 +713,19 @@ function PV:BuildStatEditor(panel)
     end)
     self.sGroupBtn = group
 
+    -- how it's drawn, beside Count by
+    local lLabel = Label(c, "Layout")
+    lLabel:SetPoint("LEFT", gLabel, "LEFT", 182, 0)
+    local layout = DropButton(c, 140)
+    layout:SetPoint("TOPLEFT", lLabel, "BOTTOMLEFT", 0, -4)
+    layout:SetScript("OnClick", function(btn)
+        PV.ShowLayoutMenu(btn, function() return PV.sLayout end, function(key)
+            PV.sLayout = key
+            PV:RefreshStatEditor()
+        end)
+    end)
+    self.sLayoutBtn = layout
+
     local fLabel = Label(c, "Filters  |cff9d9d9d(optional)|r")
     fLabel:SetPoint("TOPLEFT", 14, -134)
     self.sFilter = Input(c, IW - 8, ST.FILTER_MAX)
@@ -774,6 +834,7 @@ function PV:ShowStatEditor(custom)
     self.sFilter:SetText(custom and custom.filter or "")
     self.sGroup = custom and custom.group or "class"
     self.sVis = custom and custom.vis or (ns.IsOfficer() and "c" or "m")
+    self.sLayout = custom and custom.layout or "barspie"
     -- the chosen row looks, copied so Cancel leaves the stat as it was
     self.sLooks = {}
     for label, l in pairs(custom and custom.looks or {}) do self.sLooks[label] = { color = l.color, icon = l.icon } end
@@ -786,6 +847,7 @@ function PV:RefreshStatEditor()
     local ST = ns.Stats
     local g = ST:Group(self.sGroup)
     self.sGroupBtn:SetText(g and g.label or "Choose...")
+    self.sLayoutBtn:SetText(ns.ChartLayouts.Label(self.sLayout))
     self:RefreshStatRowLooks()
     if self.sVis ~= "m" and not ns.IsOfficer() then self.sVis = "m" end
     for _, v in ipairs(ST.VISIBILITY) do
@@ -848,7 +910,7 @@ end
 
 function PV:SaveStat()
     local id, err = ns.Stats:Save(self.sEditing, self.sTitle:GetText(), self.sGroup, self.sFilter:GetText(), self.sVis,
-        self.sLooks)
+        self.sLooks, self.sLayout)
     if not id then
         self.sError:SetText(err or "Couldn't save the stat.")
         return
@@ -939,6 +1001,19 @@ function PV:BuildCreate(panel)
     self.closeHint:SetPoint("TOPLEFT", 14, y - 26)
     self.closeHint:SetPoint("RIGHT", -14, 0)
     self.closeHint:SetJustifyH("LEFT")
+
+    -- how the results are drawn
+    local lLabel = Label(c, "Layout")
+    lLabel:SetPoint("TOPLEFT", 14, y - 52)
+    local layout = DropButton(c, 150)
+    layout:SetPoint("LEFT", lLabel, "LEFT", 136, 0)
+    layout:SetScript("OnClick", function(btn)
+        PV.ShowLayoutMenu(btn, function() return PV.newLayout end, function(key)
+            PV.newLayout = key
+            PV:RefreshCreate()
+        end)
+    end)
+    self.pLayoutBtn = layout
     self.closeNum:HookScript("OnTextChanged", function() PV:RefreshCreate() end)
     self.keepNum:HookScript("OnTextChanged", function() PV:RefreshCreate() end)
 
@@ -974,6 +1049,7 @@ function PV:ShowCreate()
     -- each answer starts in its own color, with no icon
     self.answerLooks = {}
     for i = 1, P.MAX_OPTIONS do self.answerLooks[i] = { color = P.AnswerColor(i) } end
+    self.newLayout = "barspie"
     self.qBox:SetText("")
     for _, eb in ipairs(self.optBoxes) do eb:SetText("") end
     self.closeNum:SetText(tostring(P.DEFAULT_CLOSE[1]))
@@ -991,6 +1067,7 @@ end
 
 function PV:RefreshCreate()
     self.unitBtn:SetText(ns.Polls.UnitLabel(self.unit) or "Days")
+    self.pLayoutBtn:SetText(ns.ChartLayouts.Label(self.newLayout))
     for _, controls in ipairs(self.optLookControls) do controls:Refresh() end
     local secs = self:CloseSeconds()
     local keep = tonumber(self.keepNum:GetText())
@@ -1007,7 +1084,8 @@ end
 function PV:OnCreate()
     local options = {}
     for i, eb in ipairs(self.optBoxes) do options[i] = eb:GetText() end
-    local id, err = ns.Polls:Create(self.qBox:GetText(), options, self:CloseSeconds(), self.keepNum:GetText(), self.answerLooks)
+    local id, err = ns.Polls:Create(self.qBox:GetText(), options, self:CloseSeconds(), self.keepNum:GetText(), self.answerLooks,
+        self.newLayout ~= "barspie" and self.newLayout or nil)
     if not id then
         self.createError:SetText(err or "Couldn't create the poll.")
         return
@@ -1078,16 +1156,24 @@ local function PlaceFooter(self, prev)
     self.dFooter:SetPoint("RIGHT", self.dContent, "RIGHT", -14, 0)
 end
 
--- The scrolling page's height: down to the bottom of the pie (or the footer).
+-- The scrolling page's height: down to the lowest of the footer and the pie.
 local function SizeContent(self)
     local c = self.dContent
     local top = c:GetTop()
-    local last = self.pie:IsShown() and self.pie or self.dFooter
-    local bottom = last:GetBottom()
+    local bottom = self.dFooter:GetBottom()
+    if self.pie:IsShown() and self.pie:GetBottom() then
+        bottom = bottom and math.min(bottom, self.pie:GetBottom()) or self.pie:GetBottom()
+    end
     if top and bottom then c:SetHeight(math.max(10, top - bottom + 16)) end
 end
 
--- Call after the footer's text is set.
+-- Sizes the page now and again once it has its final layout.
+local function FinishContent(self)
+    SizeContent(self)
+    C_Timer.After(0, function() if PV.detailPane:IsVisible() then SizeContent(PV) end end)
+end
+
+-- "Bars and pie": the pie under the footer. Call after the footer's text is set.
 local function PlacePie(self)
     local pie, c = self.pie, self.dContent
     local size = math.floor(math.min(PIE_MAX, math.max(PIE_MIN, (c:GetWidth() or 300) - 60)))
@@ -1096,9 +1182,18 @@ local function PlacePie(self)
     -- the footer spans the page, so this centers the pie under it
     pie:SetPoint("TOP", self.dFooter, "BOTTOM", 0, -14)
     pie:Show()
-    SizeContent(self)
-    -- again once the page has its final layout
-    C_Timer.After(0, function() if PV.detailPane:IsVisible() then SizeContent(PV) end end)
+    FinishContent(self)
+end
+
+-- After the footer's text is set: the pie for "Bars and pie", none for
+-- "Bars only" (other layouts placed their own).
+local function FinishLayout(self, layout)
+    if layout == "barspie" then
+        PlacePie(self)
+    else
+        if layout == "bars" then self.pie:Hide() end
+        FinishContent(self)
+    end
 end
 
 function PV:RefreshDetail(p)
@@ -1112,11 +1207,25 @@ function PV:RefreshDetail(p)
 
     local most = 0
     for _, n in ipairs(p.counts) do most = math.max(most, n) end
+    local layout = p.layout or "barspie"
+    local CL = ns.ChartLayouts
+    CL:HideAll()
+    self.hoverRows = nil
+    local bars = CL.UsesBars(layout)
     local d, prev, gap = self.dContent, self.dStatus, -12
-    local slices, rowsHeight = {}, 0
+    local slices, rowsHeight, items = {}, 0, {}
     for i, r in ipairs(self.optionRows) do
         local text = p.options[i]
-        if text then
+        if text and not bars then
+            -- another layout draws the answers
+            local n = p.counts[i]
+            local look = p.answerLooks and p.answerLooks[i] or {}
+            local cr, cg, cb = D:TagColor(look.color or ns.Polls.AnswerColor(i))
+            slices[i] = { n, cr, cg, cb }
+            items[i] = { label = text, count = n, pct = p.total > 0 and math.floor(n * 100 / p.total + 0.5) or 0,
+                share = p.total > 0 and n / p.total or 0, r = cr, g = cg, b = cb, look = look, voted = p.myVote == i }
+            r:Hide()
+        elseif text then
             local n = p.counts[i]
             local pct = p.total > 0 and math.floor(n * 100 / p.total + 0.5) or 0
             -- the answer's own color and icon
@@ -1143,6 +1252,11 @@ function PV:RefreshDetail(p)
         end
     end
     self.pie:SetSlices(slices)
+    if not bars then
+        local last, hover = CL:Draw(layout, items, { onClick = function(i) PV:OnVote(i) end, noun = "votes",
+            total = p.total, barTargets = self.barTargets, pie = self.pie }, self.dStatus)
+        prev, self.hoverRows = last or prev, hover
+    end
 
     PlaceFooter(self, prev)
     if p.open then
@@ -1151,7 +1265,8 @@ function PV:RefreshDetail(p)
     else
         self.dFooter:SetText("Voting has closed. Only votes cast before it closed are counted.")
     end
-    PlacePie(self)
+    FinishLayout(self, layout)
+    self:RefreshLayoutButton(ns.IsOfficer(), layout)
 
     local officer = ns.IsOfficer()
     self.closeBtn:SetShown(officer and p.open)
@@ -1179,11 +1294,23 @@ function PV:RefreshStat(id)
     self.dQuestion:SetText(s.title)
     self.dStatus:SetText("|cff66bbff" .. s.sub .. "|r")
 
+    local layout = s.layout or "barspie"
+    local CL = ns.ChartLayouts
+    CL:HideAll()
+    self.hoverRows = nil
+    local bars = CL.UsesBars(layout)
     local d, prev, gap = self.dContent, self.dStatus, -12
-    local slices, rowsHeight = {}, 0
+    local slices, rowsHeight, items = {}, 0, {}
     for i, r in ipairs(self.statRows) do
         local row = s.rows[i]
-        if row then
+        if row and not bars then
+            -- another layout draws the rows
+            slices[i] = { row.count, row.r, row.g, row.b }
+            items[i] = { label = row.label, count = row.count,
+                pct = s.total > 0 and math.floor(row.count * 100 / s.total + 0.5) or 0,
+                share = s.total > 0 and row.count / s.total or 0, r = row.r, g = row.g, b = row.b, look = row }
+            r:Hide()
+        elseif row then
             local pct = s.total > 0 and math.floor(row.count * 100 / s.total + 0.5) or 0
             slices[i] = { row.count, row.r, row.g, row.b }
             r.Label:SetPoint("TOPLEFT", SetRowIcon(r.Icon, row) and 20 or 2, -2)
@@ -1202,6 +1329,15 @@ function PV:RefreshStat(id)
         end
     end
     self.pie:SetSlices(slices)
+    if not bars then
+        local last, hover = CL:Draw(layout, items, {
+            onClick = function(i)
+                local row = PV.stat and PV.stat.rows[i]
+                if row and row.query then ns.UI:ShowRosterWithSearch(row.query) end
+            end,
+            noun = s.pctOf, total = s.total, barTargets = self.barTargets, pie = self.pie }, self.dStatus)
+        prev, self.hoverRows = last or prev, hover
+    end
 
     PlaceFooter(self, prev)
     local foot = {}
@@ -1215,7 +1351,8 @@ function PV:RefreshStat(id)
         end
     end
     self.dFooter:SetText(table.concat(foot, "\n"))
-    PlacePie(self)
+    FinishLayout(self, layout)
+    self:RefreshLayoutButton(s.custom and ns.Stats:CanEdit(s.custom), layout)
 end
 
 -- The list: open polls, guild stats, closed polls.

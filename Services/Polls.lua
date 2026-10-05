@@ -80,7 +80,7 @@ function P:List()
     for key, rec in pairs(store) do
         if key:sub(1, 3) == "PI:" then
             local p = byId[key:sub(4)]
-            if p then p.looks = Codec().ParsePollLooks(rec.v) end
+            if p then p.looks, p.layout = Codec().ParsePollLooks(rec.v) end
         end
     end
     -- each answer's color and icon (answers without one get the next color)
@@ -144,7 +144,7 @@ end
 -- closeIn: seconds until voting closes.  keepDays: days results stay after that.
 -- looks: { [n] = { color, icon } } for the nth answer box (empty boxes are
 -- skipped, and their looks with them).
-function P:Create(question, options, closeIn, keepDays, looks)
+function P:Create(question, options, closeIn, keepDays, looks, layout)
     if not ns.DB:Guild() then return nil, "You are not in a guild." end
     if not self:CanCreate() then return nil, "Only officers can create polls." end
     question = CleanText(question, self.QUESTION_MAX)
@@ -176,7 +176,7 @@ function P:Create(question, options, closeIn, keepDays, looks)
         closeAt = closeAt, expireAt = closeAt + keepDays * 86400, question = question, options = answers,
     }))
     if not ok then return nil, err end
-    if next(answerLooks) then ns.Sync:Set("PI:" .. id, Codec().PollLooks(answerLooks)) end
+    if next(answerLooks) or layout then ns.Sync:Set("PI:" .. id, Codec().PollLooks(answerLooks, layout)) end
     self:MarkSeen(id)
     return id
 end
@@ -188,6 +188,14 @@ local function Rewrite(id, change)
     if not p then return nil, "Poll not found." end
     change(p)
     return ns.Sync:Set("PL:" .. id, Codec().Poll(p))
+end
+
+-- Officers: how a poll's results are drawn (barspie, bars, pie, columns, number).
+function P:SetLayout(id, layout)
+    if not ns.IsOfficer() then return nil, "Only officers can change polls." end
+    local p = self:Get(id)
+    if not p then return nil, "Poll not found." end
+    return ns.Sync:Set("PI:" .. id, Codec().PollLooks(p.looks or {}, layout))
 end
 
 -- Ends voting now; the results stay for as long as they would have after closing.
