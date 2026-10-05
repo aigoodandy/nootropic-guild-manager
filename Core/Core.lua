@@ -360,6 +360,56 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
 end)
 
 ------------------------------------------------------------------------
+-- /ngm inspect: what the mouse is over (for copying Blizzard's look):
+-- the frame's name, size and parent, and every texture on it and on its
+-- child frames (atlas or file, layer, size, texture coordinates).
+------------------------------------------------------------------------
+local function Fmt(n) return n and ("%.0f"):format(n) or "?" end
+
+local function PrintRegions(frame, indent)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:GetObjectType() == "Texture" then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            local tex = atlas and ("atlas " .. atlas) or ("file " .. tostring(r:GetTexture()))
+            local layer, sub = r:GetDrawLayer()
+            local coords = ""
+            if not atlas and r.GetTexCoord then
+                local a, b, c, d, e, f2, g, h = r:GetTexCoord()
+                if a and (a ~= 0 or b ~= 0 or c ~= 0 or d ~= 1 or e ~= 1 or f2 ~= 0 or g ~= 1 or h ~= 1) then
+                    coords = (" coords %.3f %.3f %.3f %.3f"):format(a, e, b, d) -- left right top bottom
+                end
+            end
+            local point, rel, relPoint, x, y = r:GetPoint(1)
+            ns:Print(("%s%s %s/%s %sx%s%s%s %s"):format(indent, tex, tostring(layer), tostring(sub or 0),
+                Fmt(r:GetWidth()), Fmt(r:GetHeight()), coords, r:IsShown() and "" or " (hidden)",
+                point and ("@" .. point .. " " .. Fmt(x) .. "," .. Fmt(y)) or ""))
+        end
+    end
+end
+
+function ns.InspectUnderMouse()
+    local f = (GetMouseFoci and GetMouseFoci()[1]) or (GetMouseFocus and GetMouseFocus())
+    if not f or f == WorldFrame then
+        ns:Print("Hover a window part, then type /ngm inspect and press Enter (keep the mouse still).")
+        return
+    end
+    local parent = f:GetParent()
+    ns:Print(("Frame: %s (%s) %sx%s, parent %s"):format(f:GetDebugName and f:GetDebugName() or tostring(f:GetName()),
+        f:GetObjectType(), Fmt(f:GetWidth()), Fmt(f:GetHeight()),
+        parent and (parent.GetDebugName and parent:GetDebugName() or tostring(parent:GetName())) or "none"))
+    PrintRegions(f, "  ")
+    for _, child in ipairs({ f:GetChildren() }) do
+        ns:Print(("  child %s %sx%s"):format(child.GetDebugName and child:GetDebugName() or tostring(child:GetName()),
+            Fmt(child:GetWidth()), Fmt(child:GetHeight())))
+        PrintRegions(child, "    ")
+    end
+    local hl = f.GetHighlightTexture and f:GetHighlightTexture()
+    if hl then ns:Print("  highlight: " .. tostring(hl.GetAtlas and hl:GetAtlas() or hl:GetTexture())) end
+    local ck = f.GetCheckedTexture and f:GetCheckedTexture()
+    if ck then ns:Print("  checked: " .. tostring(ck.GetAtlas and ck:GetAtlas() or ck:GetTexture())) end
+end
+
+------------------------------------------------------------------------
 -- Slash commands
 ------------------------------------------------------------------------
 local function PrintHelp()
@@ -398,6 +448,8 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns.Roster:Diagnose()
     elseif cmd == "perf" then
         ns.PerfReport()
+    elseif cmd == "inspect" then
+        ns.InspectUnderMouse()
     elseif cmd == "options" or cmd == "config" or cmd == "settings" then
         ns.Options:Open()
     elseif cmd == "recruit" then
