@@ -22,10 +22,10 @@ GL.MAX_PARTS = 4
 GL.MAX_TARGET = 999
 GL.ALMOST_LEVELS = 5 -- "almost there" for level goals: this many levels short
 
--- Launch day of World of Warcraft Forever, as a UTC time (the same number
--- on every copy, so the built-in goal is identical everywhere). nil until
--- known: the goal then has no target date.
-GL.LAUNCH_TIME = nil
+-- Launch day of World of Warcraft Forever: November 5, 2026, 00:00 UTC (a
+-- fixed number, the same on every copy, so the built-in goal is identical
+-- everywhere). "End of launch week" is 7 days later: the end of Nov 11 UTC.
+GL.LAUNCH_TIME = 1793836800
 
 -- Goals every guild starts with (GD:d1..), like the default stats; officers
 -- can change or delete them. title, filter, target, days after launch it's due

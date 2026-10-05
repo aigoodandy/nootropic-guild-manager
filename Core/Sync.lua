@@ -1109,7 +1109,7 @@ function S:SeedDefaults()
     end
     -- default goals, the same way (time 1; bump it when a default changes,
     -- e.g. once the launch date is known, so untouched copies get the update)
-    local GOAL_SEED_TIME = 1
+    local GOAL_SEED_TIME = 2 -- 2: the launch date added
     for i in ipairs(ns.Goals.DEFAULTS) do
         local key = "GD:d" .. i
         local cur = store[key]
