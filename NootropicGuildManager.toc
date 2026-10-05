@@ -25,6 +25,7 @@ Services\Location.lua
 Services\Reviews.lua
 Services\Polls.lua
 Services\Stats.lua
+Services\Goals.lua
 Services\Profile.lua
 Services\Audit.lua
 
@@ -44,6 +45,7 @@ UI\RecruitView.lua
 UI\RecruitMini.lua
 UI\MessagesView.lua
 UI\PollsView.lua
+UI\GoalsView.lua
 UI\TagsView.lua
 UI\AuditView.lua
 UI\ReviewsView.lua

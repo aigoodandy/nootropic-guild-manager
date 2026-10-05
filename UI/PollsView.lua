@@ -25,8 +25,14 @@ local PIE = 200         -- the pie's starting size; it's resized to the room lef
 local PIE_MAX, PIE_MIN = 240, 80
 local STAT_PREFIX = "stat:"
 
+local GOAL_PREFIX = "goal:"
+
 local function StatId(key)
     return type(key) == "string" and key:sub(1, #STAT_PREFIX) == STAT_PREFIX and key:sub(#STAT_PREFIX + 1) or nil
+end
+
+local function GoalId(key)
+    return type(key) == "string" and key:sub(1, #GOAL_PREFIX) == GOAL_PREFIX and key:sub(#GOAL_PREFIX + 1) or nil
 end
 
 local function Para(parent, font, width)
@@ -57,6 +63,8 @@ local function Input(parent, width, maxLetters, numeric)
     end)
     return eb
 end
+-- shared with the goal page and form (UI/GoalsView.lua)
+PV.Para, PV.Label, PV.Input = Para, Label, Input
 
 -- "Open - closes in 2d 3h" / "Closed Oct 03 - results kept 5 more days"
 local function StatusText(p)
@@ -103,6 +111,13 @@ function PV:Build(frame)
         "Officers can share stats with the guild or with officers; anyone can make one just for themselves.")
     self.newStatBtn = newStat
 
+    local newGoal = W.Button(page, "New Goal", 100, 22)
+    newGoal:SetPoint("RIGHT", newStat, "LEFT", -6, 0)
+    newGoal:SetScript("OnClick", function() ns.GoalsView:ShowEditor(nil) end)
+    W.Tooltip(newGoal, "New goal", "Set a target for the guild, like \"10 level 60 mains for Molten Core\", with smaller parts such as 2 tanks.",
+        "Officers can share goals with the guild or with officers; anyone can make one just for themselves.")
+    self.newGoalBtn = newGoal
+
     local inset = frame.Inset
     self:BuildList(page, inset)
     self:BuildPanel(page, inset)
@@ -116,7 +131,8 @@ function PV:Build(frame)
     ns:On("OFFICER_CHANGED", changed)
     -- stats follow the roster, profiles and kudos
     local function statsChanged()
-        if page:IsVisible() and StatId(PV.selected) then
+        -- stats and goals (and the goals' percentages in the list) follow the roster
+        if page:IsVisible() then
             ns.Debounce("pollsview", 0.3, function() PV:Refresh() end)
         end
     end
@@ -198,7 +214,7 @@ local function BuildListRow(row)
         if item and item.poll then
             PV:Select(item.poll.id)
         elseif item and item.stat then
-            PV:Select(STAT_PREFIX .. item.stat.id)
+            PV:Select(item.stat.key or (STAT_PREFIX .. item.stat.id))
         end
     end)
 end
@@ -219,13 +235,13 @@ function PV:InitRow(row, item)
     row.Header:SetShown(header ~= nil)
     row.HeaderLine:SetShown(header ~= nil)
     row.Stripe:SetShown(item.stripe and not header)
-    local key = p and p.id or stat and (STAT_PREFIX .. stat.id)
+    local key = p and p.id or stat and (stat.key or (STAT_PREFIX .. stat.id))
     row.Selected:SetShown(key ~= nil and key == self.selected and self.mode == "detail")
     if header then
         row.Header:SetText(header)
     elseif stat then
         row.StatName:SetText(stat.name)
-        row.Live:SetText("live")
+        row.Live:SetText(stat.right or "live") -- a goal shows its progress
     else
         row.Question:SetText(p.question)
         if p.open then
@@ -271,6 +287,7 @@ function PV:BuildPanel(page, inset)
     self:BuildDetail(panel)
     self:BuildCreate(panel)
     self:BuildStatEditor(panel)
+    ns.GoalsView:Build(panel)
 end
 
 function PV:BuildDetail(panel)
@@ -552,6 +569,7 @@ local function DropButton(parent, width)
     b.Arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
     return b
 end
+PV.DropButton = DropButton
 
 -- Distinct values among guild members, sorted: fn(e) returns a value or a list.
 local function Present(fn)
@@ -569,14 +587,18 @@ local function Present(fn)
     return out
 end
 
+-- Adds a filter word to a filter box (the stat form's unless given) and
+-- runs onChange (the stat form's refresh unless given).
 function PV:AddFilter(token)
-    local box = self.sFilter
+    local box = self.filterTarget or self.sFilter
     local text = ns.Trim(box:GetText() or "")
     box:SetText(text == "" and token or (text .. " " .. token))
-    self:RefreshStatEditor()
+    if self.filterChanged then self.filterChanged() else self:RefreshStatEditor() end
 end
 
-function PV:FilterMenu(owner)
+-- The Add Filter menu. box / onChange: another form's filter box and refresh.
+function PV:FilterMenu(owner, box, onChange)
+    self.filterTarget, self.filterChanged = box, onChange
     local function Quote(s) return '"' .. s:lower() .. '"' end
     local function Sub(title, values, field)
         local items = {}
@@ -1220,6 +1242,14 @@ local function ListItems(polls)
         byVis[c.vis] = byVis[c.vis] or {}
         table.insert(byVis[c.vis], { id = c.id, name = c.title })
     end
+    -- goals first, with how far along they are
+    local goals = {}
+    for _, g in ipairs(ns.Goals:All()) do
+        local pct, done = ns.Goals:Percent(g.id)
+        goals[#goals + 1] = { key = GOAL_PREFIX .. g.id, name = g.title,
+            right = done and "|cff40ff40done|r" or (pct .. "%") }
+    end
+    Section("Goals", goals, function(s) return { stat = s } end)
     Section("Open Polls", open, function(p) return { poll = p } end)
     for _, v in ipairs(ns.Stats.VISIBILITY) do
         Section(v.section, byVis[v.key] or {}, function(s) return { stat = s } end)
@@ -1239,15 +1269,17 @@ function PV:Refresh()
     self.sub:SetText(#list == 0 and "" or (open == 1 and "1 open" or (open .. " open")) .. (#list > open and ("  -  " .. (#list - open) .. " closed") or ""))
     self.newBtn:SetShown(officer)
     self.newStatBtn:SetShown(inGuild)
+    self.newGoalBtn:SetShown(inGuild)
     if self.mode == "create" and not officer then self.mode = nil end
-    local editing = self.mode == "create" or self.mode == "stat"
+    local editing = self.mode == "create" or self.mode == "stat" or self.mode == "goalForm"
 
     -- keep the selection; else an open poll you haven't voted on, any open
     -- poll, or the first stat
-    local statId = StatId(self.selected)
+    local statId, goalId = StatId(self.selected), GoalId(self.selected)
     if statId and not ns.Stats:Name(statId) then statId, self.selected = nil, nil end -- deleted
-    local current = not statId and self.selected and ns.Polls:Get(self.selected)
-    if not editing and inGuild and not current and not statId then
+    if goalId and not ns.Goals:Get(goalId) then goalId, self.selected = nil, nil end
+    local current = not statId and not goalId and self.selected and ns.Polls:Get(self.selected)
+    if not editing and inGuild and not current and not statId and not goalId then
         for _, p in ipairs(list) do
             if p.open and not p.myVote then current = p break end
         end
@@ -1262,15 +1294,18 @@ function PV:Refresh()
     end
     if not editing or not inGuild then
         -- nothing at all to show (no polls, every stat deleted): the info pane
-        self.mode = (inGuild and (current or statId)) and "detail" or nil
+        self.mode = (inGuild and (current or statId or goalId)) and "detail" or nil
     end
 
     local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition
     self.scrollBox:SetDataProvider(CreateDataProvider(inGuild and ListItems(list) or {}), retain)
 
+    local GV = ns.GoalsView
     self.createPane:SetShown(self.mode == "create")
     self.statPane:SetShown(self.mode == "stat")
-    self.detailPane:SetShown(self.mode == "detail")
+    GV.form:SetShown(self.mode == "goalForm")
+    self.detailPane:SetShown(self.mode == "detail" and not goalId)
+    GV.page:SetShown(self.mode == "detail" and goalId ~= nil)
     self.infoPane:SetShown(self.mode == nil)
     if self.mode == "create" then
         self.current, self.stat = nil, nil
@@ -1278,11 +1313,21 @@ function PV:Refresh()
     elseif self.mode == "stat" then
         self.current, self.stat = nil, nil
         self:RefreshStatEditor()
+    elseif self.mode == "goalForm" then
+        self.current, self.stat = nil, nil
+        GV:RefreshEditor()
     elseif self.mode == "detail" then
         wipe(self.barTargets)
-        if statId then self:RefreshStat(statId) else self:RefreshDetail(current) end
+        if goalId then
+            self.current, self.stat = nil, nil
+            GV:ShowGoal(goalId)
+        elseif statId then
+            self:RefreshStat(statId)
+        else
+            self:RefreshDetail(current)
+        end
         -- grow in when something new is shown; live updates just change
-        local key = statId and (STAT_PREFIX .. statId) or current.id
+        local key = goalId and (GOAL_PREFIX .. goalId) or statId and (STAT_PREFIX .. statId) or current.id
         local animate = self.animateNext or key ~= self.shownKey
         self.shownKey, self.animateNext = key, false
         if animate then

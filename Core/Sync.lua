@@ -61,6 +61,10 @@
                            "v3;group;deleted;title;looks;filter" (looks: each
                            row's color and icon, "Mage=8:icon~...")   officers
       SO:<id>              custom stat only officers see (officer scope), same value   officers
+      GD:<id>              guild goal everyone sees:
+                           "g1;deleted;target;due;title;parts;filter"
+                           (parts: "label^need^filter~...")   officers
+      GO:<id>              goal only officers see (officer scope), same value   officers
       KD:<id>              kudos description (tooltip text; none = the
                            default kudos' own text)   officers
       KU:<member>:<type>:<id>  one anonymous kudos for <member>: no author,
@@ -121,11 +125,13 @@ S.TYPES = {
     PI = { scope = "guild",   officer = true, label = "Poll look" },
     SD = { scope = "guild",   officer = true, label = "Guild stat" },
     SO = { scope = "officer", officer = true, label = "Officer stat" },
+    GD = { scope = "guild",   officer = true, label = "Guild goal" },
+    GO = { scope = "officer", officer = true, label = "Officer goal" },
     KU = { scope = "guild",   anyone = true, noAudit = true, ttl = 90 * 86400, low = true, immutable = true, anonymous = true, label = "Kudos" },
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
 -- Types whose key is not about one member.
-local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true, KD = true, SD = true, SO = true, PI = true }
+local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true, KD = true, SD = true, SO = true, PI = true, GD = true, GO = true }
 
 -- Orphaned poll votes (their poll is unknown) are kept this long.
 local ORPHAN_VOTE_TTL = 30 * 86400
@@ -536,6 +542,32 @@ function Codec.ParseCustomStat(v)
     return { group = group, deleted = deleted == "1", title = title, looks = Codec.ParseLooks(looks), filter = filter }
 end
 
+-- Goal: "g1;deleted;target;due;title;parts;filter". due: a time (0 = none).
+-- parts: "label^need^filter~label^need^filter" (sub-targets counted among
+-- the members the goal's filter matches). The filter is a roster search.
+-- g: { deleted, target, due, title, parts = { { label, need, filter } }, filter }
+local function PartText(s) return (Clean(s or ""):gsub("[~^;]", " ")) end
+function Codec.Goal(g)
+    local parts = {}
+    for _, p in ipairs(g.parts or {}) do
+        parts[#parts + 1] = ("%s^%d^%s"):format(PartText(p.label), tonumber(p.need) or 0, PartText(p.filter))
+    end
+    return ("g1;%d;%d;%d;%s;%s;%s"):format(g.deleted and 1 or 0, tonumber(g.target) or 0, tonumber(g.due) or 0,
+        (Clean(g.title or ""):gsub(";", ",")), table.concat(parts, "~"), Clean(g.filter or ""))
+end
+function Codec.ParseGoal(v)
+    local deleted, target, due, title, parts, filter = (v or ""):match("^g1;(%d);(%d+);(%d+);([^;]*);([^;]*);(.*)$")
+    if not deleted then return nil end
+    local list = {}
+    for entry in parts:gmatch("[^~]+") do
+        local label, need, pf = entry:match("^([^%^]*)%^(%d+)%^(.*)$")
+        if label then list[#list + 1] = { label = label, need = tonumber(need), filter = pf } end
+    end
+    due = tonumber(due)
+    return { deleted = deleted == "1", target = tonumber(target), due = due ~= 0 and due or nil,
+        title = title, parts = list, filter = filter }
+end
+
 -- Poll answer looks (PI:<pollId>): "o;" .. looks keyed by answer number.
 -- (An early beta wrote "color;icon" for the whole poll; ignored.)
 function Codec.PollLooks(looks)
@@ -605,7 +637,7 @@ function S:Materialize(typ, key, member, rec)
     elseif typ == "GS" then
         ns.Debounce("guildsettings", 0.1, function() ns:Fire("GUILD_SETTINGS_CHANGED") end)
         return
-    elseif typ == "SD" or typ == "SO" then
+    elseif typ == "SD" or typ == "SO" or typ == "GD" or typ == "GO" then
         ns.Debounce("statschanged", 0.2, function() ns:Fire("STATS_CHANGED") end)
         return
     elseif typ == "KT" or typ == "KD" or typ == "KU" then

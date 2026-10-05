@@ -22,6 +22,8 @@ AU.CATEGORIES = {
     { key = "PL", label = "Polls" },
     { key = "SD", label = "Guild stats" },
     { key = "SO", label = "Officer stats" },
+    { key = "GD", label = "Guild goals" },
+    { key = "GO", label = "Officer goals" },
     { key = "AB", label = "About me" },
     { key = "PN", label = "Pronouns" },
     { key = "KT", label = "Kudos list" },
@@ -163,6 +165,13 @@ function AU:Describe(e)
         local rec = ns.Sync:Get("PL:" .. (e.ref or ""))
         local poll = rec and ns.Sync.Codec.ParsePoll(rec.v)
         return "Poll icon or color changed" .. (poll and (": \"" .. poll.question .. "\"") or "")
+    elseif t == "GD" or t == "GO" then
+        local o, n = ns.Sync.Codec.ParseGoal(old), ns.Sync.Codec.ParseGoal(new)
+        local who = t == "GD" and "Guild goal" or "Officer goal"
+        local title = n and n.title or (o and o.title) or "?"
+        if n and not o then return who .. " created: " .. title end
+        if n and n.deleted and not (o and o.deleted) then return RED .. who .. " deleted:|r " .. title end
+        return who .. " changed: " .. title
     elseif t == "SD" or t == "SO" then
         local o, n = ns.Sync.Codec.ParseCustomStat(old), ns.Sync.Codec.ParseCustomStat(new)
         local who = t == "SD" and "Guild stat" or "Officer stat"
