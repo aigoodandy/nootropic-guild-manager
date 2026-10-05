@@ -27,6 +27,7 @@ Services\Polls.lua
 Services\Audit.lua
 
 # Interface
+UI\Fonts.lua
 UI\Widgets.lua
 UI\BrandIcon.lua
 UI\MemberPicker.lua

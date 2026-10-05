@@ -151,8 +151,12 @@ function ns.SplitName(short)
     return short or "", ""
 end
 
+-- Your own name as the guild roster spells it. Normally "Name-Realm" from
+-- UnitName; if the roster lists you differently (found by character GUID in
+-- Services/Roster.lua), that spelling wins, so your shared data (version,
+-- professions, votes...) lands on your roster row.
 function ns.PlayerFullName()
-    return ns.NormalizeName(UnitName("player"))
+    return ns.selfName or ns.NormalizeName(UnitName("player"))
 end
 
 function ns.ClassColor(classFile)
@@ -256,6 +260,7 @@ ns:RegisterEvent("GUILD_ROSTER_UPDATE", function() ns.Debounce("officercheck", 0
 ns:RegisterEvent("PLAYER_GUILD_UPDATE", function() ns.Debounce("officercheck", 0.5, CheckOfficer) end)
 
 ns:RegisterEvent("PLAYER_LOGIN", function()
+    ns.Fonts:Apply()
     ns.Roster:Init()
     ns.Sync:Init()
     ns.Comm:Init()
@@ -306,6 +311,7 @@ SlashCmdList.NOOTROPICGM = function(msg)
     elseif cmd == "diag" then
         ns.Communities:Diagnose()
         ns.WhoWhisper:Diagnose()
+        ns.Roster:Diagnose()
     elseif cmd == "options" or cmd == "config" or cmd == "settings" then
         ns.Options:Open()
     elseif cmd == "recruit" then

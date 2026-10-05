@@ -113,9 +113,37 @@ function R:Rebuild()
                 self.byName[full] = e
             end
         end
+        self:FindSelf(total)
     end
 
     ns:Fire("ROSTER_UPDATED")
+end
+
+-- Finds your own row (by character GUID, else by name) and makes sure the
+-- addon uses that exact spelling for you.
+function R:FindSelf(total)
+    local myGuid = UnitGUID and UnitGUID("player")
+    local myName = (UnitName("player") or ""):lower()
+    local found, byName
+    for i = 1, total do
+        local name = GetGuildRosterInfo(i)
+        if name then
+            local guid = select(17, GetGuildRosterInfo(i))
+            if myGuid and guid and guid == myGuid then
+                found = ns.NormalizeName(name)
+                break
+            end
+            if not byName and ns.ShortName(name):lower() == myName then byName = ns.NormalizeName(name) end
+        end
+    end
+    found = found or byName
+    self.selfRow = found
+    if found and found ~= ns.PlayerFullName() then
+        ns.selfName = found
+        ns:Fire("SELF_NAME_CHANGED", found)
+    end
+    local e = found and self.byName[found]
+    if e then self:Decorate(e) end
 end
 
 local function SortProfs(a, b)
@@ -141,6 +169,8 @@ function R:Decorate(e)
     end
     e.dist = auto and auto.dist ~= "" and auto.dist or nil
     e.version = m and m.version
+    e.isSelf = e.full == ns.PlayerFullName()
+    if e.isSelf then e.version = ns.version end -- you're running this copy right now
     e.hasAddon = auto ~= nil or e.version ~= nil
     e.syncedAt = auto and auto.ts
 
@@ -454,6 +484,19 @@ function R:IsOutdated(e)
     if not e.hasAddon then return false end
     if not e.version then return true end -- 1.10 or older never said
     return ns.CompareVersions(e.version, self:NewestVersion()) < 0
+end
+
+-- /ngm diag: how the addon sees you, and what version record it has for you.
+function R:Diagnose()
+    local me = ns.PlayerFullName()
+    local fromUnit = ns.NormalizeName(UnitName("player"))
+    local rec = ns.Sync:Get("AV:" .. me)
+    local m = ns.DB:GetMember(me)
+    local e = self.byName[me]
+    ns:Print(("Version: running %s. You are \"%s\"%s; roster row %s; shared version record %s; saved version %s."):format(
+        ns.version, me, fromUnit ~= me and (" (UnitName gives \"" .. fromUnit .. "\")") or "",
+        e and "found" or "|cffff5555not found|r", rec and ("\"" .. rec.v .. "\"") or "|cffff5555missing|r",
+        m and m.version or "none"))
 end
 
 -- Tells you (once per session) when a guildmate has a newer version.

@@ -403,10 +403,10 @@ function RV:BuildToolbar(page, frame)
     online:SetPoint("LEFT", search, "RIGHT", 14, 0)
     local label = online.Text or online.text
     if not label then
-        label = online:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label = online:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
         label:SetPoint("LEFT", online, "RIGHT", 2, 1)
     end
-    label:SetFontObject("GameFontHighlightSmall")
+    label:SetFontObject("NootropicGM_GameFontHighlightSmall")
     label:SetText("Online only")
     online:SetChecked(ns.DB:Settings().onlineOnly)
     online:SetScript("OnClick", function(self)
@@ -434,7 +434,7 @@ function RV:BuildToolbar(page, frame)
         "Drag a column header sideways to move it, or its edge to resize it. Your layout is saved.", "Narrow windows hide low-priority columns automatically.")
     self.columnsButton = columns
 
-    local count = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local count = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalSmall")
     count:SetPoint("RIGHT", columns, "LEFT", -10, 0)
     self.countText = count
 end
@@ -449,7 +449,7 @@ function RV:BuildTagBar(page, frame)
     bar:SetHeight(20)
     self.tagBar = bar
 
-    bar.Label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    bar.Label = bar:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalSmall")
     bar.Label:SetPoint("LEFT", 0, 0)
     bar.Label:SetText("Tags:")
 
@@ -601,7 +601,7 @@ function RV:BuildList(page, inset)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    local empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    local empty = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisable")
     empty:SetPoint("CENTER", scrollBox, "CENTER", 0, 20)
     empty:SetWidth(420)
     self.emptyText = empty
@@ -612,7 +612,7 @@ end
 -- its cell and moves the others.
 ------------------------------------------------------------------------
 local function Text(parent, font, justify)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NootropicGM_GameFontHighlightSmall")
     fs:SetJustifyH(justify or "LEFT")
     fs:SetWordWrap(false)
     return fs
@@ -656,12 +656,12 @@ local function BuildRow(row)
     row.ClassIcon = cells.name:CreateTexture(nil, "ARTWORK")
     row.ClassIcon:SetSize(16, 16)
     row.ClassIcon:SetPoint("LEFT", 18, 0)
-    row.Name = Text(cells.name, "GameFontNormal")
+    row.Name = Text(cells.name, "NootropicGM_GameFontNormal")
     row.Name:SetPoint("LEFT", row.ClassIcon, "RIGHT", 5, 0)
     row.Name:SetPoint("RIGHT", -4, 0)
 
     -- Second name
-    row.Second = Text(cells.second, "GameFontNormal")
+    row.Second = Text(cells.second, "NootropicGM_GameFontNormal")
     row.Second:SetPoint("LEFT", 6, 0)
     row.Second:SetPoint("RIGHT", -4, 0)
 
@@ -725,7 +725,7 @@ local function BuildRow(row)
         text:SetPoint("LEFT", icon, "RIGHT", 3, 0)
         row.Profs[i] = { icon = icon, text = text }
     end
-    row.NoProfs = Text(cells.profs, "GameFontDisableSmall")
+    row.NoProfs = Text(cells.profs, "NootropicGM_GameFontDisableSmall")
     row.NoProfs:SetPoint("LEFT", 6, 0)
     row.NoProfs:SetText("-")
 
@@ -949,6 +949,9 @@ function RV:ShowRowTooltip(row, e, hint)
         end
     end
     if ns.IsOfficer() then Pair("Rating", D:StarText(e.rating)) end
+    if e.hasAddon then
+        Pair("Addon version", e.version or "|cffff40401.10 or older|r (never reported a version)")
+    end
     if e.note then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(e.note, 0.85, 0.85, 0.85, true)

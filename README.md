@@ -160,6 +160,7 @@ Open from **Options > AddOns > Nootropic Guild Manager**, `/ngm options`, shift-
 - **Guildmate Locations**: share my location; show guildmates on the world map; custom dot colors (your dot and outline color).
 - **Use my guild's name in the window title**: "Knights of Azeroth Guild Manager" instead of "Nootropic Guild Manager", in the title and in the "x using ... Guild Manager" text at the bottom.
 - **Show how many guildmates use the addon**: the clickable "x using ... Guild Manager" text at the bottom of the window (on by default).
+- **Text Size**: **Smaller**, **Larger** and **Normal** make the text in the addon's windows smaller or bigger (from 2 points smaller to 6 points bigger), with a preview line. Only the addon's text changes; the rest of your game, and this Options panel, stay as they are.
 - **Recruiting**: **Recruitment whisper button on /who results** (on by default).
 - **Guild Settings** (officers, applies to the whole guild): **Guildmates can review the guild**.
 - **Show shortcut on the Guild & Communities window**: a side tab with the addon icon under the window's own tabs.
@@ -236,7 +237,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm mini` | show or hide the small recruiting bar |
 | `/ngm compact` | show or hide the compact guild roster |
 | `/ngm options` | open the options |
-| `/ngm diag` | report what the Guild & Communities shortcut and the /who invite buttons can see |
+| `/ngm diag` | report what the Guild & Communities shortcut and the /who whisper buttons can see, and which name and version the addon uses for you |
 | `/ngm sync` | sync now and show sync stats |
 | `/ngm polls` | open the Polls tab |
 | `/ngm audit` | open the Audit tab (officers) |

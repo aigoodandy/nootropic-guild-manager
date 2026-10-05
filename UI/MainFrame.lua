@@ -44,10 +44,10 @@ function UI:Create()
     self:RestorePosition()
 
     -- Status line along the bottom edge
-    self.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.status = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     self.status:SetPoint("BOTTOMLEFT", 14, 8)
     self:BuildAddonCount(f)
-    self.version = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.version = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     self.version:SetPoint("BOTTOMRIGHT", -14, 8)
     self.version:SetText("v" .. ns.version)
 
@@ -91,6 +91,19 @@ function UI:Create()
         UI:RefreshStatus()
     end)
     ns:On("GUILD_SETTINGS_CHANGED", function() UI:LayoutTabs() end)
+    -- text size changed: text that was measured to fit gets measured again
+    ns:On("FONTS_CHANGED", function()
+        UI:RefreshStatus()
+        ns.RosterView:Relayout()
+        ns.RosterView:Refresh()
+        if ns.DetailPanel.frame and ns.DetailPanel.frame:IsShown() then ns.DetailPanel:Refresh() end
+        if ns.TagsView.page:IsVisible() then ns.TagsView:Refresh() end
+        if ns.RecruitView.page:IsVisible() then ns.RecruitView:Refresh() end
+        if ns.PollsView.page:IsVisible() then ns.PollsView:Refresh() end
+        if ns.ReviewsView.page:IsVisible() then ns.ReviewsView:Refresh() end
+        ns.CompactRoster:Refresh()
+        ns.RecruitMini:Refresh()
+    end)
 
     self:SelectTab(1)
     return f
@@ -284,7 +297,7 @@ function UI:BuildAddonCount(f)
     local b = CreateFrame("Button", nil, f)
     b:SetHeight(16)
     b:SetPoint("LEFT", self.status, "RIGHT", 0, 0)
-    b.Text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.Text = b:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     b.Text:SetPoint("LEFT", 0, 0)
     b.Underline = b:CreateTexture(nil, "OVERLAY")
     b.Underline:SetHeight(1)

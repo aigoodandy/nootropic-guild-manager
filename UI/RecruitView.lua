@@ -30,7 +30,7 @@ RCV.layoutVersion = 0
 -- Small helpers
 ------------------------------------------------------------------------
 local function Label(parent, text, font)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormalSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NootropicGM_GameFontNormalSmall")
     fs:SetText(text)
     return fs
 end
@@ -39,7 +39,7 @@ local function InputBox(parent, width, maxLetters, numeric)
     local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     eb:SetSize(width, 20)
     eb:SetAutoFocus(false)
-    eb:SetFontObject("GameFontHighlightSmall")
+    eb:SetFontObject("NootropicGM_GameFontHighlightSmall")
     if maxLetters then eb:SetMaxLetters(maxLetters) end
     if numeric then eb:SetNumeric(true) end
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -52,10 +52,10 @@ local function Check(parent, text)
     cb:SetSize(22, 22)
     local label = cb.Text or cb.text
     if not label then
-        label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label = cb:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
         label:SetPoint("LEFT", cb, "RIGHT", 2, 1)
     end
-    label:SetFontObject("GameFontHighlightSmall")
+    label:SetFontObject("NootropicGM_GameFontHighlightSmall")
     label:SetText(text)
     cb.Label = label
     return cb
@@ -138,7 +138,7 @@ function RCV:BuildSearchBar(page, frame)
     levelLabel:SetPoint("LEFT", zoneBox, "RIGHT", 14, 0)
     local minBox = InputBox(page, 26, 2, true)
     minBox:SetPoint("LEFT", levelLabel, "RIGHT", 8, 0)
-    local dash = Label(page, "-", "GameFontHighlightSmall")
+    local dash = Label(page, "-", "NootropicGM_GameFontHighlightSmall")
     dash:SetPoint("LEFT", minBox, "RIGHT", 4, 0)
     local maxBox = InputBox(page, 26, 2, true)
     maxBox:SetPoint("LEFT", dash, "RIGHT", 8, 0)
@@ -191,12 +191,12 @@ function RCV:BuildSearchBar(page, frame)
     self.filterBtn = filter
 
     -- Summary line: players, last search, and which filters are on
-    local filters = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local filters = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     filters:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -66)
     filters:SetJustifyH("RIGHT")
     filters:SetWordWrap(false)
     self.filterInfo = filters
-    local status = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local status = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     status:SetPoint("TOPLEFT", frame, "TOPLEFT", 80, -66)
     status:SetPoint("RIGHT", filters, "LEFT", -12, 0)
     status:SetJustifyH("LEFT")
@@ -355,7 +355,7 @@ function RCV:BuildList(page, inset)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    local empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    local empty = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisable")
     empty:SetPoint("CENTER", scrollBox, "CENTER", 0, 20)
     empty:SetWidth(360)
     self.emptyText = empty
@@ -388,7 +388,7 @@ function RCV:BuildFooter(page, inset)
     end)
     W.Tooltip(clearNew, "Clear New", "Removes players you haven't whispered or invited from the list. Contacted players are kept so you don't message them twice.")
 
-    self.sendInfo = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.sendInfo = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     self.sendInfo:SetPoint("LEFT", clearNew, "RIGHT", 10, 0)
     self.sendInfo:SetJustifyH("LEFT")
     self.sendInfo:SetWordWrap(false)
@@ -529,7 +529,7 @@ function RCV:OnResize()
 end
 
 local function Text(parent, justify)
-    local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     fs:SetJustifyH(justify or "LEFT")
     fs:SetWordWrap(false)
     return fs
@@ -555,7 +555,7 @@ local function BuildRow(row)
     row.ClassIcon = cells.name:CreateTexture(nil, "ARTWORK")
     row.ClassIcon:SetSize(16, 16)
     row.ClassIcon:SetPoint("LEFT", 6, 0)
-    row.Name = cells.name:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    row.Name = cells.name:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
     row.Name:SetJustifyH("LEFT")
     row.Name:SetWordWrap(false)
     row.Name:SetPoint("LEFT", row.ClassIcon, "RIGHT", 5, 0)
@@ -729,14 +729,14 @@ function RCV:BuildPanel(page, inset)
     -- wraps pushes the rest down instead of overlapping it.
     local dlabel = Label(panel, "Default message")
     dlabel:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    local dhint = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local dhint = panel:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     dhint:SetPoint("LEFT", dlabel, "RIGHT", 6, 0)
     dhint:SetText("(when no custom message fits)")
 
     local editorFrame, box = W.ScrollEditor(panel, D.WHISPER_MAX)
     editorFrame:SetPoint("TOPLEFT", dlabel, "BOTTOMLEFT", 2, -6)
     editorFrame:SetSize(IW - 4, 66)
-    box:SetFontObject("GameFontHighlightSmall")
+    box:SetFontObject("NootropicGM_GameFontHighlightSmall")
     box:SetWidth(IW - 22)
     box:HookScript("OnTextChanged", function(self, user)
         if user then ns.Recruit:SetDefault(self:GetText()) end
@@ -744,13 +744,13 @@ function RCV:BuildPanel(page, inset)
     end)
     self.editor = box
 
-    self.tokens = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.tokens = panel:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     self.tokens:SetPoint("TOPLEFT", editorFrame, "BOTTOMLEFT", -2, -6)
     self.tokens:SetWidth(IW)
     self.tokens:SetJustifyH("LEFT")
     self.tokens:SetText("|cffffd100$name $class $level $race $zone $guild|r are filled in")
 
-    self.preview = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.preview = panel:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     self.preview:SetPoint("TOPLEFT", self.tokens, "BOTTOMLEFT", 0, -6)
     self.preview:SetWidth(IW)
     self.preview:SetJustifyH("LEFT")
@@ -767,7 +767,7 @@ function RCV:BuildPanel(page, inset)
     edit:SetPoint("TOPLEFT", use, "BOTTOMLEFT", 4, -4)
     edit:SetScript("OnClick", function() ns.MessagesView:Toggle() end)
     self.rulesButton = edit
-    self.rulesInfo = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.rulesInfo = panel:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     self.rulesInfo:SetPoint("LEFT", edit, "RIGHT", 8, 0)
 
     -- Auto-invite
@@ -807,7 +807,7 @@ function RCV:BuildPanel(page, inset)
         self.keywordBoxes[i] = eb
     end
 
-    local help = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local help = panel:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     help:SetPoint("TOPLEFT", kwLabel, "BOTTOMLEFT", 0, -56)
     help:SetWidth(IW)
     help:SetJustifyH("LEFT")
@@ -843,7 +843,7 @@ function RCV:BuildPanel(page, inset)
         self.dnwBoxes[i] = eb
     end
 
-    self.dnwCount = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.dnwCount = panel:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     self.dnwCount:SetPoint("TOPLEFT", dnwLabel, "BOTTOMLEFT", 0, -60)
     local view = W.Button(panel, "View List", 90, 20)
     view:SetPoint("LEFT", self.dnwCount, "LEFT", IW - 90, 0)

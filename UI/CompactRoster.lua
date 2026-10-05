@@ -103,10 +103,10 @@ function CR:Build()
     online:SetPoint("LEFT", search, "RIGHT", 6, 0)
     local label = online.Text or online.text
     if not label then
-        label = online:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label = online:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
         label:SetPoint("LEFT", online, "RIGHT", 1, 1)
     end
-    label:SetFontObject("GameFontHighlightSmall")
+    label:SetFontObject("NootropicGM_GameFontHighlightSmall")
     label:SetText("Online")
     online:SetScript("OnClick", function(self)
         CR:Settings().onlineOnly = self:GetChecked() and true or false
@@ -156,12 +156,12 @@ function CR:Build()
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.emptyText = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.emptyText = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     self.emptyText:SetPoint("CENTER", scrollBox, "CENTER", 0, 0)
     self.emptyText:SetWidth(180)
 
     -- footer: count and the Columns menu
-    self.count = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.count = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     self.count:SetPoint("BOTTOMLEFT", 14, 9)
     local cols = W.Button(f, "Columns", 72, 18)
     cols:SetPoint("BOTTOMRIGHT", -22, 6)
@@ -285,7 +285,7 @@ local function BuildRow(row)
     row.ClassIcon:SetSize(14, 14)
     row.cells = {}
     for _, col in ipairs(COLUMNS) do
-        local fs = row.Content:CreateFontString(nil, "OVERLAY", col.key == "name" and "GameFontNormalSmall" or "GameFontHighlightSmall")
+        local fs = row.Content:CreateFontString(nil, "OVERLAY", col.key == "name" and "NootropicGM_GameFontNormalSmall" or "NootropicGM_GameFontHighlightSmall")
         fs:SetJustifyH(col.justify or "LEFT")
         fs:SetWordWrap(false)
         row.cells[col.key] = fs

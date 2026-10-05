@@ -79,14 +79,14 @@ function IP:Build()
     tinsert(UISpecialFrames, f:GetName())
     self.frame = f
 
-    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local title = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
     title:SetPoint("TOP", 0, -18)
     title:SetText("Choose an Icon")
 
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
 
-    self.count = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.count = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     self.count:SetPoint("TOPLEFT", 20, -40)
 
     local scrollBox = CreateFrame("Frame", nil, f, "WowScrollBoxList")
@@ -106,7 +106,7 @@ function IP:Build()
     cancel:SetPoint("BOTTOMRIGHT", -20, 18)
     cancel:SetScript("OnClick", function() f:Hide() end)
 
-    self.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.hint = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     self.hint:SetPoint("BOTTOMLEFT", 22, 24)
     self.hint:SetText("Click an icon to use it.")
     return f

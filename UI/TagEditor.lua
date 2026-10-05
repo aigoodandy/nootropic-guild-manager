@@ -28,7 +28,7 @@ function TE:Build()
     tinsert(UISpecialFrames, f:GetName())
     self.frame = f
 
-    self.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    self.title = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormal")
     self.title:SetPoint("TOP", 0, -18)
 
     -- Icon (click to choose)
@@ -49,12 +49,12 @@ function TE:Build()
     end)
     W.Tooltip(icon, "Choose an icon", "Any icon from the macro icon menu.")
     self.iconButton = icon
-    local iconHint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local iconHint = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     iconHint:SetPoint("TOP", icon, "BOTTOM", 0, -4)
     iconHint:SetText("Change")
 
     -- Name
-    local nameLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local nameLabel = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalSmall")
     nameLabel:SetPoint("TOPLEFT", icon, "TOPRIGHT", 18, 0)
     nameLabel:SetText("Name")
     local name = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
@@ -68,7 +68,7 @@ function TE:Build()
     self.nameBox = name
 
     -- Color (dropdown of the tag palette)
-    local colorLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local colorLabel = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalSmall")
     colorLabel:SetPoint("TOPLEFT", name, "BOTTOMLEFT", -6, -10)
     colorLabel:SetText("Color")
     local color = W.Button(f, "", 140, 22)
@@ -95,7 +95,7 @@ function TE:Build()
     self.colorButton = color
 
     -- Preview
-    local prevLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local prevLabel = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalSmall")
     prevLabel:SetPoint("TOPLEFT", 26, -142)
     prevLabel:SetText("Preview")
     self.preview = W.Pill(f, 20, 16)
@@ -103,11 +103,11 @@ function TE:Build()
     self.preview:EnableMouse(false)
     self.previewIcon = W.TagIcon(f, 20)
     self.previewIcon:SetPoint("LEFT", self.preview, "RIGHT", 14, 0)
-    local roster = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local roster = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     roster:SetPoint("LEFT", self.previewIcon, "RIGHT", 6, 0)
     roster:SetText("(roster column)")
 
-    self.error = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.error = f:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
     self.error:SetPoint("TOPLEFT", 26, -172)
     self.error:SetPoint("RIGHT", -26, 0)
     self.error:SetJustifyH("LEFT")

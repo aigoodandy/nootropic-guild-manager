@@ -45,10 +45,10 @@ function AV:Build(frame)
     group:SetPoint("LEFT", kind, "RIGHT", 8, 0)
     local glabel = group.Text or group.text
     if type(glabel) ~= "table" then
-        glabel = group:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        glabel = group:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
         glabel:SetPoint("LEFT", group, "RIGHT", 2, 1)
     end
-    glabel:SetFontObject("GameFontHighlightSmall")
+    glabel:SetFontObject("NootropicGM_GameFontHighlightSmall")
     glabel:SetText("Group changes")
     group:SetChecked(true)
     group:SetScript("OnClick", function() AV:Refresh() end)
@@ -63,9 +63,9 @@ function AV:Build(frame)
     who:Hide()
     self.memberPill = who
 
-    self.retention = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.retention = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisableSmall")
     self.retention:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -38)
-    self.count = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    self.count = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontNormalSmall")
     self.count:SetPoint("RIGHT", self.retention, "LEFT", -12, 0)
 
     local inset = frame.Inset
@@ -92,7 +92,7 @@ function AV:Build(frame)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    self.empty = page:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontDisable")
     self.empty:SetPoint("CENTER", scrollBox, "CENTER", 0, 20)
     self.empty:SetWidth(420)
 
@@ -129,7 +129,7 @@ end
 AV.INSET = 34
 
 local function Text(parent, font)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NootropicGM_GameFontHighlightSmall")
     fs:SetJustifyH("LEFT")
     fs:SetWordWrap(false)
     return fs
@@ -144,7 +144,7 @@ function AV:InitRow(row, e)
         row.Stripe:SetColorTexture(1, 1, 1, 0.035)
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         row:GetHighlightTexture():SetAlpha(0.35)
-        row.When = Text(row, "GameFontDisableSmall")
+        row.When = Text(row, "NootropicGM_GameFontDisableSmall")
         row.Who = Text(row)
         row.Member = Text(row)
         row.Change = Text(row)

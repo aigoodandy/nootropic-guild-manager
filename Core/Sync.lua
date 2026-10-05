@@ -1012,6 +1012,14 @@ function S:Init()
     ns:RegisterEvent("PLAYER_GUILD_UPDATE", ready)
     ready()
 
+    -- the roster spells your name differently than expected: re-announce
+    -- your version (and spec/professions) under that spelling
+    ns:On("SELF_NAME_CHANGED", function()
+        if not S.readyFor then return end
+        S:Set("AV:" .. Me(), ns.version)
+        if ns.Comm then ns.Comm:Report() end
+    end)
+
     -- flush queued changes when the player logs out or reloads (best effort;
     -- anything missed is repaired by the next digest exchange)
     ns:RegisterEvent("PLAYER_LOGOUT", function() S:FlushOutgoing() end)

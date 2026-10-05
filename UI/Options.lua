@@ -232,6 +232,28 @@ function O:Build()
     self.resetColumns = cols
     y = y - 236
 
+    -- Text size (the addon's own text only)
+    Header(panel, "Text Size", y)
+    local tdesc = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    tdesc:SetPoint("TOPLEFT", 16, y - 20)
+    tdesc:SetText("Makes the text in the addon's windows bigger or smaller. The rest of your game is unchanged.")
+    local smaller = W.Button(panel, "Smaller", 90, 22)
+    smaller:SetPoint("TOPLEFT", 18, y - 40)
+    smaller:SetScript("OnClick", function() ns.Fonts:Set(ns.Fonts:Delta() - 1) end)
+    local larger = W.Button(panel, "Larger", 90, 22)
+    larger:SetPoint("LEFT", smaller, "RIGHT", 6, 0)
+    larger:SetScript("OnClick", function() ns.Fonts:Set(ns.Fonts:Delta() + 1) end)
+    local normal = W.Button(panel, "Normal", 90, 22)
+    normal:SetPoint("LEFT", larger, "RIGHT", 6, 0)
+    normal:SetScript("OnClick", function() ns.Fonts:Set(0) end)
+    self.fontValue = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    self.fontValue:SetPoint("LEFT", normal, "RIGHT", 14, 0)
+    self.fontSmaller, self.fontLarger = smaller, larger
+    local sample = panel:CreateFontString(nil, "OVERLAY", "NootropicGM_GameFontHighlightSmall")
+    sample:SetPoint("TOPLEFT", 20, y - 72)
+    sample:SetText("Preview: |cffffd100Mammoria|r  Level 20 Priest  -  Agama'gor")
+    y = y - 100
+
     -- Recruiting
     Header(panel, "Recruiting", y)
     self.whoWhisperCheck = Check(panel, "Recruitment whisper button on /who results",
@@ -290,6 +312,7 @@ function O:Build()
     ns:On("SETTINGS_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
     ns:On("BRAND_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
     ns:On("GUILD_SETTINGS_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
+    ns:On("FONTS_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
 end
 
 function O:Refresh()
@@ -314,6 +337,10 @@ function O:Refresh()
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
     self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
     self.whoWhisperCheck:SetChecked(s.whoWhisperButton ~= false)
+    local delta = ns.Fonts:Delta()
+    self.fontValue:SetText("Text size: |cffffd100" .. ns.Fonts:Label() .. "|r")
+    self.fontSmaller:SetEnabled(delta > ns.Fonts.MIN)
+    self.fontLarger:SetEnabled(delta < ns.Fonts.MAX)
     local officer = ns.IsOfficer()
     self.reviewsCheck:SetChecked(ns.DB:ReviewsEnabled())
     self.reviewsCheck:SetEnabled(officer and ns.DB:Guild() ~= nil)
