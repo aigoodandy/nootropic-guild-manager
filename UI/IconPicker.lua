@@ -1,7 +1,8 @@
 --[[
     Nootropic Guild Manager - Icon picker
     A grid of every icon the game's macro icon menu offers (the same lists
-    the macro window reads), used to choose a tag's icon.
+    the macro window reads), used to choose a tag's icon. The Paste box takes
+    an icon found outside the game: its name, file number or a Wowhead link.
 ]]
 local _, ns = ...
 local W, D = ns.Widgets, ns.Data
@@ -63,7 +64,7 @@ end
 function IP:Build()
     if self.frame then return self.frame end
     local f = CreateFrame("Frame", "NootropicGMIconPicker", UIParent, "BackdropTemplate")
-    f:SetSize(GRID_W + 52, 420)
+    f:SetSize(GRID_W + 52, 456)
     f:SetFrameStrata("FULLSCREEN_DIALOG")
     f:SetToplevel(true)
     f:SetClampedToScreen(true)
@@ -86,11 +87,37 @@ function IP:Build()
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
 
+    -- Paste box: an icon found outside the game (name, file number or link)
+    local pasteLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    pasteLabel:SetPoint("TOPLEFT", 22, -48)
+    pasteLabel:SetText("Paste")
+    local paste = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+    paste:SetSize(208, 20)
+    paste:SetPoint("LEFT", pasteLabel, "RIGHT", 12, 0)
+    paste:SetAutoFocus(false)
+    paste:SetMaxLetters(200)
+    paste:SetScript("OnTextChanged", function() IP:UpdatePaste() end)
+    paste:SetScript("OnEnterPressed", function() IP:UsePasted() end)
+    paste:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    W.Tooltip(paste, "Paste an icon", "An icon name (inv_misc_head_murloc_01), a file number (134169) or a Wowhead icon link.")
+    self.pasteBox = paste
+
+    local preview = f:CreateTexture(nil, "ARTWORK")
+    preview:SetSize(28, 28)
+    preview:SetPoint("LEFT", paste, "RIGHT", 10, 0)
+    preview:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    self.pastePreview = preview
+
+    local use = W.Button(f, "Use", 60, 22)
+    use:SetPoint("LEFT", preview, "RIGHT", 8, 0)
+    use:SetScript("OnClick", function() IP:UsePasted() end)
+    self.useButton = use
+
     self.count = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    self.count:SetPoint("TOPLEFT", 20, -40)
+    self.count:SetPoint("TOPLEFT", 20, -76)
 
     local scrollBox = CreateFrame("Frame", nil, f, "WowScrollBoxList")
-    scrollBox:SetPoint("TOPLEFT", 18, -58)
+    scrollBox:SetPoint("TOPLEFT", 18, -92)
     scrollBox:SetPoint("BOTTOMLEFT", 18, 48)
     scrollBox:SetWidth(GRID_W)
     local scrollBar = CreateFrame("EventFrame", nil, f, "MinimalScrollBar")
@@ -108,8 +135,72 @@ function IP:Build()
 
     self.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     self.hint:SetPoint("BOTTOMLEFT", 22, 24)
-    self.hint:SetText("Click an icon to use it.")
+    self.hint:SetPoint("RIGHT", cancel, "LEFT", -10, 0)
+    self.hint:SetJustifyH("LEFT")
     return f
+end
+
+------------------------------------------------------------------------
+-- Paste box
+------------------------------------------------------------------------
+-- What was pasted -> a file number or texture path to try (nil if empty).
+-- Takes  inv_misc_head_murloc_01  /  Interface\Icons\INV_...  /  134169  /
+-- wowhead.com/icon=134169/...  /  .../icons/large/inv_..._01.jpg
+function IP.ParsePasted(text)
+    text = ns.Trim(text or "")
+    if text == "" then return nil end
+    local id = text:match("[?&/]icon=(%d+)") or text:match("^(%d+)$")
+    if id then return tonumber(id) end
+    text = text:gsub("[?#].*$", "")           -- link extras
+    text = text:gsub("%.%a%a%a%a?$", "")      -- .blp / .jpg / .png
+    text = text:gsub("/", "\\")
+    if text:lower():find("^interface\\") then return text end -- a full game path
+    local name = text:match("([^\\]+)$") -- the last part of a link, or just a name
+    if not name or name:find("[^%w_%-]") then return nil end
+    return "Interface\\Icons\\" .. name
+end
+
+-- Does this icon exist in this version of the game? Returns the icon to
+-- save (a file number when the game can tell us one) or nil.
+function IP:Resolve(icon)
+    if not icon then return nil end
+    if type(icon) == "string" and GetFileIDFromPath then
+        local ok, fid = pcall(GetFileIDFromPath, icon)
+        if ok then
+            if fid then return fid end
+            return nil
+        end
+    end
+    -- older clients: SetTexture says whether it loaded (when it says anything)
+    self.probe = self.probe or self.frame:CreateTexture(nil, "BACKGROUND")
+    self.probe:Hide()
+    local loaded = self.probe:SetTexture(icon)
+    if loaded == false then return nil end
+    return icon
+end
+
+function IP:UpdatePaste()
+    local text = self.pasteBox:GetText()
+    local parsed = self.ParsePasted(text)
+    local icon = self:Resolve(parsed)
+    self.pasted = icon
+    self.pastePreview:SetTexture(icon or D.UNKNOWN_ICON)
+    self.pastePreview:SetDesaturated(icon == nil)
+    self.useButton:SetEnabled(icon ~= nil)
+    if ns.Trim(text) == "" then
+        self.hint:SetText("Click an icon to use it.")
+    elseif icon then
+        self.hint:SetText("|cff66ff66Found.|r Click Use (or press Enter).")
+    else
+        self.hint:SetText("|cffff5555That icon isn't in this version of the game.|r")
+    end
+end
+
+function IP:UsePasted()
+    if self.pasted then
+        self.pasteBox:ClearFocus()
+        self:Choose(self.pasted)
+    end
 end
 
 local function BuildRow(row)
@@ -175,6 +266,8 @@ function IP:Open(current, onPick, anchor)
     end
     self.count:SetText(("%d icons"):format(#icons))
     self.scrollBox:SetDataProvider(CreateDataProvider(rows))
+    self.pasteBox:SetText("")
+    self:UpdatePaste()
     f:ClearAllPoints()
     if anchor then
         f:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 8, 0)
