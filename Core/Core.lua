@@ -396,6 +396,22 @@ local function PrintRegions(frame, indent)
             Out(("%s%s %s/%s %sx%s%s%s %s"):format(indent, tex, tostring(layer), tostring(sub or 0),
                 Fmt(r:GetWidth()), Fmt(r:GetHeight()), coords, r:IsShown() and "" or " (hidden)",
                 point and ("@" .. point .. " " .. Fmt(x) .. "," .. Fmt(y)) or ""))
+            -- masks that trim this texture's shape
+            for m = 1, (r.GetNumMaskTextures and r:GetNumMaskTextures() or 0) do
+                local mask = r:GetMaskTexture(m)
+                if mask then
+                    local matlas = mask.GetAtlas and mask:GetAtlas()
+                    local mp, _, _, mx, my = mask:GetPoint(1)
+                    Out(("%s  masked by %s %sx%s %s"):format(indent,
+                        matlas and ("atlas " .. matlas) or ("file " .. tostring(mask:GetTexture())),
+                        Fmt(mask:GetWidth()), Fmt(mask:GetHeight()), mp and ("@" .. mp .. " " .. Fmt(mx) .. "," .. Fmt(my)) or ""))
+                end
+            end
+        elseif r:GetObjectType() == "MaskTexture" then
+            local matlas = r.GetAtlas and r:GetAtlas()
+            local mp, _, _, mx, my = r:GetPoint(1)
+            Out(("%smask %s %sx%s %s"):format(indent, matlas and ("atlas " .. matlas) or ("file " .. tostring(r:GetTexture())),
+                Fmt(r:GetWidth()), Fmt(r:GetHeight()), mp and ("@" .. mp .. " " .. Fmt(mx) .. "," .. Fmt(my)) or ""))
         end
     end
 end
