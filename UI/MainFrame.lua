@@ -195,9 +195,20 @@ local function HasAtlas(name)
     return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
 end
 
+-- An icon file if this client has it, else the fallback.
+local function IconIfPresent(path, fallback)
+    if GetFileIDFromPath then
+        local ok, id = pcall(GetFileIDFromPath, path)
+        if ok and id then return path end
+        if ok then return fallback end
+    end
+    return path
+end
+
 -- The usual icon of each tab (officers can pick another in Options).
 UI.DEFAULT_TAB_ICONS = {
-    "Interface\\Icons\\Spell_Holy_PrayerOfFortitude", -- Roster
+    -- a group of people, as on the Guild & Communities window's roster tab
+    IconIfPresent("Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend", "Interface\\Icons\\Spell_Holy_PrayerOfFortitude"), -- Roster
     "Interface\\Icons\\Ability_Warrior_BattleShout",  -- Recruitment
     "Interface\\Icons\\INV_Scroll_03",                -- Insights
     "Interface\\Icons\\INV_Misc_Note_01",             -- Tags
