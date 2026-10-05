@@ -6,6 +6,8 @@
       FK.LayoutPicker(parent, get, set) five small picture buttons
       FK.FilterChips(parent, width, box, onChange)   filters as removable
                                          chips, + Add filter, Edit as text
+      FK.Description(parent, width, max) a description box with a counter
+      FK.Form(panel, opts)               the two-page form shell (poll, goal)
 ]]
 local _, ns = ...
 local W, D = ns.Widgets, ns.Data
@@ -209,6 +211,116 @@ function FK.FilterLabel(word)
     end
     if neg then label = "Not " .. label:sub(1, 1):lower() .. label:sub(2) end
     return label
+end
+
+------------------------------------------------------------------------
+-- Form shell (the poll and goal forms): a header with a Settings | preview
+-- switch on its line, two pages, and Delete ... Cancel Save along the bottom.
+-- opts: { title, previewLabel, saveText, onSave, onCancel, onDelete, onPage(page) }
+-- form.settings is the settings page's content; it scrolls, and is as tall
+-- as form:FitSettings(lowest) makes it. form.preview is a plain frame.
+------------------------------------------------------------------------
+function FK.Form(panel, opts)
+    local c = CreateFrame("Frame", nil, panel)
+    c:SetAllPoints()
+    c:Hide()
+    local form = { frame = c }
+
+    local title, line = W.SectionHeader(c, opts.title)
+    title:SetPoint("TOPLEFT", 14, -12)
+    line:SetPoint("RIGHT", c, "RIGHT", -12, 0)
+    form.header = title
+
+    local scroll = W.TryCreate("ScrollFrame", nil, c, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 0, -36)
+    scroll:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -26, 44)
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(300, 10)
+    scroll:SetScrollChild(content)
+    scroll:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then content:SetWidth(w) end end)
+    form.scroll, form.settings = scroll, content
+
+    local preview = CreateFrame("Frame", nil, c)
+    preview:SetPoint("TOPLEFT", 10, -36)
+    preview:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -8, 44)
+    preview:Hide()
+    form.preview = preview
+    form.pages = { settings = scroll, preview = preview }
+
+    form.seg = FK.Segment(c, 220,
+        { { key = "settings", label = "Settings" }, { key = "preview", label = opts.previewLabel or "Look & preview" } },
+        function() return form.page end, function(key) form:ShowPage(key) end)
+    form.seg:SetPoint("TOPRIGHT", c, "TOPRIGHT", -14, -8)
+    form.seg:SetFrameLevel(c:GetFrameLevel() + 5)
+
+    -- bottom bar
+    local bar = c:CreateTexture(nil, "ARTWORK")
+    bar:SetColorTexture(1, 0.82, 0, 0.18)
+    bar:SetHeight(1)
+    bar:SetPoint("BOTTOMLEFT", 10, 42)
+    bar:SetPoint("BOTTOMRIGHT", -10, 42)
+    local save = W.Button(c, opts.saveText or SAVE or "Save", 100, 22)
+    save:SetPoint("BOTTOMRIGHT", -12, 12)
+    save:SetScript("OnClick", function() opts.onSave() end)
+    local cancel = W.Button(c, CANCEL or "Cancel", 90, 22)
+    cancel:SetPoint("RIGHT", save, "LEFT", -8, 0)
+    cancel:SetScript("OnClick", function() opts.onCancel() end)
+    local flip = W.Button(c, "", 110, 22)
+    flip:SetPoint("RIGHT", cancel, "LEFT", -8, 0)
+    flip:SetScript("OnClick", function() form:ShowPage(form.page == "settings" and "preview" or "settings") end)
+    local del = W.Button(c, DELETE or "Delete", 90, 22)
+    del:SetPoint("BOTTOMLEFT", 12, 12)
+    del:SetScript("OnClick", function() if opts.onDelete then opts.onDelete() end end)
+    del:Hide()
+    form.saveBtn, form.flipBtn, form.deleteBtn = save, flip, del
+    local err = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    err:SetPoint("RIGHT", flip, "LEFT", -10, 0)
+    err:SetPoint("LEFT", c, "LEFT", 112, 0)
+    err:SetJustifyH("RIGHT")
+    err:SetWordWrap(false)
+    err:SetTextColor(1, 0.35, 0.35)
+    form.err = err
+
+    -- page: "settings" or "preview"
+    function form:ShowPage(page)
+        self.page = page
+        for key, frame in pairs(self.pages) do frame:SetShown(key == page) end
+        self.seg:Refresh()
+        self.flipBtn:SetText(page == "settings" and "Preview  >" or "<  Settings")
+        if page == "settings" then self:FitSettings() end
+        if opts.onPage then opts.onPage(page) end
+    end
+
+    -- The settings page's height: down to `lowest` (remembered), so it scrolls.
+    function form:FitSettings(lowest)
+        self.lowest = lowest or self.lowest
+        local function Fit()
+            local top, bottom = content:GetTop(), self.lowest and self.lowest:GetBottom()
+            if top and bottom then content:SetHeight(math.max(10, top - bottom + 12)) end
+        end
+        Fit()
+        C_Timer.After(0, Fit)
+    end
+
+    return form
+end
+
+-- "Description (optional)" with a "12 / 200" counter, over a two-line box.
+-- Returns the label (to place) and the edit box.
+function FK.Description(parent, width, max)
+    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    label:SetText("Description  |cff9d9d9d(optional)|r")
+    local count = parent:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    count:SetPoint("BOTTOMRIGHT", label, "BOTTOMLEFT", width, 0)
+    local frame, box = W.ScrollEditor(parent, max)
+    frame:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 2, -4)
+    frame:SetSize(width, 38)
+    box:SetFontObject("GameFontHighlightSmall")
+    box:SetWidth(width - 18)
+    local function Update() count:SetText(("%d / %d"):format(#(box:GetText() or ""), max)) end
+    box:HookScript("OnTextChanged", Update)
+    box.UpdateCount = Update
+    return label, box
 end
 
 function FK.FilterChips(parent, width, box, onChange)

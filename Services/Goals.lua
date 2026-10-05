@@ -18,6 +18,7 @@ ns.Goals = GL
 
 GL.TITLE_MAX = 60
 GL.FILTER_MAX = 120
+GL.DESC_MAX = 200
 GL.MAX_PARTS = 4
 GL.MAX_TARGET = 999
 GL.ALMOST_LEVELS = 5 -- "almost there" for level goals: this many levels short
@@ -49,7 +50,7 @@ local function MyGoals()
     return g.myGoals
 end
 
--- Every goal you can see: { id, vis, title, target, due, parts, filter }
+-- Every goal you can see: { id, vis, title, desc, target, due, parts, filter }
 function GL:All()
     local out = {}
     if not ns.DB:Guild() then return out end
@@ -68,8 +69,8 @@ function GL:All()
         end
     end
     for raw, def in pairs(MyGoals() or {}) do
-        out[#out + 1] = { id = "m:" .. raw, vis = "m", title = def.title, target = def.target, due = def.due,
-            parts = def.parts or {}, filter = def.filter }
+        out[#out + 1] = { id = "m:" .. raw, vis = "m", title = def.title, desc = def.desc, target = def.target,
+            due = def.due, parts = def.parts or {}, filter = def.filter }
     end
     table.sort(out, function(a, b)
         if a.vis ~= b.vis then return a.vis < b.vis end -- guild-wide, mine, officers
@@ -91,7 +92,7 @@ local function Clean(text, max)
     return ns.Trim(((text or ""):gsub("[|\r\n\t]+", " "))):sub(1, max)
 end
 
--- def: { title, filter, target, due, parts = { { label, need, filter } }, vis }
+-- def: { title, desc, filter, target, due, parts = { { label, need, filter } }, vis }
 -- Saves a goal (new when id is nil). Returns its id.
 function GL:Save(id, def)
     if not ns.DB:Guild() then return nil, "You are not in a guild." end
@@ -123,7 +124,8 @@ function GL:Save(id, def)
     end
     raw = raw or (ns.Sync.Base36(ns.DB:Now()) .. ns.Sync.Base36(math.random(0, 1295)))
     local due = tonumber(def.due)
-    local g = { title = title, filter = filter, target = target, due = due, parts = parts }
+    local desc = Clean(def.desc, self.DESC_MAX)
+    local g = { title = title, desc = desc ~= "" and desc or nil, filter = filter, target = target, due = due, parts = parts }
     if vis == "m" then
         MyGoals()[raw] = g
         ns:Fire("STATS_CHANGED")

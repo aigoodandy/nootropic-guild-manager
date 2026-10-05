@@ -560,18 +560,28 @@ end
 -- Goal: "g1;deleted;target;due;title;parts;filter". due: a time (0 = none).
 -- parts: "label^need^filter~label^need^filter" (sub-targets counted among
 -- the members the goal's filter matches). The filter is a roster search.
--- g: { deleted, target, due, title, parts = { { label, need, filter } }, filter }
+-- With a description: "g2;deleted;target;due;title;desc;parts;filter" (g1
+-- is still written without one, so the built-in goals read the same everywhere).
+-- g: { deleted, target, due, title, desc, parts = { { label, need, filter } }, filter }
 local function PartText(s) return (Clean(s or ""):gsub("[~^;]", " ")) end
 function Codec.Goal(g)
     local parts = {}
     for _, p in ipairs(g.parts or {}) do
         parts[#parts + 1] = ("%s^%d^%s"):format(PartText(p.label), tonumber(p.need) or 0, PartText(p.filter))
     end
-    return ("g1;%d;%d;%d;%s;%s;%s"):format(g.deleted and 1 or 0, tonumber(g.target) or 0, tonumber(g.due) or 0,
-        (Clean(g.title or ""):gsub(";", ",")), table.concat(parts, "~"), Clean(g.filter or ""))
+    local head = ("%d;%d;%d;%s;"):format(g.deleted and 1 or 0, tonumber(g.target) or 0, tonumber(g.due) or 0,
+        (Clean(g.title or ""):gsub(";", ",")))
+    local desc = (Clean(g.desc or ""):gsub(";", ","))
+    if desc ~= "" then
+        return "g2;" .. head .. desc .. ";" .. table.concat(parts, "~") .. ";" .. Clean(g.filter or "")
+    end
+    return "g1;" .. head .. table.concat(parts, "~") .. ";" .. Clean(g.filter or "")
 end
 function Codec.ParseGoal(v)
-    local deleted, target, due, title, parts, filter = (v or ""):match("^g1;(%d);(%d+);(%d+);([^;]*);([^;]*);(.*)$")
+    local deleted, target, due, title, desc, parts, filter = (v or ""):match("^g2;(%d);(%d+);(%d+);([^;]*);([^;]*);([^;]*);(.*)$")
+    if not deleted then
+        deleted, target, due, title, parts, filter = (v or ""):match("^g1;(%d);(%d+);(%d+);([^;]*);([^;]*);(.*)$")
+    end
     if not deleted then return nil end
     local list = {}
     for entry in parts:gmatch("[^~]+") do
@@ -580,18 +590,24 @@ function Codec.ParseGoal(v)
     end
     due = tonumber(due)
     return { deleted = deleted == "1", target = tonumber(target), due = due ~= 0 and due or nil,
-        title = title, parts = list, filter = filter }
+        title = title, desc = desc ~= "" and desc or nil, parts = list, filter = filter }
 end
 
--- Poll answer looks and layout (PI:<pollId>): "o2;layout;looks", looks
--- keyed by answer number. Earlier betas wrote "o;looks" (and "color;icon"
--- for the whole poll, ignored). Returns looks, layout (or nil).
-function Codec.PollLooks(looks, layout)
-    return "o2;" .. (Clean(layout or ""):gsub(";", "")) .. ";" .. Codec.Looks(looks)
+-- Poll answer looks, layout and description (PI:<pollId>):
+-- "o3;layout;desc;looks", or "o2;layout;looks" without a description;
+-- looks keyed by answer number. Earlier betas wrote "o;looks" (and
+-- "color;icon" for the whole poll, ignored). Returns looks, layout, desc.
+function Codec.PollLooks(looks, layout, desc)
+    layout = (Clean(layout or ""):gsub(";", ""))
+    desc = (Clean(desc or ""):gsub(";", ","))
+    if desc ~= "" then return "o3;" .. layout .. ";" .. desc .. ";" .. Codec.Looks(looks) end
+    return "o2;" .. layout .. ";" .. Codec.Looks(looks)
 end
 function Codec.ParsePollLooks(v)
     v = v or ""
-    local layout, rest = v:match("^o2;([^;]*);(.*)$")
+    local layout, desc, rest = v:match("^o3;([^;]*);([^;]*);(.*)$")
+    if layout then return Codec.ParseLooks(rest), layout ~= "" and layout or nil, desc ~= "" and desc or nil end
+    layout, rest = v:match("^o2;([^;]*);(.*)$")
     if layout then return Codec.ParseLooks(rest), layout ~= "" and layout or nil end
     rest = v:match("^o;(.*)$")
     return rest and Codec.ParseLooks(rest) or {}, nil

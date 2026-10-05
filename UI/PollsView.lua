@@ -198,13 +198,14 @@ local function BuildListRow(row)
     row.HeaderLine:SetHeight(1)
     row.HeaderLine:SetPoint("LEFT", row.Header, "RIGHT", 6, 0)
     row.HeaderLine:SetPoint("RIGHT", -4, 0)
-    -- a stat's description in a tooltip
+    -- a description (stat, goal or poll) in a tooltip
     row:SetScript("OnEnter", function(self)
-        local stat = self.item and self.item.stat
-        if not (stat and stat.desc) then return end
+        local item = self.item
+        local x = item and (item.stat or item.poll)
+        if not (x and x.desc) then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine(stat.name)
-        GameTooltip:AddLine(stat.desc, 1, 1, 1, true)
+        GameTooltip:AddLine(x.name or x.question, 1, 0.82, 0, true)
+        GameTooltip:AddLine(x.desc, 1, 1, 1, true)
         GameTooltip:Show()
     end)
     row:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -323,7 +324,7 @@ function PV:BuildDetail(panel)
     self.dQuestion = Para(c, "GameFontHighlight")
     self.dQuestion:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
     self.dQuestion:SetPoint("RIGHT", c, "RIGHT", -14, 0)
-    -- a short description (stats, when set)
+    -- a short description, when set
     self.dDesc = Para(c, "GameFontDisableSmall")
     self.dDesc:SetPoint("TOPLEFT", self.dQuestion, "BOTTOMLEFT", 0, -4)
     self.dDesc:SetPoint("RIGHT", c, "RIGHT", -14, 0)
@@ -1044,55 +1045,80 @@ function PV:SaveStat()
     self:Select(STAT_PREFIX .. id)
 end
 
+------------------------------------------------------------------------
+-- The poll form (officers): Settings (What, Answers, Voting) and Look &
+-- preview (each answer's icon and color, over made-up votes), on the
+-- same shell as the goal form (FormKit.Form).
+------------------------------------------------------------------------
+local SAMPLE_VOTES = { 9, 6, 4, 3, 2, 1 } -- the preview's made-up results
+
 function PV:BuildCreate(panel)
-    local P = ns.Polls
-    local c = CreateFrame("Frame", nil, panel)
-    c:SetAllPoints()
-    c:Hide()
-    self.createPane = c
+    local P, FK = ns.Polls, ns.FormKit
+    local form = FK.Form(panel, {
+        title = "New Poll", saveText = "Create Poll",
+        onSave = function() PV:OnCreate() end,
+        onCancel = function()
+            PV.mode = nil
+            PV:Refresh()
+        end,
+        onPage = function(page)
+            if page ~= "preview" then return end
+            PV.qBox:ClearFocus()
+            PV.pDesc:ClearFocus()
+            for _, eb in ipairs(PV.optBoxes) do eb:ClearFocus() end
+            PV:RefreshPollPreview()
+        end,
+    })
+    self.pForm, self.createPane = form, form.frame
+    local s = form.settings
+    local function ClearError() form.err:SetText("") end
 
-    local title, line = W.SectionHeader(c, "New Poll")
-    title:SetPoint("TOPLEFT", 14, -12)
-    line:SetPoint("RIGHT", c, "RIGHT", -12, 0)
-
-    local qLabel = Label(c, "Question")
-    qLabel:SetPoint("TOPLEFT", 14, -36)
-    self.qBox = Input(c, IW - 8, P.QUESTION_MAX)
+    ---------------- What ----------------
+    local what = FK.Section(s, "What", s)
+    what:SetPoint("TOPLEFT", 14, -2)
+    local qLabel = Label(s, "Question")
+    qLabel:SetPoint("TOPLEFT", 14, -24)
+    self.qBox = Input(s, FORM_LEFT_W - 6, P.QUESTION_MAX)
     self.qBox:SetPoint("TOPLEFT", qLabel, "BOTTOMLEFT", 6, -2)
+    self.qBox:HookScript("OnTextChanged", ClearError)
 
-    local aLabel = Label(c, ("Answers  |cff9d9d9d(%d to %d)|r"):format(P.MIN_OPTIONS, P.MAX_OPTIONS))
-    aLabel:SetPoint("TOPLEFT", 14, -82)
-    self.optBoxes, self.optLookControls = {}, {}
-    local prev = self.qBox
+    local dLabel, desc = FK.Description(s, FORM_LEFT_W, P.DESC_MAX)
+    dLabel:SetPoint("TOPLEFT", 14, -66)
+    self.pDesc = desc
+
+    local lLabel = Label(s, "Layout")
+    lLabel:SetPoint("TOPLEFT", 14, -126)
+    self.pLayoutPicker = FK.LayoutPicker(s, function() return PV.newLayout end, function(key)
+        PV.newLayout = key
+        PV:RefreshCreate()
+    end)
+    self.pLayoutPicker:SetPoint("TOPLEFT", lLabel, "BOTTOMLEFT", 0, -4)
+
+    ---------------- Answers ----------------
+    local answers = FK.Section(s, ("Answers  |cff9d9d9d(%d to %d)|r"):format(P.MIN_OPTIONS, P.MAX_OPTIONS), s)
+    answers:SetPoint("TOPLEFT", 14, -190)
+    self.optBoxes = {}
     for i = 1, P.MAX_OPTIONS do
-        local num = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        num:SetPoint("TOPLEFT", 16, -102 - (i - 1) * 24)
+        local eb = Input(s, FORM_LEFT_W - 26, P.OPTION_MAX)
+        eb:SetPoint("TOPLEFT", 40, -212 - (i - 1) * 24)
+        eb:HookScript("OnTextChanged", ClearError)
+        local num = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        num:SetPoint("RIGHT", eb, "LEFT", -10, 0)
         num:SetText(i .. ".")
-        -- the answer's icon and color
-        local looks = LookControls(c,
-            function() return PV.answerLooks and PV.answerLooks[i] or {} end,
-            function(field, value)
-                PV.answerLooks[i][field] = value or nil
-                PV.optLookControls[i]:Refresh()
-            end)
-        looks:SetPoint("LEFT", num, "LEFT", 16, 0)
-        self.optLookControls[i] = looks
-        local eb = Input(c, IW - 76, P.OPTION_MAX)
-        eb:SetPoint("LEFT", looks, "RIGHT", 10, 0)
-        prev.nextBox = eb
-        prev = eb
         self.optBoxes[i] = eb
     end
+    local y = -212 - P.MAX_OPTIONS * 24
 
-    local y = -102 - P.MAX_OPTIONS * 24 - 8
-    local closeLabel = Label(c, "Voting closes in")
-    closeLabel:SetPoint("TOPLEFT", 14, y - 4)
-    self.closeNum = Input(c, 44, 4, true)
-    self.closeNum:SetPoint("TOPLEFT", 150, y)
-    prev.nextBox = self.closeNum
-    local unit = W.Button(c, "", 96, 22)
+    ---------------- Voting ----------------
+    local voting = FK.Section(s, "Voting", s)
+    voting:SetPoint("TOPLEFT", 14, y - 6)
+    local closeLabel = Label(s, "Closes in")
+    closeLabel:SetPoint("TOPLEFT", 14, y - 34)
+    self.closeNum = Input(s, 44, 4, true)
+    self.closeNum:SetPoint("TOPLEFT", 130, y - 30)
+    local unit = DropButton(s, 100)
     unit:SetPoint("LEFT", self.closeNum, "RIGHT", 6, 0)
-    unit:SetScript("OnClick", function(self)
+    unit:SetScript("OnClick", function(btn)
         local items = { { text = "Voting closes in", isTitle = true } }
         for _, u in ipairs(P.UNITS) do
             items[#items + 1] = {
@@ -1104,56 +1130,146 @@ function PV:BuildCreate(panel)
                 end,
             }
         end
-        W.ShowMenu(self, items)
+        W.ShowMenu(btn, items)
     end)
     self.unitBtn = unit
 
-    y = y - 30
-    local keepLabel = Label(c, "Keep results after closing")
-    keepLabel:SetPoint("TOPLEFT", 14, y - 4)
-    keepLabel:SetWidth(132)
-    keepLabel:SetJustifyH("LEFT")
-    self.keepNum = Input(c, 44, 3, true)
-    self.keepNum:SetPoint("TOPLEFT", 150, y)
-    self.closeNum.nextBox = self.keepNum
-    self.keepNum.nextBox = self.qBox
-    local days = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local keepLabel = Label(s, "Keep results for")
+    keepLabel:SetPoint("TOPLEFT", 14, y - 62)
+    self.keepNum = Input(s, 44, 3, true)
+    self.keepNum:SetPoint("TOPLEFT", 130, y - 58)
+    local days = s:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     days:SetPoint("LEFT", self.keepNum, "RIGHT", 8, 0)
-    days:SetText("days")
+    days:SetText("days after it closes")
 
-    self.closeHint = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    self.closeHint:SetPoint("TOPLEFT", 14, y - 26)
-    self.closeHint:SetPoint("RIGHT", -14, 0)
+    self.closeHint = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.closeHint:SetPoint("TOPLEFT", 14, y - 88)
+    self.closeHint:SetWidth(FORM_LEFT_W)
     self.closeHint:SetJustifyH("LEFT")
-
-    -- how the results are drawn
-    local lLabel = Label(c, "Layout")
-    lLabel:SetPoint("TOPLEFT", 14, y - 52)
-    local layout = DropButton(c, 150)
-    layout:SetPoint("LEFT", lLabel, "LEFT", 136, 0)
-    layout:SetScript("OnClick", function(btn)
-        PV.ShowLayoutMenu(btn, function() return PV.newLayout end, function(key)
-            PV.newLayout = key
-            PV:RefreshCreate()
-        end)
-    end)
-    self.pLayoutBtn = layout
+    self.closeHint:SetText(" ")
     self.closeNum:HookScript("OnTextChanged", function() PV:RefreshCreate() end)
     self.keepNum:HookScript("OnTextChanged", function() PV:RefreshCreate() end)
+    form:FitSettings(self.closeHint)
 
-    local create = W.Button(c, "Create Poll", 120, 22)
-    create:SetPoint("BOTTOMLEFT", 12, 12)
-    create:SetScript("OnClick", function() PV:OnCreate() end)
-    local cancel = W.Button(c, CANCEL or "Cancel", 90, 22)
-    cancel:SetPoint("LEFT", create, "RIGHT", 8, 0)
-    cancel:SetScript("OnClick", function()
-        PV.mode = nil
-        PV:Refresh()
-    end)
+    -- tab moves through the boxes
+    local order = { self.qBox, desc }
+    for _, eb in ipairs(self.optBoxes) do order[#order + 1] = eb end
+    order[#order + 1] = self.closeNum
+    order[#order + 1] = self.keepNum
+    for i, box in ipairs(order) do box.nextBox = order[i + 1] or order[1] end
 
-    self.createError = Para(c, "GameFontHighlightSmall", IW)
-    self.createError:SetPoint("BOTTOMLEFT", create, "TOPLEFT", 2, 8)
-    self.createError:SetTextColor(1, 0.35, 0.35)
+    ---------------- Look & preview ----------------
+    local pv = form.preview
+    local prev = FK.Section(pv, "Preview", pv)
+    prev:SetPoint("TOPLEFT", 4, -2)
+    self.pPrevQ = Para(pv, "GameFontHighlight")
+    self.pPrevQ:SetPoint("TOPLEFT", 4, -24)
+    self.pPrevQ:SetPoint("RIGHT", pv, "RIGHT", -4, 0)
+    self.pPrevDesc = Para(pv, "GameFontDisableSmall")
+    self.pPrevDesc:SetPoint("TOPLEFT", self.pPrevQ, "BOTTOMLEFT", 0, -4)
+    self.pPrevDesc:SetPoint("RIGHT", pv, "RIGHT", -4, 0)
+    local pie = W.PieChart(pv, 100)
+    pie:EnableMouse(false)
+    self.pPie = pie
+    self.pPrevNote = pv:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.pPrevNote:SetJustifyH("LEFT")
+    self.pPrevNote:SetText("Made-up votes. Click an answer's icon or swatch to change its look (right-click the icon for none).")
+    local scroll = W.TryCreate("ScrollFrame", nil, pv, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
+    local list = CreateFrame("Frame", nil, scroll)
+    list:SetSize(200, 10)
+    scroll:SetScrollChild(list)
+    scroll:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then list:SetWidth(w) end end)
+    self.pPrevScroll, self.pRowList, self.pRowFrames = scroll, list, {}
+    self.pRowsEmpty = list:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.pRowsEmpty:SetPoint("TOPLEFT", 4, -4)
+    self.pRowsEmpty:SetText("Write at least two answers on the Settings page.")
+end
+
+-- The poll preview: the question, the pie (for layouts with one) and each
+-- answer as a bar over made-up votes, with its icon button and swatch.
+function PV:RefreshPollPreview()
+    local pv = self.pForm.preview
+    local q = ns.Trim(self.qBox:GetText() or "")
+    self.pPrevQ:SetText(q ~= "" and q or "|cff9d9d9dYour question|r")
+    self.pPrevDesc:SetText(ns.Trim(self.pDesc:GetText() or ""))
+
+    local answers, total = {}, 0
+    for i, eb in ipairs(self.optBoxes) do
+        local text = ns.Trim(eb:GetText() or "")
+        if text ~= "" then
+            local n = SAMPLE_VOTES[#answers + 1]
+            answers[#answers + 1] = { box = i, text = text, count = n }
+            total = total + n
+        end
+    end
+    if #answers < 2 then answers, total = {}, 0 end
+
+    local slices = {}
+    for n, a in ipairs(answers) do
+        local look = self.answerLooks[a.box]
+        a.r, a.g, a.b = D:TagColor(look.color or ns.Polls.AnswerColor(a.box))
+        slices[n] = { a.count, a.r, a.g, a.b }
+    end
+    local pie, note, scroll = self.pPie, self.pPrevNote, self.pPrevScroll
+    local withPie = #answers > 0 and (self.newLayout == "barspie" or self.newLayout == "pie")
+    pie:SetSlices(slices)
+    pie:ClearAllPoints()
+    pie:SetPoint("TOP", self.pPrevDesc, "BOTTOM", 0, -10)
+    pie:SetShown(withPie)
+    note:ClearAllPoints()
+    if withPie then
+        note:SetPoint("TOP", pie, "BOTTOM", 0, -8)
+        note:SetPoint("LEFT", pv, "LEFT", 4, 0)
+    else
+        note:SetPoint("TOPLEFT", self.pPrevDesc, "BOTTOMLEFT", 0, -10)
+    end
+    note:SetPoint("RIGHT", pv, "RIGHT", -4, 0)
+    scroll:ClearAllPoints()
+    scroll:SetPoint("TOPLEFT", note, "BOTTOMLEFT", 0, -6)
+    scroll:SetPoint("BOTTOMRIGHT", pv, "BOTTOMRIGHT", -24, 0)
+
+    local list, frames = self.pRowList, self.pRowFrames
+    for n, a in ipairs(answers) do
+        local f = frames[n]
+        if not f then
+            f = CreateFrame("Frame", nil, list)
+            f:SetHeight(PREVIEW_ROW_H)
+            f:SetPoint("TOPLEFT", 0, -(n - 1) * (PREVIEW_ROW_H + 2))
+            f:SetPoint("RIGHT", list, "RIGHT", 0, 0)
+            f.Controls = LookControls(f,
+                function()
+                    local l = PV.answerLooks[f.box] or {}
+                    return { color = l.color, icon = l.icon }
+                end,
+                function(field, value)
+                    PV.answerLooks[f.box][field] = value or nil
+                    PV:RefreshPollPreview()
+                end)
+            f.Controls:SetPoint("TOPLEFT", 2, 0)
+            f.Label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            f.Label:SetPoint("LEFT", f.Controls, "RIGHT", 6, 0)
+            f.Label:SetPoint("RIGHT", -70, 0)
+            f.Label:SetJustifyH("LEFT")
+            f.Label:SetWordWrap(false)
+            f.Count = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            f.Count:SetPoint("TOPRIGHT", -4, -4)
+            f.BarBg = W.StatBar(f, 10)
+            f.BarBg:SetPoint("BOTTOMLEFT", 2, 1)
+            f.BarBg:SetPoint("BOTTOMRIGHT", -2, 1)
+            frames[n] = f
+        end
+        f.box = a.box
+        f.Label:SetText(a.text)
+        f.Count:SetText(("%d  |cff9d9d9d%d%%|r"):format(a.count, math.floor(a.count * 100 / total + 0.5)))
+        f.BarBg.Bar:SetStatusBarColor(a.r, a.g, a.b)
+        f.BarBg.Bar:SetValue(a.count / total)
+        f.Controls:Refresh()
+        f:Show()
+    end
+    for n = #answers + 1, #frames do frames[n]:Hide() end
+    self.pRowsEmpty:SetShown(#answers == 0)
+    note:SetShown(#answers > 0)
+    list:SetHeight(math.max(10, #answers * (PREVIEW_ROW_H + 2)))
 end
 
 ------------------------------------------------------------------------
@@ -1175,10 +1291,14 @@ function PV:ShowCreate()
     for i = 1, P.MAX_OPTIONS do self.answerLooks[i] = { color = P.AnswerColor(i) } end
     self.newLayout = "barspie"
     self.qBox:SetText("")
+    self.pDesc:SetText("")
     for _, eb in ipairs(self.optBoxes) do eb:SetText("") end
     self.closeNum:SetText(tostring(P.DEFAULT_CLOSE[1]))
     self.keepNum:SetText(tostring(P.DEFAULT_KEEP_DAYS))
-    self.createError:SetText("")
+    self.pForm.err:SetText("")
+    self.pForm.scroll:SetVerticalScroll(0)
+    self.pPrevScroll:SetVerticalScroll(0)
+    self.pForm:ShowPage("settings")
     self:Refresh()
     self.qBox:SetFocus()
 end
@@ -1191,31 +1311,34 @@ end
 
 function PV:RefreshCreate()
     self.unitBtn:SetText(ns.Polls.UnitLabel(self.unit) or "Days")
-    self.pLayoutBtn:SetText(ns.ChartLayouts.Label(self.newLayout))
-    for _, controls in ipairs(self.optLookControls) do controls:Refresh() end
+    self.pLayoutPicker:Refresh()
+    self.pDesc.UpdateCount()
     local secs = self:CloseSeconds()
     local keep = tonumber(self.keepNum:GetText())
     if secs and secs >= 60 then
-        local closeAt = time() + secs
-        local hint = "Closes " .. ns.FormatDate(closeAt)
+        local hint = "Closes " .. ns.FormatDate(time() + secs)
         if keep then hint = hint .. (keep == 1 and ", results kept 1 day after." or (", results kept %d days after."):format(keep)) end
         self.closeHint:SetText(hint)
     else
-        self.closeHint:SetText("")
+        self.closeHint:SetText(" ")
     end
+    if self.pForm.page == "preview" then self:RefreshPollPreview() end
 end
 
 function PV:OnCreate()
     local options = {}
     for i, eb in ipairs(self.optBoxes) do options[i] = eb:GetText() end
     local id, err = ns.Polls:Create(self.qBox:GetText(), options, self:CloseSeconds(), self.keepNum:GetText(), self.answerLooks,
-        self.newLayout ~= "barspie" and self.newLayout or nil)
+        self.newLayout ~= "barspie" and self.newLayout or nil, self.pDesc:GetText() or "")
     if not id then
-        self.createError:SetText(err or "Couldn't create the poll.")
+        -- every check is about the Settings page
+        if self.pForm.page ~= "settings" then self.pForm:ShowPage("settings") end
+        self.pForm.err:SetText(err or "Couldn't create the poll.")
         return
     end
     for _, eb in ipairs(self.optBoxes) do eb:ClearFocus() end
     self.qBox:ClearFocus()
+    self.pDesc:ClearFocus()
     ns:Print(("Poll created. Guildmates running the addon can vote on the %s tab."):format(ns.TabName("polls")))
     self:Select(id)
 end
@@ -1340,7 +1463,7 @@ function PV:RefreshDetail(p)
     self.statDeleteBtn:Hide()
     self.dTitle:SetText("Poll")
     self.dQuestion:SetText(p.question)
-    self.dDesc:SetText("")
+    self.dDesc:SetText(p.desc or "")
     self.dStatus:SetText(StatusText(p) .. "  -  " .. VotesText(p.total))
 
     local most = 0
@@ -1521,7 +1644,7 @@ local function ListItems(polls)
     local goals = {}
     for _, g in ipairs(ns.Goals:All()) do
         local pct, done = ns.Goals:Percent(g.id)
-        goals[#goals + 1] = { key = GOAL_PREFIX .. g.id, name = g.title,
+        goals[#goals + 1] = { key = GOAL_PREFIX .. g.id, name = g.title, desc = g.desc,
             right = done and "|cff40ff40done|r" or (pct .. "%") }
     end
     Section("Goals", goals, function(s) return { stat = s } end)
