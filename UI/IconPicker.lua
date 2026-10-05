@@ -136,8 +136,21 @@ function IP:Build()
 
     self.count = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.count:SetPoint("TOPLEFT", 20, -108)
+    -- a small loading bar while spells and items are indexed for searching
+    local bar = CreateFrame("StatusBar", nil, f, "BackdropTemplate")
+    bar:SetSize(120, 10)
+    bar:SetPoint("TOPRIGHT", -36, -110)
+    bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    bar:SetStatusBarColor(1, 0.82, 0)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetBackdrop({ bgFile = W.WHITE, edgeFile = W.WHITE, edgeSize = 1 })
+    bar:SetBackdropColor(0, 0, 0, 0.6)
+    bar:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    bar:Hide()
+    W.Tooltip(bar, "Indexing for search", "Reading the game's spells and items so icons can be found by name. Search works already; results fill in as it goes.")
+    self.indexBar = bar
     self.indexStatus = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    self.indexStatus:SetPoint("TOPRIGHT", -36, -108)
+    self.indexStatus:SetPoint("RIGHT", bar, "LEFT", -6, 0)
 
     local scrollBox = CreateFrame("Frame", nil, f, "WowScrollBoxList")
     scrollBox:SetPoint("TOPLEFT", 18, -124)
@@ -281,7 +294,7 @@ local MAX_SPELL_ID = 600000
 local MAX_ITEM_ID = 250000
 local MAX_NAMES = 8
 local MAX_WORDS = 600 -- characters kept per icon
-local FRAME_BUDGET = 6 -- milliseconds of scanning per frame
+local FRAME_BUDGET = 2 -- milliseconds of scanning per frame (gentle on frame rate)
 
 IP.names, IP.words = {}, {}
 
@@ -335,7 +348,7 @@ function IP:StartIndex()
     local spellId, itemId = 1, 1
     local driver = self.indexDriver or CreateFrame("Frame")
     self.indexDriver = driver
-    local lastShown = 0
+    local lastShown, lastSearched = 0, 0
     driver:SetScript("OnUpdate", function()
         local stop = debugprofilestop() + FRAME_BUDGET
         while debugprofilestop() < stop do
@@ -358,12 +371,16 @@ function IP:StartIndex()
                 return
             end
         end
-        -- progress, and fresh results while someone is searching
+        -- the loading bar (4 times a second), and fresh results while
+        -- someone is searching (once a second)
         local now = GetTime()
-        if now - lastShown > 0.5 then
+        if now - lastShown > 0.25 then
             lastShown = now
             IP.progress = (spellId + itemId) / (MAX_SPELL_ID + MAX_ITEM_ID)
             IP:UpdateIndexStatus()
+        end
+        if now - lastSearched > 1 then
+            lastSearched = now
             if IP.frame and IP.frame:IsShown() and IP.searchBox:GetText() ~= "" then IP:ApplySearch() end
         end
     end)
@@ -372,9 +389,12 @@ end
 function IP:UpdateIndexStatus()
     if not self.indexStatus then return end
     if self.indexing then
-        self.indexStatus:SetText(("Indexing spells and items... %d%%"):format(math.floor((self.progress or 0) * 100)))
+        self.indexStatus:SetText(("Indexing %d%%"):format(math.floor((self.progress or 0) * 100)))
+        self.indexBar:SetValue(self.progress or 0)
+        self.indexBar:Show()
     else
         self.indexStatus:SetText("")
+        self.indexBar:Hide()
     end
 end
 
