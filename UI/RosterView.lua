@@ -1133,9 +1133,11 @@ function RV:ShowRowTooltip(row, e, hint)
     local PF = ns.Profile
     local status = PF:Status(e.full)
     if status then GameTooltip:AddLine("\"" .. status .. "\"", 1, 0.82, 0, true) end
-    local hours = PF:Hours(e.full, "local")
+    local hours = PF:Hours(e.full) -- local or server time, as your game clock is set
     local summary = hours and PF.Summary(hours)
-    if summary then GameTooltip:AddLine("Usually online: " .. summary, 0.7, 0.7, 0.7, true) end
+    if summary then
+        GameTooltip:AddLine(("Usually online: %s (%s)"):format(summary, PF.ClockLabel()), 0.7, 0.7, 0.7, true)
+    end
     local kudos = PF:KudosList(e.full)
     if #kudos > 0 then
         local parts = {}

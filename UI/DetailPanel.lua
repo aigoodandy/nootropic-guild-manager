@@ -27,7 +27,6 @@ local SECTION_GAP = 14
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
 DP.tab = "profile"
-DP.schedMode = "local"
 DP.schedOpen = false     -- the week grid starts folded (summary line only)
 DP.schedEditOpen = false
 
@@ -617,17 +616,11 @@ function DP:RefreshKudos(e)
 end
 
 ------------------------------------------------------------------------
--- Usually online (read mode)
+-- Usually online (read mode). Times follow your game clock: local time when
+-- its "Use Local Time" box is ticked, otherwise server time.
 ------------------------------------------------------------------------
 function DP:BuildScheduleSection(parent)
     local s = NewSection(parent, "Usually Online")
-    s.Server = SmallButton(s, "Server time", 82)
-    s.Server:SetPoint("TOPRIGHT", 0, 2)
-    s.Mine = SmallButton(s, "Your time", 74)
-    s.Mine:SetPoint("RIGHT", s.Server, "LEFT", -3, 0)
-    s.Mine:SetScript("OnClick", function() DP.schedMode = "local"; DP:Refresh() end)
-    s.Server:SetScript("OnClick", function() DP.schedMode = "server"; DP:Refresh() end)
-    s.Line:SetPoint("RIGHT", s.Mine, "LEFT", -6, 0)
     s.Summary = Para(s, "GameFontHighlightSmall", INNER)
     s.Summary:SetPoint("TOPLEFT", 0, -22)
     -- the week grid folds away; the summary line is enough most of the time
@@ -642,44 +635,37 @@ function DP:BuildScheduleSection(parent)
     return s
 end
 
--- "Fri 2-4 pm for you - 8-10 pm for Thalia"
+-- "Fri 8 pm-10 pm (local time) - 11 pm-1 am server time"
 function DP:ScheduleTooltip(cell, day, block)
     local e = self.entry
     if not e then return end
     local PF = ns.Profile
-    local mine = self.schedMode == "server" and (PF.ServerOffset() or PF.LocalOffset()) or PF.LocalOffset()
-    local m = ns.DB:GetMember(e.full)
+    local mode = PF.ClockMode()
+    local h = block * 2
     local on = self.schedule.Grid:Block(day, block)
     GameTooltip:SetOwner(cell, "ANCHOR_RIGHT")
-    local h = block * 2
-    local which = self.schedMode == "server" and "server time" or "your time"
-    GameTooltip:AddLine(("%s %s-%s  |cff9d9d9d(%s)|r"):format(PF.DAYS[day + 1], PF.HourText(h), PF.HourText(h + 2), which))
-    GameTooltip:AddLine(on and ("Usually online") or "Usually not online", on and 0.4 or 0.6, on and 1 or 0.6, on and 0.4 or 0.6)
-    local saved = m and m.schedule
-    if saved and e.full == ns.PlayerFullName() then
-        GameTooltip:AddLine("That's you.", 0.6, 0.6, 0.6)
+    GameTooltip:AddLine(("%s %s-%s  |cff9d9d9d(%s)|r"):format(PF.DAYS[day + 1], PF.HourText(h), PF.HourText(h + 2), PF.ClockLabel(mode)))
+    -- the same hours on the other clock
+    local off = PF.LocalMinusServer()
+    if off and off ~= 0 then
+        local idx = (day * 24 + h + (mode == "local" and -off or off)) % 168
+        local od, oh = math.floor(idx / 24), idx % 24
+        GameTooltip:AddLine(("= %s %s-%s %s"):format(PF.DAYS[od + 1], PF.HourText(oh), PF.HourText(oh + 2),
+            mode == "local" and "server time" or "your local time"), 0.7, 0.7, 0.7)
     end
+    GameTooltip:AddLine(on and "Usually online" or "Usually not online", on and 0.4 or 0.6, on and 1 or 0.6, on and 0.4 or 0.6)
+    GameTooltip:AddLine("Times follow your game clock's Use Local Time setting.", 0.5, 0.5, 0.5, true)
     GameTooltip:Show()
 end
 
 function DP:RefreshSchedule(e)
     local s = self.schedule
     local PF = ns.Profile
-    local mode = (self.schedMode == "server" and PF.ServerOffset()) and "server" or "local"
+    local mode = PF.ClockMode()
     local bits = PF:Hours(e.full, mode)
-    if not bits then return false end
+    if not bits or not next(bits) then return false end
     local open = self.schedOpen
-    -- the time switch only matters with the grid open; folded shows your time
-    if not open then mode, bits = "local", PF:Hours(e.full, "local") end
-    s.Mine:SetShown(open)
-    s.Server:SetShown(open)
-    s.Line:ClearAllPoints()
-    s.Line:SetPoint("LEFT", s.Title, "RIGHT", 6, 0)
-    s.Line:SetPoint("RIGHT", open and s.Mine or s, open and "LEFT" or "RIGHT", open and -6 or 0, 0)
-    s.Mine:SetEnabled(mode ~= "local")
-    s.Server:SetEnabled(mode ~= "server" and PF.ServerOffset() ~= nil)
-    local summary = PF.Summary(bits) or "|cff9d9d9dNo hours set.|r"
-    s.Summary:SetText(summary .. ("  |cff9d9d9d(%s)|r"):format(mode == "server" and "server time" or "your time"))
+    s.Summary:SetText((PF.Summary(bits) or "") .. ("  |cff9d9d9d(%s)|r"):format(PF.ClockLabel(mode)))
     local sh = math.ceil(s.Summary:GetStringHeight())
     s.Toggle:SetLabel(open and "Hide week" or "Show week")
     s.Toggle:ClearAllPoints()
@@ -1216,64 +1202,167 @@ function DP:BuildEditStatus(parent)
     return s
 end
 
--- Folded: your summary and "Edit hours". Open: presets and the week grid.
+-- Folded: your summary and "Edit hours". Open: learning on/off and, per day,
+-- learned / not playing / from-to (server time, the same for the whole guild).
+local MODE_LABELS = { learned = "Learned", off = "Not playing", hours = "Set hours" }
+
 function DP:BuildEditSchedule(parent)
     local s = NewSection(parent, "Usually Online")
     s.Summary = Para(s, "GameFontHighlightSmall", INNER)
     s.Summary:SetPoint("TOPLEFT", 0, -22)
+    s.Source = Para(s, "GameFontDisableSmall", INNER)
     s.Toggle = TextLink(s, function()
         DP.schedEditOpen = not DP.schedEditOpen
         DP:Refresh()
     end)
-    s.presets = {}
-    for _, p in ipairs({ { "evenings", "Weekday evenings", 118 }, { "weekends", "Weekends", 76 }, { "clear", "Clear", 52 } }) do
-        local b = SmallButton(s, p[2], p[3])
-        b:SetScript("OnClick", function() DP.schedEditor:Preset(p[1]) end)
-        b.w = p[3]
-        s.presets[#s.presets + 1] = b
+
+    local learn = CreateFrame("CheckButton", nil, s, "UICheckButtonTemplate")
+    learn:SetSize(22, 22)
+    local ll = learn.Text or learn.text
+    if not ll then
+        ll = learn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        ll:SetPoint("LEFT", learn, "RIGHT", 2, 1)
     end
-    self.schedEditor = ns.ScheduleGrid.New(s, {
-        editable = true, cell = 19, cellH = 14,
-        onChange = function(bits)
-            local ok, err = ns.Profile:SetMyHours(bits)
-            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-            DP:RefreshEditSchedule()
-            DP:Layout()
-        end,
-    })
-    s.Hint = Para(s, "GameFontDisableSmall", INNER)
+    ll:SetFontObject("GameFontHighlightSmall")
+    ll:SetText("Learn my hours from when I play")
+    learn:SetScript("OnClick", function(self)
+        ns.Profile:SetLearn(self:GetChecked())
+        DP:Refresh()
+    end)
+    W.Tooltip(learn, "Learn my hours", "While you're logged in, your own copy of the addon notes the server hour every 10 minutes and keeps the last 4 weeks.",
+        "An hour counts once you've played it in two different weeks. Nothing about this is shared except the result.")
+    s.Learn = learn
+
+    s.Note = Para(s, "GameFontDisableSmall", INNER)
+    s.rows = {}
+    for d = 0, 6 do
+        local r = CreateFrame("Frame", nil, s)
+        r:SetSize(INNER, 22)
+        r.Day = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        r.Day:SetPoint("LEFT", 0, 0)
+        r.Day:SetText(ns.Profile.DAYS[d + 1])
+        r.Mode = SmallButton(r, "", 86)
+        r.Mode:SetPoint("LEFT", 32, 0)
+        r.Mode:SetScript("OnClick", function(btn) DP:ShowDayModeMenu(btn, d) end)
+        r.From = SmallButton(r, "", 62)
+        r.From:SetPoint("LEFT", r.Mode, "RIGHT", 4, 0)
+        r.From:SetScript("OnClick", function(btn) DP:ShowDayHourMenu(btn, d, "from") end)
+        r.Dash = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        r.Dash:SetPoint("LEFT", r.From, "RIGHT", 3, 0)
+        r.Dash:SetText("-")
+        r.To = SmallButton(r, "", 62)
+        r.To:SetPoint("LEFT", r.Dash, "RIGHT", 3, 0)
+        r.To:SetScript("OnClick", function(btn) DP:ShowDayHourMenu(btn, d, "to") end)
+        r.Info = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        r.Info:SetPoint("LEFT", r.Mode, "RIGHT", 6, 0)
+        r.Info:SetPoint("RIGHT", 0, 0)
+        r.Info:SetJustifyH("LEFT")
+        r.Info:SetWordWrap(false)
+        s.rows[d] = r
+    end
     return s
+end
+
+function DP:ShowDayModeMenu(owner, d)
+    local PF = ns.Profile
+    local cur = PF:DayChoice(d)
+    local kind = cur == "off" and "off" or (type(cur) == "table" and "hours" or "learned")
+    local function pick(choice) PF:SetDayChoice(d, choice); DP:Refresh() end
+    W.ShowMenu(owner, {
+        { text = PF.DAYS[d + 1], isTitle = true },
+        { text = "Learned from when I play", radio = true, checked = function() return kind == "learned" end, func = function() pick(nil) end },
+        { text = "Not playing", radio = true, checked = function() return kind == "off" end, func = function() pick("off") end },
+        { text = "Set hours", radio = true, checked = function() return kind == "hours" end,
+          func = function() if kind ~= "hours" then pick({ from = 19, to = 23 }) end end },
+    })
+end
+
+-- from: 0-23, to: 1-24 (24 = midnight). Server time.
+function DP:ShowDayHourMenu(owner, d, which)
+    local PF = ns.Profile
+    local cur = PF:DayChoice(d)
+    if type(cur) ~= "table" then return end
+    local items = { { text = (which == "from" and "From" or "To") .. "  |cff9d9d9d(server time)|r", isTitle = true } }
+    local first, last = which == "from" and 0 or 1, which == "from" and 23 or 24
+    for h = first, last do
+        items[#items + 1] = {
+            text = PF.HourText(h) .. (h == 24 and " (midnight)" or ""), radio = true,
+            checked = function() return cur[which] == h end,
+            func = function()
+                PF:SetDayChoice(d, { from = which == "from" and h or cur.from, to = which == "to" and h or cur.to })
+                DP:Refresh()
+            end,
+        }
+    end
+    W.ShowMenu(owner, items)
 end
 
 function DP:RefreshEditSchedule()
     local s = self.editSchedule
     local PF = ns.Profile
     local open = self.schedEditOpen
-    s.Summary:SetText((PF.Summary(PF:MyHours()) or "|cff9d9d9dNot set. Guildmates won't see this section.|r") .. "  |cff9d9d9d(your time)|r")
-    local y = -22 - math.ceil(s.Summary:GetStringHeight()) - 4
+    local mode = PF.ClockMode()
+    local me = ns.PlayerFullName()
+    local bits = PF:Hours(me, mode) or {}
+    local summary = PF.Summary(bits)
+    s.Summary:SetText(summary and (summary .. ("  |cff9d9d9d(%s)|r"):format(PF.ClockLabel(mode)))
+        or "|cff9d9d9dNothing yet. Guildmates won't see this section until there is.|r")
+    local y = -22 - math.ceil(s.Summary:GetStringHeight()) - 2
+    local _, days = PF:LearnedHours()
+    s.Source:SetText(PF:LearnEnabled()
+        and (days > 0 and ("Learned from %d day%s of play, plus your changes."):format(days, days == 1 and "" or "s")
+            or "Learning from when you play: it fills in over the next days.")
+        or "Learning is off: only the hours you set are shown.")
+    s.Source:ClearAllPoints()
+    s.Source:SetPoint("TOPLEFT", 0, y)
+    y = y - math.ceil(s.Source:GetStringHeight()) - 4
     s.Toggle:SetLabel(open and "Done editing hours" or "Edit hours")
     s.Toggle:ClearAllPoints()
     s.Toggle:SetPoint("TOPLEFT", 0, y)
     y = y - 20
-    local x = 0
-    for _, b in ipairs(s.presets) do
-        b:SetShown(open)
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", x, y)
-        x = x + b.w + 4
-    end
-    s.Hint:SetShown(open)
-    self.schedEditor.frame:SetShown(open)
+
+    s.Learn:SetShown(open)
+    s.Note:SetShown(open)
+    for d = 0, 6 do s.rows[d]:SetShown(open) end
     if open then
-        y = y - 24
-        self.schedEditor:SetBits(PF:MyHours())
-        self.schedEditor.frame:ClearAllPoints()
-        self.schedEditor.frame:SetPoint("TOPLEFT", 0, y)
-        y = y - self.schedEditor.frame:GetHeight() - 4
-        s.Hint:SetText(("Shown in your time (UTC%+d). Guildmates see it in their own time. Click a block, or drag across several. Click a day name to copy it."):format(PF.LocalOffset()))
-        s.Hint:ClearAllPoints()
-        s.Hint:SetPoint("TOPLEFT", 0, y)
-        y = y - math.ceil(s.Hint:GetStringHeight()) - 4
+        s.Learn:ClearAllPoints()
+        s.Learn:SetPoint("TOPLEFT", -4, y)
+        s.Learn:SetChecked(PF:LearnEnabled())
+        y = y - 26
+        local off = PF.LocalMinusServer()
+        s.Note:SetText("Hours you set are in |cffffffffserver time|r, the same for the whole guild"
+            .. ((off and off ~= 0) and (" (server time is " .. (off < 0 and (-off .. " h ahead of") or (off .. " h behind")) .. " your clock).") or ".")
+            .. " Profiles show them the way your game clock is set.")
+        s.Note:ClearAllPoints()
+        s.Note:SetPoint("TOPLEFT", 0, y)
+        y = y - math.ceil(s.Note:GetStringHeight()) - 6
+        local learned = PF:LearnedHours()
+        for d = 0, 6 do
+            local r = s.rows[d]
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", 0, y)
+            local cur = PF:DayChoice(d)
+            local kind = cur == "off" and "off" or (type(cur) == "table" and "hours" or "learned")
+            r.Mode:SetText(MODE_LABELS[kind])
+            local hours = kind == "hours"
+            r.From:SetShown(hours)
+            r.To:SetShown(hours)
+            r.Dash:SetShown(hours)
+            r.Info:SetShown(not hours)
+            if hours then
+                r.From:SetText(PF.HourText(cur.from or 0))
+                r.To:SetText(PF.HourText(cur.to or 24))
+            elseif kind == "learned" then
+                local dayBits = {}
+                for h = 0, 23 do if learned[d * 24 + h] then dayBits[h] = true end end
+                local text = PF.Summary(dayBits)
+                r.Info:SetText(text and (text:gsub("^Mon ", "")) .. "  (server)" or (PF:LearnEnabled() and "nothing learned yet" or "learning is off"))
+            else
+                r.Info:SetText("")
+            end
+            y = y - 23
+        end
+        y = y - 2
     end
     s:SetHeight(-y)
 end

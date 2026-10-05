@@ -10,11 +10,10 @@
       Up to 80 characters; the record's time says when it was set.
 
     Usually online (SC:<member>)
-      You paint a week of two-hour blocks in YOUR time. It's kept that way in
-      your settings (settings.schedules[character]) and shared in UTC, one bit
-      per hour: 168 hours from Monday 00:00 UTC as 42 hex digits. Everyone sees
-      it converted to their own time (or server time). It's shared again
-      whenever your UTC offset changes (daylight saving time), so it never drifts.
+      Learned from when you actually play (your own copy notes it, last 4
+      weeks), with optional per-day hours you set. Kept and shared in server
+      time; shown in local or server time the way your game clock is set
+      (see the "Usually online" section below).
 
     Kudos (KT:<id> types, KU:<member>:<type>:<id> kudos)
       Officers manage the list of kudos (like tags). Anyone can give each
@@ -102,30 +101,70 @@ end
 
 ------------------------------------------------------------------------
 -- Usually online
+-- Everything is kept in SERVER time (the same for the whole guild), as 168
+-- hours from Monday 00:00. It's shown the way your own clock is set: the
+-- game clock's "Use Local Time" and "24 Hour Mode" checkboxes. No time zones
+-- are involved: local time is server time plus the difference between the
+-- two clocks, which already includes daylight saving time.
+--
+-- Your hours come from:
+--   learned   your own copy notes the server hour you're online every 10
+--             minutes and keeps 4 weeks (settings.playLog[character]); an hour
+--             counts once you've played it in 2 different weeks (1 at first)
+--   by hand   per day: learned (default), not playing, or from-to (server time)
+-- Shared as SC:<member> (42 hex digits, one bit per server hour).
 ------------------------------------------------------------------------
 local HOURS = 168
 PF.DAYS = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" }
+PF.LEARN_DAYS = 28
+PF.SAMPLE_EVERY = 600
 
--- Your UTC offset in whole hours (daylight saving time included).
-function PF.LocalOffset()
-    local now = time()
-    local utc = date("!*t", now)
-    utc.isdst = false
-    local diff = os.difftime(now, time(utc))
-    local loc = date("*t", now)
-    if loc.isdst then diff = diff + 3600 end
-    return math.floor(diff / 3600 + 0.5)
-end
-
--- Server time's UTC offset in whole hours (from the game clock), or nil.
-function PF.ServerOffset()
+-- Local time minus server time, in whole hours (e.g. -3), or nil when the
+-- game doesn't give the server time.
+function PF.LocalMinusServer()
     if not GetGameTime then return nil end
     local sh, sm = GetGameTime()
     if not sh then return nil end
-    local u = date("!*t")
-    local diff = (sh * 60 + (sm or 0)) - (u.hour * 60 + u.min)
+    local t = date("*t")
+    local diff = (t.hour * 60 + t.min) - (sh * 60 + (sm or 0))
     if diff > 12 * 60 then diff = diff - 24 * 60 elseif diff < -12 * 60 then diff = diff + 24 * 60 end
     return math.floor(diff / 60 + 0.5)
+end
+
+local function CVarBool(name)
+    if C_CVar and C_CVar.GetCVarBool then
+        local ok, v = pcall(C_CVar.GetCVarBool, name)
+        if ok then return v end
+    end
+    if GetCVarBool then
+        local ok, v = pcall(GetCVarBool, name)
+        if ok then return v end
+    end
+    return nil
+end
+
+-- Follow the game clock: "local" or "server", and 24-hour mode.
+function PF.ClockMode()
+    local useLocal = CVarBool("timeMgrUseLocalTime") and PF.LocalMinusServer() ~= nil
+    return useLocal and "local" or "server", CVarBool("timeMgrUseMilitaryTime") and true or false
+end
+
+-- "8 pm" / "20:00" (24 = midnight at the end of a day)
+local function HourText(h)
+    h = h % 24
+    local _, mil = PF.ClockMode()
+    if mil then return ("%02d:00"):format(h) end
+    if h == 0 then return "12 am" end
+    if h == 12 then return "12 pm" end
+    return h < 12 and (h .. " am") or ((h - 12) .. " pm")
+end
+PF.HourText = HourText
+
+-- Server time right now: weekday index (0 = Monday) and hour.
+function PF.ServerNow()
+    local off = PF.LocalMinusServer() or 0
+    local t = date("*t", time() - off * 3600)
+    return (t.wday + 5) % 7, t.hour, t
 end
 
 -- 168 booleans <-> 42 hex digits
@@ -158,45 +197,119 @@ local function Shift(bits, offset)
     return out
 end
 
-local function MySchedules()
+local function MySchedule(create)
+    local me = Me()
+    if not me then return nil end
     local s = ns.DB:Settings()
     s.schedules = s.schedules or {}
-    return s.schedules
+    local mine = s.schedules[me]
+    -- 1.13 beta stored a painted grid here; start over with the new kind
+    if mine and mine.hours then mine = nil end
+    if not mine and create then
+        mine = { learn = true, days = {}, log = {} }
+        s.schedules[me] = mine
+    end
+    return mine
 end
 
--- Your grid in your own time: hour index (0 = Monday 00:00) -> true.
-function PF:MyHours()
-    local saved = Me() and MySchedules()[Me()]
-    return Decode(saved and saved.hours)
+function PF:LearnEnabled()
+    local mine = MySchedule()
+    return not mine or mine.learn ~= false
 end
 
-function PF:SetMyHours(bits)
+function PF:SetLearn(on)
+    MySchedule(true).learn = on and true or false
+    self:Publish()
+end
+
+-- Notes the current server hour (every 10 minutes while you play).
+function PF:Sample()
+    if not (ns.DB:Guild() and self:LearnEnabled()) then return end
+    local mine = MySchedule(true)
+    local day, hour, t = self.ServerNow()
+    -- one sample per server hour per date
+    local key = ("%04d%03d%02d"):format(t.year, t.yday, hour)
+    local now = time()
+    local changed = mine.log[key] == nil
+    mine.log[key] = { t = now, slot = day * 24 + hour }
+    for k, v in pairs(mine.log) do
+        if type(v) ~= "table" or now - (v.t or 0) > self.LEARN_DAYS * 86400 then mine.log[k] = nil end
+    end
+    if changed then self:Publish() end
+end
+
+-- Learned hours: slot -> true, plus how many days of data there are.
+function PF:LearnedHours()
+    local mine = MySchedule()
+    local bits, counts, oldest = {}, {}, nil
+    if not mine then return bits, 0 end
+    local now = time()
+    for _, v in pairs(mine.log or {}) do
+        counts[v.slot] = (counts[v.slot] or 0) + 1
+        if not oldest or v.t < oldest then oldest = v.t end
+    end
+    local days = oldest and math.floor((now - oldest) / 86400) or 0
+    local need = days >= 14 and 2 or 1
+    for slot, n in pairs(counts) do
+        if n >= need then bits[slot] = true end
+    end
+    return bits, days
+end
+
+-- Your per-day choices: day (0-6) -> nil (learned), "off", or { from, to } in server hours.
+function PF:DayChoice(day)
+    local mine = MySchedule()
+    return mine and mine.days and mine.days[day]
+end
+
+function PF:SetDayChoice(day, choice)
+    local mine = MySchedule(true)
+    mine.days[day] = choice
+    self:Publish()
+end
+
+-- Your hours in server time: learned, with your per-day choices on top.
+function PF:MyServerHours()
+    local learned = self:LearnEnabled() and self:LearnedHours() or {}
+    local bits = {}
+    for d = 0, 6 do
+        local choice = self:DayChoice(d)
+        if choice == "off" then
+            -- nothing that day
+        elseif type(choice) == "table" then
+            local from, to = choice.from or 0, choice.to or 24
+            if to <= from then to = to + 24 end -- past midnight
+            for h = from, to - 1 do bits[(d * 24 + h) % HOURS] = true end
+        else
+            for h = 0, 23 do if learned[d * 24 + h] then bits[d * 24 + h] = true end end
+        end
+    end
+    return bits
+end
+
+-- Shares your hours (only when they changed).
+function PF:Publish()
     local me = Me()
-    if not (me and ns.DB:Guild()) then return nil, "You are not in a guild." end
-    local any = false
-    for h = 0, HOURS - 1 do if bits[h] then any = true break end end
-    local offset = self.LocalOffset()
-    MySchedules()[me] = any and { hours = Encode(bits), offset = offset } or nil
-    return ns.Sync:Set("SC:" .. me, any and Encode(Shift(bits, -offset)) or "")
+    if not (me and ns.DB:Guild()) then return end
+    local bits = self:MyServerHours()
+    local any = next(bits) ~= nil
+    local value = any and Encode(bits) or ""
+    if (ns.Sync:Value("SC:" .. me) or "") == value then return true end
+    return ns.Sync:Set("SC:" .. me, value)
 end
 
--- Re-shares your schedule when your UTC offset changed (daylight saving time).
-function PF:RepublishSchedule()
-    local me = Me()
-    local saved = me and MySchedules()[me]
-    if not (saved and saved.hours and ns.DB:Guild()) then return end
-    local offset = self.LocalOffset()
-    if saved.offset == offset and ns.Sync:Value("SC:" .. me) then return end
-    saved.offset = offset
-    ns.Sync:Set("SC:" .. me, Encode(Shift(Decode(saved.hours), -offset)))
-end
-
--- A member's hours shifted to `mode` ("local" or "server"): index -> true, or nil.
+-- A member's hours as your clock shows them: index -> true, or nil. mode:
+-- "local" or "server" (default: follow the game clock).
 function PF:Hours(full, mode)
     local m = ns.DB:GetMember(full)
     if not (m and m.schedule) then return nil end
-    local offset = (mode == "server" and self.ServerOffset()) or self.LocalOffset()
-    return Shift(Decode(m.schedule), offset)
+    local bits = Decode(m.schedule)
+    mode = mode or self.ClockMode()
+    if mode == "local" then
+        local off = self.LocalMinusServer()
+        if off then bits = Shift(bits, off) end
+    end
+    return bits
 end
 
 -- Is the 2-hour block (day 0-6, block 0-11) on? (Either hour counts.)
@@ -204,14 +317,6 @@ function PF.BlockOn(bits, day, block)
     local h = day * 24 + block * 2
     return bits[h] or bits[h + 1] or false
 end
-
-local function HourText(h)
-    h = h % 24
-    if h == 0 then return "12 am" end
-    if h == 12 then return "12 pm" end
-    return h < 12 and (h .. " am") or ((h - 12) .. " pm")
-end
-PF.HourText = HourText
 
 -- "Mon-Fri 6 pm-12 am - Sat-Sun 2 pm-12 am"
 function PF.Summary(bits)
@@ -246,13 +351,17 @@ function PF.Summary(bits)
     return table.concat(parts, "  |cff6d6d6d-|r  ")
 end
 
--- Is the member usually online right now (in their schedule)?
+-- "(local time)" / "(server time)"
+function PF.ClockLabel(mode)
+    return (mode or PF.ClockMode()) == "local" and "local time" or "server time"
+end
+
+-- Is the member usually online right now?
 function PF:UsuallyOnNow(full)
-    local bits = self:Hours(full, "local")
+    local bits = self:Hours(full, "server")
     if not bits then return false end
-    local t = date("*t")
-    local day = (t.wday + 5) % 7
-    return bits[day * 24 + t.hour] or false
+    local day, hour = self.ServerNow()
+    return bits[day * 24 + hour] or false
 end
 
 ------------------------------------------------------------------------
@@ -483,8 +592,10 @@ function PF:Init()
         C_Timer.After(30, tick)
     end
     C_Timer.After(30, tick)
-    -- daylight saving time: share your schedule again when your offset changes
-    ns:RegisterEvent("PLAYER_ENTERING_WORLD", function()
-        C_Timer.After(20, function() PF:RepublishSchedule() end)
-    end)
+    -- learn when you play: note the server hour every 10 minutes
+    local function sample()
+        PF:Sample()
+        C_Timer.After(PF.SAMPLE_EVERY, sample)
+    end
+    C_Timer.After(45, sample)
 end
