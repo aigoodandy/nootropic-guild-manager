@@ -55,6 +55,8 @@
       SC:<member>          usual online hours: 168 bits (Monday 00:00 UTC
                            onward) as 42 hex digits   the member only
       KT:<id>              kudos type (like a tag definition)   officers
+      SD:<id>              custom guild stat everyone sees: "group;deleted;title;filter"   officers
+      SO:<id>              custom stat only officers see (officer scope), same value   officers
       KD:<id>              kudos description (tooltip text; none = the
                            default kudos' own text)   officers
       KU:<member>:<type>:<id>  one anonymous kudos for <member>: no author,
@@ -111,11 +113,13 @@ S.TYPES = {
     SC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Usually online" },
     KT = { scope = "guild",   officer = true, label = "Kudos type" },
     KD = { scope = "guild",   officer = true, label = "Kudos description" },
+    SD = { scope = "guild",   officer = true, label = "Guild stat" },
+    SO = { scope = "officer", officer = true, label = "Officer stat" },
     KU = { scope = "guild",   anyone = true, noAudit = true, ttl = 90 * 86400, low = true, immutable = true, anonymous = true, label = "Kudos" },
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
 -- Types whose key is not about one member.
-local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true, KD = true }
+local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true, KD = true, SD = true, SO = true }
 
 -- Orphaned poll votes (their poll is unknown) are kept this long.
 local ORPHAN_VOTE_TTL = 30 * 86400
@@ -476,6 +480,18 @@ function Codec.ParseKudosType(v)
         icon = ns.Data:ParseIcon(icon), name = name }
 end
 
+-- Custom stat: "group;deleted;title;filter" (the filter is a roster search
+-- and may itself contain ";")
+function Codec.CustomStat(group, deleted, title, filter)
+    return ("%s;%d;%s;%s"):format(Clean(group or ""):gsub(";", ""), deleted and 1 or 0,
+        (Clean(title or ""):gsub(";", ",")), Clean(filter or ""))
+end
+function Codec.ParseCustomStat(v)
+    local group, deleted, title, filter = (v or ""):match("^([^;]*);(%d);([^;]*);(.*)$")
+    if not group then return nil end
+    return { group = group, deleted = deleted == "1", title = title, filter = filter }
+end
+
 -- Poll: "closeAt;expireAt;deleted;question;option1;option2;..."
 local function PollText(s) return (Clean(s):gsub(";", ",")) end
 function Codec.Poll(p)
@@ -534,6 +550,9 @@ function S:Materialize(typ, key, member, rec)
         return
     elseif typ == "GS" then
         ns.Debounce("guildsettings", 0.1, function() ns:Fire("GUILD_SETTINGS_CHANGED") end)
+        return
+    elseif typ == "SD" or typ == "SO" then
+        ns.Debounce("statschanged", 0.2, function() ns:Fire("STATS_CHANGED") end)
         return
     elseif typ == "KT" or typ == "KD" or typ == "KU" then
         if typ == "KU" then ns.Profile:InvalidateKudosIndex() else ns.DB.kudosCache = nil end

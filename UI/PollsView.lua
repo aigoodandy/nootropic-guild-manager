@@ -96,6 +96,13 @@ function PV:Build(frame)
     W.Tooltip(new, "New poll", "Ask the guild a question with 2 to 6 answers.", "Officers only.")
     self.newBtn = new
 
+    local newStat = W.Button(page, "New Stat", 100, 22)
+    newStat:SetPoint("RIGHT", new, "LEFT", -6, 0)
+    newStat:SetScript("OnClick", function() PV:ShowStatEditor(nil) end)
+    W.Tooltip(newStat, "New stat", "Count guildmates your way: choose what to count by and add filters.",
+        "Officers can share stats with the guild or with officers; anyone can make one just for themselves.")
+    self.newStatBtn = newStat
+
     local inset = frame.Inset
     self:BuildList(page, inset)
     self:BuildPanel(page, inset)
@@ -103,6 +110,7 @@ function PV:Build(frame)
     local function changed()
         if page:IsVisible() then ns.Debounce("pollsview", 0.1, function() PV:Refresh() end) end
     end
+    ns:On("STATS_CHANGED", changed)
     ns:On("POLLS_CHANGED", changed)
     ns:On("POLLS_TICK", changed)
     ns:On("OFFICER_CHANGED", changed)
@@ -172,9 +180,11 @@ local function BuildListRow(row)
     -- stat
     row.StatName = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.StatName:SetPoint("LEFT", 12, 0)
+    row.StatName:SetPoint("RIGHT", -64, 0)
+    row.StatName:SetJustifyH("LEFT")
+    row.StatName:SetWordWrap(false)
     row.Live = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     row.Live:SetPoint("RIGHT", -8, 0)
-    row.Live:SetText("live")
     -- section heading
     row.Header = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     row.Header:SetPoint("BOTTOMLEFT", 6, 4)
@@ -215,6 +225,7 @@ function PV:InitRow(row, item)
         row.Header:SetText(header)
     elseif stat then
         row.StatName:SetText(stat.name)
+        row.Live:SetText(stat.who or "live") -- who sees a custom stat
     else
         row.Question:SetText(p.question)
         if p.open then
@@ -259,6 +270,7 @@ function PV:BuildPanel(page, inset)
 
     self:BuildDetail(panel)
     self:BuildCreate(panel)
+    self:BuildStatEditor(panel)
 end
 
 function PV:BuildDetail(panel)
@@ -446,6 +458,241 @@ function PV:HoverResult(index, from)
         end
     end
     GameTooltip:Show()
+end
+
+------------------------------------------------------------------------
+-- Custom stat editor: title, count by, filters, who sees it
+------------------------------------------------------------------------
+local function DropButton(parent, width)
+    local b = W.Button(parent, "", width, 22)
+    b.Arrow = b:CreateTexture(nil, "OVERLAY")
+    b.Arrow:SetSize(18, 18)
+    b.Arrow:SetPoint("RIGHT", -4, 0)
+    b.Arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+    return b
+end
+
+-- Distinct values among guild members, sorted: fn(e) returns a value or a list.
+local function Present(fn)
+    local seen, out = {}, {}
+    for _, e in ipairs(ns.Roster.members or {}) do
+        local v = fn(e)
+        for _, x in ipairs(type(v) == "table" and v or { v }) do
+            if x and x ~= "" and not seen[x] then
+                seen[x] = true
+                out[#out + 1] = x
+            end
+        end
+    end
+    table.sort(out)
+    return out
+end
+
+function PV:AddFilter(token)
+    local box = self.sFilter
+    local text = ns.Trim(box:GetText() or "")
+    box:SetText(text == "" and token or (text .. " " .. token))
+    self:RefreshStatEditor()
+end
+
+function PV:FilterMenu(owner)
+    local function Quote(s) return '"' .. s:lower() .. '"' end
+    local function Sub(title, values, field)
+        local items = {}
+        for _, v in ipairs(values) do
+            items[#items + 1] = { text = v, func = function() PV:AddFilter(field .. ":" .. Quote(v)) end }
+        end
+        if #items == 0 then items[1] = { text = "None in the guild", disabled = true } end
+        return { text = title, submenu = items }
+    end
+    local max = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or 60
+    local atLeast, below = {}, {}
+    for lv = 10, max, 10 do
+        atLeast[#atLeast + 1] = { text = "Level " .. lv .. " and up", func = function() PV:AddFilter("level>=" .. lv) end }
+        below[#below + 1] = { text = "Below level " .. lv, func = function() PV:AddFilter("level<" .. lv) end }
+    end
+    local items = {
+        { text = "Add a filter", isTitle = true },
+        Sub("Class", Present(function(e) return e.classFile ~= "" and D:ClassName(e.classFile) or nil end), "class"),
+        Sub("Race", Present(function(e) return e.race end), "race"),
+        Sub("Rank", Present(function(e) return e.rank end), "rank"),
+        Sub("Profession", Present(function(e)
+            local t = {}
+            for _, p in ipairs(e.profs or {}) do t[#t + 1] = p.name end
+            return t
+        end), "prof"),
+        Sub("Tag", Present(function(e)
+            local t = {}
+            for _, tag in ipairs(e.tagList or {}) do t[#t + 1] = tag.name end
+            return t
+        end), "tag"),
+        { text = "Level", submenu = { { text = "At least", submenu = atLeast }, { text = "Below", submenu = below } } },
+        { divider = true },
+        { text = "Mains only", func = function() PV:AddFilter("is:main") end },
+        { text = "Alts only", func = function() PV:AddFilter("is:alt") end },
+        { text = "Using the addon", func = function() PV:AddFilter("is:addon") end },
+        { text = "Online now", func = function() PV:AddFilter("is:online") end },
+    }
+    W.ShowMenu(owner, items)
+end
+
+function PV:BuildStatEditor(panel)
+    local ST = ns.Stats
+    local c = CreateFrame("Frame", nil, panel)
+    c:SetAllPoints()
+    c:Hide()
+    self.statPane = c
+
+    local title, line = W.SectionHeader(c, "New Stat")
+    title:SetPoint("TOPLEFT", 14, -12)
+    line:SetPoint("RIGHT", c, "RIGHT", -12, 0)
+    self.sHeader = title
+
+    local tLabel = Label(c, "Title")
+    tLabel:SetPoint("TOPLEFT", 14, -36)
+    self.sTitle = Input(c, IW - 8, ST.TITLE_MAX)
+    self.sTitle:SetPoint("TOPLEFT", tLabel, "BOTTOMLEFT", 6, -2)
+    self.sTitle:HookScript("OnTextChanged", function() PV.sError:SetText("") end)
+
+    local gLabel = Label(c, "Count by")
+    gLabel:SetPoint("TOPLEFT", 14, -82)
+    local group = DropButton(c, 170)
+    group:SetPoint("TOPLEFT", gLabel, "BOTTOMLEFT", 0, -4)
+    group:SetScript("OnClick", function(btn)
+        local items = { { text = "Count members by", isTitle = true } }
+        for _, g in ipairs(ST.GROUPS) do
+            items[#items + 1] = { text = g.label, radio = true,
+                checked = function() return PV.sGroup == g.key end,
+                func = function() PV.sGroup = g.key; PV:RefreshStatEditor() end }
+        end
+        W.ShowMenu(btn, items)
+    end)
+    self.sGroupBtn = group
+
+    local fLabel = Label(c, "Filters  |cff9d9d9d(optional)|r")
+    fLabel:SetPoint("TOPLEFT", 14, -134)
+    self.sFilter = Input(c, IW - 8, ST.FILTER_MAX)
+    self.sFilter:SetPoint("TOPLEFT", fLabel, "BOTTOMLEFT", 6, -2)
+    self.sFilter:HookScript("OnTextChanged", function(_, user) if user then PV:RefreshStatEditor() end end)
+    W.Tooltip(self.sFilter, "Filters", "The same words as the roster search; every one must match.",
+        "class:warrior  race:orc  rank:officer  prof:tailoring  tag:raiding  level>=20  is:alt  is:main  is:addon  is:online",
+        "Put a minus in front to leave members out: -is:alt")
+    local add = W.Button(c, "Add Filter", 100, 20)
+    add:SetPoint("TOPLEFT", self.sFilter, "BOTTOMLEFT", -6, -4)
+    add:SetScript("OnClick", function(btn) PV:FilterMenu(btn) end)
+    local clear = W.Button(c, "Clear", 70, 20)
+    clear:SetPoint("LEFT", add, "RIGHT", 6, 0)
+    clear:SetScript("OnClick", function()
+        PV.sFilter:SetText("")
+        PV:RefreshStatEditor()
+    end)
+    self.sMatches = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.sMatches:SetPoint("LEFT", clear, "RIGHT", 10, 0)
+
+    local vLabel = Label(c, "Who can see it")
+    vLabel:SetPoint("TOPLEFT", 14, -212)
+    local vis = DropButton(c, 170)
+    vis:SetPoint("TOPLEFT", vLabel, "BOTTOMLEFT", 0, -4)
+    vis:SetScript("OnClick", function(btn)
+        local officer = ns.IsOfficer()
+        local items = { { text = "Who can see it", isTitle = true } }
+        for _, v in ipairs(ST.VISIBILITY) do
+            items[#items + 1] = { text = v.label, radio = true,
+                disabled = v.key ~= "m" and not officer,
+                checked = function() return PV.sVis == v.key end,
+                func = function()
+                    if v.key ~= "m" and not ns.IsOfficer() then return end
+                    PV.sVis = v.key
+                    PV:RefreshStatEditor()
+                end }
+        end
+        W.ShowMenu(btn, items)
+    end)
+    self.sVisBtn = vis
+    self.sVisHint = Para(c, "GameFontDisableSmall", IW)
+    self.sVisHint:SetPoint("TOPLEFT", vis, "BOTTOMLEFT", 0, -6)
+
+    local save = W.Button(c, SAVE or "Save", 100, 22)
+    save:SetPoint("BOTTOMLEFT", 12, 12)
+    save:SetScript("OnClick", function() PV:SaveStat() end)
+    local cancel = W.Button(c, CANCEL or "Cancel", 90, 22)
+    cancel:SetPoint("LEFT", save, "RIGHT", 8, 0)
+    cancel:SetScript("OnClick", function()
+        PV.mode = nil
+        PV:Refresh()
+    end)
+    self.sError = Para(c, "GameFontHighlightSmall", IW)
+    self.sError:SetPoint("BOTTOMLEFT", save, "TOPLEFT", 2, 8)
+    self.sError:SetTextColor(1, 0.35, 0.35)
+
+    self.sTitle.nextBox = self.sFilter
+    self.sFilter.nextBox = self.sTitle
+
+    -- on a custom stat's page: Edit and Delete
+    local d = self.detailPane
+    local edit = W.Button(d, "Edit Stat", 100, 22)
+    edit:SetPoint("BOTTOMLEFT", 12, 12)
+    edit:SetScript("OnClick", function() if PV.stat and PV.stat.custom then PV:ShowStatEditor(PV.stat.custom) end end)
+    self.statEditBtn = edit
+    local del = W.Button(d, DELETE or "Delete", 90, 22)
+    del:SetPoint("LEFT", edit, "RIGHT", 8, 0)
+    del:SetScript("OnClick", function()
+        local cst = PV.stat and PV.stat.custom
+        if not cst then return end
+        local who = cst.vis == "m" and "" or (cst.vis == "c" and " for everyone" or " for all officers")
+        W.Confirm(("Delete the stat \"%s\"%s?"):format(cst.title, who), function()
+            local ok, err = ns.Stats:Delete(cst.id)
+            if not ok and err then
+                ns:Print("|cffff5555" .. err .. "|r")
+            else
+                PV.selected = nil
+                PV:Refresh()
+            end
+        end)
+    end)
+    self.statDeleteBtn = del
+end
+
+-- custom: the stat to edit, or nil for a new one.
+function PV:ShowStatEditor(custom)
+    if not ns.DB:Guild() then return end
+    self.mode = "stat"
+    self.sEditing = custom and custom.id or nil
+    self.sHeader:SetText(custom and "Edit Stat" or "New Stat")
+    self.sTitle:SetText(custom and custom.title or "")
+    self.sFilter:SetText(custom and custom.filter or "")
+    self.sGroup = custom and custom.group or "class"
+    self.sVis = custom and custom.vis or (ns.IsOfficer() and "c" or "m")
+    self.sError:SetText("")
+    self:Refresh()
+    self.sTitle:SetFocus()
+end
+
+function PV:RefreshStatEditor()
+    local ST = ns.Stats
+    local g = ST:Group(self.sGroup)
+    self.sGroupBtn:SetText(g and g.label or "Choose...")
+    if self.sVis ~= "m" and not ns.IsOfficer() then self.sVis = "m" end
+    for _, v in ipairs(ST.VISIBILITY) do
+        if v.key == self.sVis then self.sVisBtn:SetText(v.label) end
+    end
+    self.sVisHint:SetText(self.sVis == "c" and "Shared with everyone in the guild running the addon."
+        or self.sVis == "o" and "Shared with officers only. Guildmates never receive it."
+        or "Kept in your copy of the addon; nobody else sees it.")
+    local n, total = ST:MatchCount(self.sFilter:GetText())
+    self.sMatches:SetText(("Matches %d of %d members"):format(n, total))
+    self.sError:SetText("")
+end
+
+function PV:SaveStat()
+    local id, err = ns.Stats:Save(self.sEditing, self.sTitle:GetText(), self.sGroup, self.sFilter:GetText(), self.sVis)
+    if not id then
+        self.sError:SetText(err or "Couldn't save the stat.")
+        return
+    end
+    self.sTitle:ClearFocus()
+    self.sFilter:ClearFocus()
+    self:Select(STAT_PREFIX .. id)
 end
 
 function PV:BuildCreate(panel)
@@ -637,6 +884,8 @@ end
 function PV:RefreshDetail(p)
     self.current, self.stat = p, nil
     for _, r in ipairs(self.statRows) do r:Hide() end
+    self.statEditBtn:Hide()
+    self.statDeleteBtn:Hide()
     self.dTitle:SetText("Poll")
     self.dQuestion:SetText(p.question)
     self.dStatus:SetText(StatusText(p) .. "  -  " .. VotesText(p.total))
@@ -696,6 +945,9 @@ function PV:RefreshStat(id)
     for _, r in ipairs(self.optionRows) do r:Hide() end
     self.closeBtn:Hide()
     self.deleteBtn:Hide()
+    local editable = s.custom and ns.Stats:CanEdit(s.custom) or false
+    self.statEditBtn:SetShown(editable)
+    self.statDeleteBtn:SetShown(editable)
     self.dTitle:SetText("Guild Stat")
     self.dQuestion:SetText(s.title)
     self.dStatus:SetText("|cff66bbff" .. s.sub .. "|r")
@@ -751,8 +1003,16 @@ local function ListItems(polls)
             items[#items + 1] = item
         end
     end
+    -- built-in stats, then custom ones (marked with who sees them)
+    local stats = {}
+    for _, s in ipairs(ns.Stats.LIST) do stats[#stats + 1] = s end
+    local who = {}
+    for _, v in ipairs(ns.Stats.VISIBILITY) do who[v.key] = v.short end
+    for _, c in ipairs(ns.Stats:Custom()) do
+        stats[#stats + 1] = { id = c.id, name = c.title, who = who[c.vis] }
+    end
     Section("Open Polls", open, function(p) return { poll = p } end)
-    Section("Guild Stats", ns.Stats.LIST, function(s) return { stat = s } end)
+    Section("Guild Stats", stats, function(s) return { stat = s } end)
     Section("Closed Polls", closed, function(p) return { poll = p } end)
     return items
 end
@@ -767,13 +1027,16 @@ function PV:Refresh()
     self.summary:SetText("Guild Polls")
     self.sub:SetText(#list == 0 and "" or (open == 1 and "1 open" or (open .. " open")) .. (#list > open and ("  -  " .. (#list - open) .. " closed") or ""))
     self.newBtn:SetShown(officer)
+    self.newStatBtn:SetShown(inGuild)
     if self.mode == "create" and not officer then self.mode = nil end
+    local editing = self.mode == "create" or self.mode == "stat"
 
     -- keep the selection; else an open poll you haven't voted on, any open
     -- poll, or the first stat
     local statId = StatId(self.selected)
+    if statId and not ns.Stats:Name(statId) then statId, self.selected = nil, nil end -- deleted
     local current = not statId and self.selected and ns.Polls:Get(self.selected)
-    if self.mode ~= "create" and inGuild and not current and not statId then
+    if not editing and inGuild and not current and not statId then
         for _, p in ipairs(list) do
             if p.open and not p.myVote then current = p break end
         end
@@ -785,7 +1048,7 @@ function PV:Refresh()
             self.selected = STAT_PREFIX .. statId
         end
     end
-    if self.mode ~= "create" then
+    if not editing or not inGuild then
         self.mode = inGuild and "detail" or nil
     end
 
@@ -793,11 +1056,15 @@ function PV:Refresh()
     self.scrollBox:SetDataProvider(CreateDataProvider(inGuild and ListItems(list) or {}), retain)
 
     self.createPane:SetShown(self.mode == "create")
+    self.statPane:SetShown(self.mode == "stat")
     self.detailPane:SetShown(self.mode == "detail")
     self.infoPane:SetShown(self.mode == nil)
     if self.mode == "create" then
         self.current, self.stat = nil, nil
         self:RefreshCreate()
+    elseif self.mode == "stat" then
+        self.current, self.stat = nil, nil
+        self:RefreshStatEditor()
     elseif self.mode == "detail" then
         if statId then self:RefreshStat(statId) else self:RefreshDetail(current) end
     else

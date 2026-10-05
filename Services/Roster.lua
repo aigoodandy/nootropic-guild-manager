@@ -5,11 +5,12 @@
 
     Search syntax (case-insensitive, all words must match):
       mage fire              free words match name, class, spec, tags, professions
-      tag:raiding            field filter (name, tag, prof, spec, class, rank, zone, note)
+      tag:raiding            field filter (name, tag, prof, spec, class, race, rank, zone, note)
       tag:"world pvp"        quotes keep phrases together
       main:markpri           a main and all of their alts
       is:alt  is:main        only alts / only mains
       is:addon               only members running Nootropic Guild Manager
+      is:online              only members online now
       rating:4  rating<3     numeric filters (rating:N means N stars or more)
       level:60  level>=50
       -raiding               a leading minus excludes matches
@@ -105,6 +106,12 @@ function R:Rebuild()
                     status = status or 0,
                     lastOnline = 0,
                 }
+                -- race isn't in the guild roster; the game knows it from their character id
+                local guid = select(17, GetGuildRosterInfo(i))
+                if guid and GetPlayerInfoByGUID then
+                    local ok, _, _, race, raceFile, sex = pcall(GetPlayerInfoByGUID, guid)
+                    if ok and race and race ~= "" then e.race, e.raceFile, e.sex = race, raceFile, sex end
+                end
                 if not e.online and GetGuildRosterLastOnline then
                     local y, mo, d, h = GetGuildRosterLastOnline(i)
                     e.lastOnline = (((y or 0) * 365 + (mo or 0) * 30 + (d or 0)) * 24) + (h or 0)
@@ -234,6 +241,7 @@ function R:Decorate(e)
     e.search = s
     s.name  = e.short:lower()
     s.class = (e.className .. " " .. e.classFile):lower()
+    s.race  = ((e.race or "") .. " " .. (e.raceFile or "")):lower()
     s.spec  = (e.spec or ""):lower()
     s.tags  = table.concat(tagNames, "\n"):lower()
     s.profs = table.concat(profNames, "\n"):lower()
@@ -241,7 +249,7 @@ function R:Decorate(e)
     s.zone  = e.zone:lower()
     s.note  = ((e.note or "") .. "\n" .. e.publicNote .. "\n" .. e.officerNote .. "\n" .. logText):lower()
     s.main  = (e.mainShort or e.short):lower()
-    s.is    = (e.isAlt and "alt" or "main") .. (e.hasAddon and "\naddon" or "")
+    s.is    = (e.isAlt and "alt" or "main") .. (e.hasAddon and "\naddon" or "") .. (e.online and "\nonline" or "")
 end
 
 ------------------------------------------------------------------------
@@ -253,6 +261,7 @@ local FIELDS = {
     prof = "profs", profs = "profs", profession = "profs", p = "profs",
     spec = "spec", s = "spec",
     class = "class", c = "class",
+    race = "race",
     rank = "rank",
     zone = "zone", z = "zone",
     note = "note", notes = "note",

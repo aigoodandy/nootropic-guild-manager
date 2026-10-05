@@ -432,8 +432,8 @@ function RV:BuildToolbar(page, frame)
     end)
     W.Tooltip(search, "Searching the roster",
         "Words match names, classes, specs, professions and tags. Every word must match.",
-        "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r limit a word to one field.",
-        "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r  |cffffd100is:addon|r",
+        "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100race:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r limit a word to one field.",
+        "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r  |cffffd100is:addon|r  |cffffd100is:online|r",
         "|cffffd100rating:4|r  four stars or better   |cffffd100level>=50|r",
         "|cffffd100-raiding|r excludes, |cffffd100tag:\"world pvp\"|r matches a phrase.",
         "Right-click a column header to choose columns.")

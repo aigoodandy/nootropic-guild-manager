@@ -118,6 +118,9 @@ Messages and keywords are saved per guild.
 - Votes are shared with everyone running the addon, like tags; they aren't secret ballots.
 - Every poll's results show as bars and a **pie chart**, each answer in its own color. Hover an answer to light up its slice, or a slice to light up its answer.
 - **Guild Stats** look like closed polls nobody votes on, worked out live from the roster: Classes (in class colors), Levels, Ranks, Professions, Mains and alts, Addon users, Busiest days and Busiest times (from everyone's usual online hours, in your game clock's time; alts count with their main) and Kudos given (last 90 days). Hover a row or slice for the count and percentage; click it to see those members in the roster.
+- **New Stat** makes your own: a title, what to **count by** (class, race, level range, rank, profession, specialization, main or alt, addon users, online now, zone or tag) and optional **filters** in roster search words (`class:warrior`, `race:orc`, `rank:officer`, `level>=20`, `is:alt`, `-is:addon`...; every filter must match). **Add Filter** picks them from menus, and the form shows how many members match. Example: count by *Main or alt* with the filter `class:warrior` shows how many warriors are mains vs alts.
+- Choose **who can see it**: **Everyone in the guild** or **Officers** (officers only; shared through the addon) or **Only me** (anyone; kept in your own copy). Custom stats are listed under the built-in ones, marked with who sees them. Officers can edit or delete shared ones; you can edit or delete your own.
+- Race comes from the game's character info and may show as *Unknown* for a moment until the game has looked a character up.
 
 **Reviews tab** (the last tab; called **Review Guild** for members) — anonymous reviews of the guild.
 

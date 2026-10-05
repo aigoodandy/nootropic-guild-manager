@@ -19,6 +19,8 @@ AU.CATEGORIES = {
     { key = "T",  label = "Tag list" },
     { key = "TI", label = "Tag icons" },
     { key = "PL", label = "Polls" },
+    { key = "SD", label = "Guild stats" },
+    { key = "SO", label = "Officer stats" },
     { key = "AB", label = "About me" },
     { key = "PN", label = "Pronouns" },
     { key = "KT", label = "Kudos list" },
@@ -146,6 +148,13 @@ function AU:Describe(e)
         if o and n and o.name ~= n.name then return ("Kudos renamed from %s to %s"):format(o.name, n.name) end
         if o and n and o.order ~= n.order then return "Kudos moved: " .. n.name end
         return "Kudos changed: " .. (n and n.name or "?")
+    elseif t == "SD" or t == "SO" then
+        local o, n = ns.Sync.Codec.ParseCustomStat(old), ns.Sync.Codec.ParseCustomStat(new)
+        local who = t == "SD" and "Guild stat" or "Officer stat"
+        local title = n and n.title or (o and o.title) or "?"
+        if n and not o then return who .. " created: " .. title end
+        if n and n.deleted and not (o and o.deleted) then return RED .. who .. " deleted:|r " .. title end
+        return who .. " changed: " .. title
     elseif t == "KD" then
         local k = e.ref and ns.Profile:KudosType(e.ref)
         local name = k and k.name or (e.ref or "?")
