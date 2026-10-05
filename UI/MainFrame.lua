@@ -222,9 +222,45 @@ local function Mirror(tex)
     tex:SetTexCoord(urx, ury, lrx, lry, ulx, uly, llx, lly)
 end
 
--- Tabs on the left or right of the window (Options > Appearance; each player's own choice).
+-- Where the tabs are: "right" (default), "left" (icon tabs down that side)
+-- or "bottom" (the classic text tabs under the window). Options >
+-- Appearance; each player's own choice.
+function UI:TabSide()
+    local side = ns.DB:Settings().tabSide
+    return (side == "left" or side == "bottom") and side or "right"
+end
+
 function UI:TabsOnLeft()
-    return ns.DB:Settings().tabSide == "left"
+    return self:TabSide() == "left"
+end
+
+-- The classic text tabs along the bottom edge.
+local function CreateBottomTab(f, i)
+    local tab, template = W.TryCreate("Button", "NootropicGMFrameBottomTab" .. i, f,
+        "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate")
+    tab:SetID(i)
+    tab.gap = template == "PanelTabButtonTemplate" and 3 or -15
+    tab:SetScript("OnClick", function(self)
+        UI:SelectTab(self:GetID())
+        ns.PlaySound("IG_CHARACTER_INFO_TAB")
+    end)
+    if OFFICER_TABS[i] then
+        tab:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:AddLine(UI:TabTitle(self:GetID()) .. " |cff9d9d9d(officers only)|r")
+            GameTooltip:Show()
+        end)
+        tab:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    function tab:SetSelected(on)
+        if on then
+            if PanelTemplates_SelectTab then PanelTemplates_SelectTab(self) end
+        elseif PanelTemplates_DeselectTab then
+            PanelTemplates_DeselectTab(self)
+        end
+    end
+    tab:Hide()
+    return tab
 end
 
 local function CreateSideTab(f, i)
@@ -342,7 +378,11 @@ end
 
 function UI:BuildTabs(f)
     f.Tabs = {}
-    for i in ipairs(TAB_LABELS) do f.Tabs[i] = CreateSideTab(f, i) end
+    f.BottomTabs = {}
+    for i in ipairs(TAB_LABELS) do
+        f.Tabs[i] = CreateSideTab(f, i)
+        f.BottomTabs[i] = CreateBottomTab(f, i)
+    end
     self:LayoutTabs()
 end
 
@@ -375,15 +415,56 @@ function UI:TabTitle(id)
     return title or self:DefaultTabTitle(id)
 end
 
--- Shows only the tabs this player may use, top to bottom.
+-- The classic text tabs under the window, left to right.
+function UI:LayoutBottomTabs()
+    local f = self.frame
+    local prev
+    for i, tab in ipairs(f.BottomTabs) do
+        local label = self:TabTitle(i)
+        if tab:GetText() ~= label then
+            tab:SetText(label)
+            if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
+        end
+        tab:ClearAllPoints()
+        if self:IsTabAvailable(i) then
+            if prev then
+                tab:SetPoint("TOPLEFT", prev, "TOPRIGHT", tab.gap or 3, 0)
+            else
+                tab:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 12, 2)
+            end
+            tab:Show()
+            tab:SetSelected(i == self.tab)
+            prev = tab
+        else
+            tab:Hide()
+        end
+    end
+end
+
+-- Shows only the tabs this player may use: down the chosen side, or along the bottom.
 function UI:LayoutTabs()
     local f = self.frame
     if not (f and f.Tabs) then return end
-    local left = self:TabsOnLeft()
+    local side = self:TabSide()
+    local left = side == "left"
     -- keep the tabs on screen when the window is dragged to that edge
     if f.SetClampRectInsets then
-        if left then f:SetClampRectInsets(-UI.TAB_OUTSIDE, 0, 0, 0) else f:SetClampRectInsets(0, UI.TAB_OUTSIDE, 0, 0) end
+        if side == "bottom" then
+            f:SetClampRectInsets(0, 0, 0, -32)
+        elseif left then
+            f:SetClampRectInsets(-UI.TAB_OUTSIDE, 0, 0, 0)
+        else
+            f:SetClampRectInsets(0, UI.TAB_OUTSIDE, 0, 0)
+        end
     end
+    if side == "bottom" then
+        for _, tab in ipairs(f.Tabs) do tab:Hide() end
+        self:LayoutBottomTabs()
+        if self.tab and not self:IsTabAvailable(self.tab) then self:SelectTab(UI.TAB_ROSTER) end
+        self:UpdateTitle()
+        return
+    end
+    for _, tab in ipairs(f.BottomTabs or {}) do tab:Hide() end
     local prev
     for i, tab in ipairs(f.Tabs) do
         tab:SetSide(left)
@@ -419,6 +500,9 @@ function UI:SelectTab(id)
     if not self:IsTabAvailable(id) then id = UI.TAB_ROSTER end
     self.tab = id
     for i, tab in ipairs(f.Tabs or {}) do tab:SetSelected(i == id) end
+    for i, tab in ipairs(f.BottomTabs or {}) do
+        if tab:IsShown() then tab:SetSelected(i == id) end
+    end
     self:UpdateTitle()
 
     -- Roster and Recruitment need room above the inset for a second toolbar row.

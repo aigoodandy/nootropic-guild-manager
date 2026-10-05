@@ -213,7 +213,7 @@ function O:BuildMain()
     side:SetPoint("TOPLEFT", 110, ty)
     side:SetScript("OnClick", function(btn)
         local items = { { text = "Tabs on the", isTitle = true } }
-        for _, s in ipairs({ { "right", "Right side" }, { "left", "Left side" } }) do
+        for _, s in ipairs({ { "right", "Right side" }, { "left", "Left side" }, { "bottom", "Bottom" } }) do
             items[#items + 1] = { text = s[2], radio = true,
                 checked = function() return (ns.DB:Settings().tabSide or "right") == s[1] end,
                 func = function()
@@ -635,7 +635,7 @@ function O:Refresh()
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
     self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
     self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
-    self.tabSideBtn:SetText(s.tabSide == "left" and "Left side" or "Right side")
+    self.tabSideBtn:SetText(s.tabSide == "left" and "Left side" or s.tabSide == "bottom" and "Bottom" or "Right side")
     self.minimapCheck:SetChecked(not s.minimap.hide)
     for _, b in ipairs(self.clickPickers) do b:SetText(D:MinimapActionLabel(s.minimap[b.key])) end
     local st = ns.Sync.stats
