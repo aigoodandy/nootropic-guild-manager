@@ -1,8 +1,8 @@
 ## Interface: 16001, 120007, 11509
 ## Title: |cffffd100Nootropic|r Guild Manager
-## Notes: Guild roster with professions, specs, mains and alts, icon tags, guild polls, officer ratings, an officer log, audit history and recruiting tools. Fully searchable.
+## Notes: Guild roster with professions, specs, mains and alts, icon tags, kudos, guild goals, polls and stats, officer ratings, an officer log, audit history and recruiting tools. Fully searchable.
 ## Author: Nootropic
-## Version: 1.13
+## Version: 1.13-beta1
 ## SavedVariables: NootropicGuildManagerDB
 ## Category: Guild
 ## IconTexture: Interface\Icons\INV_Drink_13

@@ -164,17 +164,31 @@ function ns.Debounce(key, delay, fn)
     end)
 end
 
+-- "1.13-beta2" -> { 1, 13 }, "beta2"
+local function ParseVersion(v)
+    local main, tag = tostring(v or ""):match("^([^%-]*)%-?(.*)$")
+    local parts = {}
+    for n in main:gmatch("[^%.]+") do parts[#parts + 1] = tonumber(n:match("^%d+") or "") or 0 end
+    return parts, tag
+end
+
 -- -1, 0 or 1 comparing versions like "1.9" and "1.10" part by part.
--- Anything that isn't a number counts as 0 ("dev" < "1.0").
+-- Anything that isn't a number counts as 0 ("dev" < "1.0"). A beta comes
+-- before its release and after the one before: 1.12 < 1.13-beta1 <
+-- 1.13-beta2 < 1.13.
 function ns.CompareVersions(a, b)
-    local pa, pb = {}, {}
-    for n in tostring(a or ""):gmatch("[^%.]+") do pa[#pa + 1] = tonumber(n) or 0 end
-    for n in tostring(b or ""):gmatch("[^%.]+") do pb[#pb + 1] = tonumber(n) or 0 end
+    local pa, ta = ParseVersion(a)
+    local pb, tb = ParseVersion(b)
     for i = 1, math.max(#pa, #pb) do
         local x, y = pa[i] or 0, pb[i] or 0
         if x ~= y then return x < y and -1 or 1 end
     end
-    return 0
+    if ta == tb then return 0 end
+    if ta == "" then return 1 end
+    if tb == "" then return -1 end
+    local x, y = tonumber(ta:match("%d+") or "") or 0, tonumber(tb:match("%d+") or "") or 0
+    if x ~= y then return x < y and -1 or 1 end
+    return ta < tb and -1 or 1
 end
 
 function ns.Trim(s)
