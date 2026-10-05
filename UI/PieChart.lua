@@ -14,7 +14,16 @@
 local _, ns = ...
 local W = ns.Widgets
 
-local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+-- The circle the slices are drawn with. The old portrait mask is small and
+-- goes soft when the pie is big; newer clients have a high-resolution one
+-- made for scaling, used when it's there.
+local function FileExists(path)
+    if not GetFileIDFromPath then return false end
+    local ok, id = pcall(GetFileIDFromPath, path)
+    return ok and id ~= nil
+end
+local SHARP_CIRCLE = "Interface\\Masks\\CircleMaskScalable"
+local CIRCLE = FileExists(SHARP_CIRCLE) and SHARP_CIRCLE or "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
 -- Stops a cooldown sweep at `frac` of the way round: a short cooldown
 -- started that far back, then paused (how Blizzard shows a fixed percentage).
