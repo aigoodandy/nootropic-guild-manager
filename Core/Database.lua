@@ -51,20 +51,7 @@ local function ApplyDefaults(src, dst)
     end
 end
 
-local function DeepCopy(t)
-    if type(t) ~= "table" then return t end
-    local out = {}
-    for k, v in pairs(t) do out[k] = DeepCopy(v) end
-    return out
-end
-
 function DB:Init()
-    -- One-time import from the addon's old name. GuildLedgerDB is only present
-    -- if the old GuildLedger folder was still installed and enabled.
-    if NootropicGuildManagerDB == nil and type(GuildLedgerDB) == "table" then
-        NootropicGuildManagerDB = DeepCopy(GuildLedgerDB)
-        self.imported = true
-    end
     NootropicGuildManagerDB = NootropicGuildManagerDB or {}
     local sv = NootropicGuildManagerDB
     local fresh = sv.settings == nil
