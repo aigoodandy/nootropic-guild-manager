@@ -770,91 +770,44 @@ function RCV:BuildPanel(page, inset)
     self.rulesInfo = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.rulesInfo:SetPoint("LEFT", edit, "RIGHT", 8, 0)
 
-    -- Auto-invite
-    local title2, line2 = W.SectionHeader(panel, "Auto-Invite")
+    -- Replies: auto-invite and Do Not Whisper live in Options > Recruiting;
+    -- this shows how they're set and opens that page.
+    local title2, line2 = W.SectionHeader(panel, "Replies")
     title2:SetPoint("TOPLEFT", edit, "BOTTOMLEFT", 0, -18)
     line2:SetPoint("RIGHT", panel, "RIGHT", -12, 0)
-
-    local auto = Check(panel, "Invite when they reply with a keyword")
-    auto:SetPoint("TOPLEFT", title2, "BOTTOMLEFT", -4, -4)
-    auto:SetScript("OnClick", function(self)
-        local r = ns.Recruit:Settings()
-        if r then r.autoInvite = self:GetChecked() and true or false end
-    end)
-    self.autoCheck = auto
-
-    local confirm = Check(panel, "Ask me first (one-click Invite popup)")
-    confirm:SetPoint("TOPLEFT", auto, "BOTTOMLEFT", 0, 0)
-    confirm:SetScript("OnClick", function(self)
-        local r = ns.Recruit:Settings()
-        if r then r.inviteMode = self:GetChecked() and "confirm" or "auto" end
-    end)
-    self.confirmCheck = confirm
-
-    local kwLabel = Label(panel, "Keywords (whole words, any case)")
-    kwLabel:SetPoint("TOPLEFT", confirm, "BOTTOMLEFT", 4, -6)
-
-    local BOX_W, BOX_STEP = 88, 100
-    self.keywordBoxes = {}
-    for i = 1, D.MAX_KEYWORDS do
-        local eb = InputBox(panel, BOX_W, 24)
-        local col, rowN = (i - 1) % 3, math.floor((i - 1) / 3)
-        eb:SetPoint("TOPLEFT", kwLabel, "BOTTOMLEFT", 6 + col * BOX_STEP, -4 - rowN * 24)
-        eb:HookScript("OnTextChanged", function(self, user)
-            local r = ns.Recruit:Settings()
-            if user and r then r.keywords[i] = ns.Trim(self:GetText()) end
-        end)
-        self.keywordBoxes[i] = eb
-    end
-
-    local help = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    help:SetPoint("TOPLEFT", kwLabel, "BOTTOMLEFT", 0, -56)
-    help:SetWidth(IW)
-    help:SetJustifyH("LEFT")
-    help:SetText("Only replies from players you whispered from this tab are checked.")
-
-    -- Do Not Whisper
-    local title3, line3 = W.SectionHeader(panel, "Do Not Whisper")
-    title3:SetPoint("TOPLEFT", help, "BOTTOMLEFT", 0, -18)
-    line3:SetPoint("RIGHT", panel, "RIGHT", -12, 0)
-
-    local dnw = Check(panel, "Do Not Whisper list")
-    dnw:SetPoint("TOPLEFT", title3, "BOTTOMLEFT", -4, -4)
-    dnw:SetScript("OnClick", function(self)
-        local r = ns.Recruit:Settings()
-        if r then r.dnwEnabled = self:GetChecked() and true or false end
-    end)
-    W.Tooltip(dnw, "Do Not Whisper list",
-        "When someone you whispered replies with one of these words, they're added to the list and never whispered or invited again.",
-        "Untick to stop adding people. Anyone already on the list stays protected until you remove them.")
-    self.dnwCheck = dnw
-
-    local dnwLabel = Label(panel, "Words (whole words, any case)")
-    dnwLabel:SetPoint("TOPLEFT", dnw, "BOTTOMLEFT", 4, -6)
-    self.dnwBoxes = {}
-    for i = 1, D.MAX_KEYWORDS do
-        local eb = InputBox(panel, BOX_W, 32)
-        local col, rowN = (i - 1) % 3, math.floor((i - 1) / 3)
-        eb:SetPoint("TOPLEFT", dnwLabel, "BOTTOMLEFT", 6 + col * BOX_STEP, -4 - rowN * 24)
-        eb:HookScript("OnTextChanged", function(self, user)
-            local r = ns.Recruit:Settings()
-            if user and r then r.dnwWords[i] = ns.Trim(self:GetText()) end
-        end)
-        self.dnwBoxes[i] = eb
-    end
-
-    self.dnwCount = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    self.dnwCount:SetPoint("TOPLEFT", dnwLabel, "BOTTOMLEFT", 0, -60)
-    local view = W.Button(panel, "View List", 90, 20)
-    view:SetPoint("LEFT", self.dnwCount, "LEFT", IW - 90, 0)
+    self.replyInfo = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.replyInfo:SetPoint("TOPLEFT", title2, "BOTTOMLEFT", 0, -8)
+    self.replyInfo:SetWidth(IW)
+    self.replyInfo:SetJustifyH("LEFT")
+    self.replyInfo:SetSpacing(3)
+    local replyBtn = W.Button(panel, "Reply Settings...", 140, 22)
+    replyBtn:SetPoint("TOPLEFT", self.replyInfo, "BOTTOMLEFT", 0, -8)
+    replyBtn:SetScript("OnClick", function() ns.Options:Open("recruiting") end)
+    W.Tooltip(replyBtn, "Reply settings", "Auto-invite keywords and the Do Not Whisper list, in Options > Recruiting.")
+    local view = W.Button(panel, "Do Not Whisper List", 150, 22)
+    view:SetPoint("LEFT", replyBtn, "RIGHT", 6, 0)
     view:SetScript("OnClick", function(btn) RCV:ShowDNWMenu(btn) end)
     W.Tooltip(view, "Do Not Whisper list", "Shared with everyone in the guild using the addon. Click a name to take them off it.")
-    self.dnwView = view
-    self.panelLast = view
+    self.panelLast = replyBtn
 
     -- Grow the scroll area to fit (the preview's height changes with the text).
     self.panelTitle = title
     content:SetScript("OnSizeChanged", function() RCV:FitPanel() end)
+end
+
+-- "Auto-invite: on, ask first (keywords: invite, inv)" / "Do Not Whisper: on, 3 people"
+function RCV:RefreshReplyInfo()
+    local r = ns.Recruit:Settings()
+    if not (r and self.replyInfo) then return end
+    local words = {}
+    for _, k in ipairs(r.keywords or {}) do if ns.Trim(k) ~= "" then words[#words + 1] = k end end
+    local ON, OFF = "|cff40ff40on|r", "|cff9d9d9doff|r"
+    local invite = r.autoInvite and (ON .. (r.inviteMode == "confirm" and ", asks you first" or ", automatic")) or OFF
+    local n = #ns.Recruit:DNWList()
+    self.replyInfo:SetText(("|cffffd100Auto-invite:|r %s%s\n|cffffd100Do Not Whisper:|r %s, %s on the list"):format(
+        invite, (r.autoInvite and #words > 0) and ("  |cff9d9d9d(" .. table.concat(words, ", ") .. ")|r") or "",
+        r.dnwEnabled and ON or OFF, n == 1 and "1 person" or (n .. " people")))
+    self:FitPanel()
 end
 
 function RCV:FitPanel()
@@ -932,15 +885,6 @@ function RCV:LoadSettings()
     -- the guild name box only matters (and only shows) while guild search is on
     self.guildBox:SetShown(q.guildOn and true or false)
     self:RefreshFilterInfo()
-    self.dnwCheck:SetChecked(r.dnwEnabled)
-    for i, eb in ipairs(self.dnwBoxes) do
-        if not eb:HasFocus() then eb:SetText(r.dnwWords[i] or "") end
-    end
-    self.autoCheck:SetChecked(r.autoInvite)
-    self.confirmCheck:SetChecked(r.inviteMode == "confirm")
-    for i, eb in ipairs(self.keywordBoxes) do
-        if not eb:HasFocus() then eb:SetText(r.keywords[i] or "") end
-    end
     if not self.editor:HasFocus() then self.editor:SetText(r.default or "") end
     self:RefreshPreview()
     self:RefreshRulesInfo()
@@ -1005,10 +949,7 @@ function RCV:Refresh()
         end
     end
 
-    if self.dnwCount then
-        local n = #ns.Recruit:DNWList()
-        self.dnwCount:SetText(n == 1 and "1 person on the list" or (n .. " people on the list"))
-    end
+    self:RefreshReplyInfo()
 
     self:SyncQueryBoxes()
 end

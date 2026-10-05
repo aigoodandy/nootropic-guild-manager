@@ -95,9 +95,9 @@ text: Hi $name! $guild would love a Druid from $zone. Reply "invite" to join.
 
 Each message starts with `message:`. Lines you leave out mean "any"; `guild` is `any`, `none` or `guilded`; `#` lines are ignored. Anything the importer can't read is reported, and the rest still imports.
 
-**Auto-invite**: when a player you whispered from this tab replies with one of your up to 5 keywords, Nootropic Guild Manager sends them a guild invite. Keywords match whole words in any case (`join` matches "Join pls" but not "joining"), and can be phrases like `sign me up`. Replies from anyone you didn't whisper here are ignored. Because WoW: Forever only allows guild invites from a click, this shows a one-click **Invite** popup by default (**Ask me first** is on). Untick it on clients that allow fully automatic invites.
+**Auto-invite** (set up in **Options > Recruiting**): when a player you whispered from this tab replies with one of your up to 5 keywords, Nootropic Guild Manager sends them a guild invite. Keywords match whole words in any case (`join` matches "Join pls" but not "joining"), and can be phrases like `sign me up`. Replies from anyone you didn't whisper here are ignored. Because WoW: Forever only allows guild invites from a click, this shows a one-click **Invite** popup by default (**Ask me first** is on). Untick it on clients that allow fully automatic invites.
 
-**Do Not Whisper list** (on by default, **shared with the guild**): when someone you whispered replies with one of up to 5 words or phrases (defaults: `dnw`, `leave me alone`, `do not whisper`, `stop whispering`, `not interested`; whole words, any case), they're added to the list. The list syncs to everyone in the guild running the addon, so once one recruiter is told to stop, nobody in the guild bothers that player again. People on it show "Do not whisper", can't be ticked, whispered or invited, and are skipped by future searches. This check runs before the invite keywords, so "yes, but leave me alone" never invites. **View List** shows who's on it, when and by whom (click a name to take them off for everyone), and right-clicking a player adds or removes them by hand. Additions and removals appear in the Audit tab. Unticking the box stops adding people; anyone already listed stays protected.
+**Do Not Whisper list** (on by default, **shared with the guild**, set up in **Options > Recruiting**): when someone you whispered replies with one of up to 5 words or phrases (defaults: `dnw`, `leave me alone`, `do not whisper`, `stop whispering`, `not interested`; whole words, any case), they're added to the list. The list syncs to everyone in the guild running the addon, so once one recruiter is told to stop, nobody in the guild bothers that player again. People on it show "Do not whisper", can't be ticked, whispered or invited, and are skipped by future searches. This check runs before the invite keywords, so "yes, but leave me alone" never invites. **View List** shows who's on it, when and by whom (click a name to take them off for everyone), and right-clicking a player adds or removes them by hand. Additions and removals appear in the Audit tab. Unticking the box stops adding people; anyone already listed stays protected.
 
 Messages and keywords are saved per guild.
 
@@ -154,16 +154,16 @@ Both are on by default. Options has separate switches to stop sharing your own l
 
 Open from **Options > AddOns > Nootropic Guild Manager**, `/ngm options`, shift-clicking the minimap button, or right-clicking the addon compartment entry.
 
-- **Addon Icon**: Ale Mug, Brewfest Stein, or your **Guild Emblem**. The choice applies to the window's top-left icon, the minimap button and the Guild & Communities shortcut. The emblem falls back to the mug when you're not in a guild or it has no tabard.
-- **Audit History**: keep 30, 60 or 90 days of change history. Older entries are deleted.
-- **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Polls, Tags, Audit, Reviews, Options, show/hide window, or nothing).
-- **Guildmate Locations**: share my location; show guildmates on the world map; custom dot colors (your dot and outline color).
-- **Use my guild's name in the window title**: "Knights of Azeroth Guild Manager" instead of "Nootropic Guild Manager", in the title and in the "x using ... Guild Manager" text at the bottom.
-- **Show how many guildmates use the addon**: the clickable "x using ... Guild Manager" text at the bottom of the window (on by default).
-- **Recruiting**: **Recruitment whisper button on /who results** (on by default).
-- **Guild Settings** (officers, applies to the whole guild): **Guildmates can review the guild**.
-- **Show shortcut on the Guild & Communities window**: a side tab with the addon icon under the window's own tabs.
-- **Open Guild Manager**, **Reset Size and Position** and **Reset Roster Columns** buttons.
+Options has four pages in the game's AddOns list:
+
+- **Nootropic Guild Manager** (main page)
+  - **Appearance**: the **addon icon** (Ale Mug, Brewfest Stein or your **Guild Emblem**, shown on the window, the minimap button and the Guild & Communities shortcut; the emblem falls back to the mug outside a guild or without a tabard), **use my guild's name in the window title** (also in the "x using ... Guild Manager" text), **show how many guildmates use the addon** (on by default), and the **shortcut on the Guild & Communities window**.
+  - **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Polls, Tags, Audit, Reviews, Options, show/hide window, or nothing).
+  - **Reset**: window size and position, roster columns, and the compact roster and recruiting bar positions.
+  - **About**: sync stats with a **Sync Now** button, **Open Guild Manager**, and the most useful commands.
+- **Recruiting** (saved per guild): the **recruitment whisper button on /who results** (on by default), **Auto-Invite** (invite on a keyword reply, ask me first, up to 5 keywords) and **Do Not Whisper** (on/off, up to 5 words, and the shared list). The Recruitment tab shows how these are set under **Replies**, with a **Reply Settings...** button that opens this page.
+- **Map**: share my location, show guildmates on the world map, and custom dot colors (your dot and outline color).
+- **Officers**: **Guildmates can review the guild** (whole guild) and **Audit History** (keep 30, 60 or 90 days on your copy). Members see this page but can't change it.
 
 ## Searching
 

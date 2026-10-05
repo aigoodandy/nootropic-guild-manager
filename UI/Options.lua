@@ -1,7 +1,14 @@
 --[[
     Nootropic Guild Manager - Options
-    A panel in the game's Options > AddOns list (also opened by /ngm options,
-    or right-clicking the minimap button).
+    Pages in the game's Options > AddOns list (also opened by /ngm options,
+    or right-clicking the minimap button):
+
+      Nootropic Guild Manager   appearance, minimap button, reset, about
+        Recruiting              /who whisper button, auto-invite, Do Not Whisper
+        Map                     guildmate locations and dot colors
+        Officers                guild reviews on/off, audit history
+
+    O:Open(key) opens one: nil (main), "recruiting", "map" or "officers".
 ]]
 local _, ns = ...
 local W, D = ns.Widgets, ns.Data
@@ -9,18 +16,28 @@ local O = {}
 ns.Options = O
 
 local PANEL_NAME = "Nootropic Guild Manager"
+O.pages = {}   -- key -> outer frame
+O.subcats = {} -- key -> settings category
 
-local function Header(panel, text, y)
-    local title, line = W.SectionHeader(panel, text)
-    title:SetPoint("TOPLEFT", 16, y)
-    line:SetPoint("RIGHT", panel, "RIGHT", -16, 0)
+------------------------------------------------------------------------
+-- Layout: each page stacks rows top to bottom with a cursor
+------------------------------------------------------------------------
+local Layout = {}
+Layout.__index = Layout
+
+function Layout:Header(text)
+    local title, line = W.SectionHeader(self.panel, text)
+    title:SetPoint("TOPLEFT", 16, self.y)
+    line:SetPoint("RIGHT", self.panel, "RIGHT", -16, 0)
+    self.y = self.y - 26
     return title
 end
 
-local function Check(panel, text, tip, y, onClick)
-    local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+-- A checkbox with an optional one-line hint under it.
+function Layout:Check(text, hint, onClick)
+    local cb = CreateFrame("CheckButton", nil, self.panel, "UICheckButtonTemplate")
     cb:SetSize(26, 26)
-    cb:SetPoint("TOPLEFT", 14, y)
+    cb:SetPoint("TOPLEFT", 14, self.y)
     local label = cb.Text or cb.text
     if not label then
         label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -28,24 +45,74 @@ local function Check(panel, text, tip, y, onClick)
     end
     label:SetFontObject("GameFontHighlight")
     label:SetText(text)
-    if tip then
-        local hint = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        hint:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -2)
-        hint:SetText(tip)
+    if hint then
+        local h = self.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        h:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -2)
+        h:SetText(hint)
+        cb.Hint = h
     end
-    cb:SetScript("OnClick", function(self) onClick(self:GetChecked() and true or false) end)
+    cb:SetScript("OnClick", function(b) onClick(b:GetChecked() and true or false) end)
+    self.y = self.y - (hint and 42 or 30)
     return cb
 end
 
-------------------------------------------------------------------------
--- Build
-------------------------------------------------------------------------
+-- A line of text (wraps to the page width).
+function Layout:Text(text, font, gap)
+    local fs = self.panel:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+    fs:SetPoint("TOPLEFT", 18, self.y)
+    fs:SetPoint("RIGHT", self.panel, "RIGHT", -18, 0)
+    fs:SetJustifyH("LEFT")
+    fs:SetSpacing(3)
+    fs:SetText(text)
+    self.y = self.y - math.max(14, math.ceil(fs:GetStringHeight() or 14)) - (gap or 8)
+    return fs
+end
+
+-- Reserves `height` and returns the top of that row.
+function Layout:Row(height)
+    local y = self.y
+    self.y = self.y - height
+    return y
+end
+
+function Layout:Space(n) self.y = self.y - (n or 10) end
+
+function Layout:Finish() self.panel:SetHeight(-self.y + 30) end
+
+-- A scrolling page with a title. Returns the outer frame and a layout.
+local function NewPage(key, name, subtitle)
+    local outer = CreateFrame("Frame", "NootropicGMOptions" .. key, UIParent)
+    outer.name = name
+    outer:Hide()
+    local scroll = W.TryCreate("ScrollFrame", "NootropicGMOptionsScroll" .. key, outer, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 0, -4)
+    scroll:SetPoint("BOTTOMRIGHT", -26, 4)
+    local panel = CreateFrame("Frame", nil, scroll)
+    panel:SetSize(600, 800)
+    scroll:SetScrollChild(panel)
+    outer:SetScript("OnSizeChanged", function(_, w) panel:SetWidth(math.max(400, (w or 600) - 30)) end)
+    outer:SetScript("OnShow", function() O:Refresh() end)
+    O.pages[key] = outer
+
+    local logo = ns.Brand:Attach(panel, 36, { "TOPLEFT", panel, "TOPLEFT", 16, -14 })
+    local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", logo.Slot, "TOPRIGHT", 10, -2)
+    title:SetText(key == "main" and PANEL_NAME or (PANEL_NAME .. "  |cffffffff-  " .. name .. "|r"))
+    local sub = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
+    sub:SetText(subtitle)
+    O.logos = O.logos or {}
+    O.logos[#O.logos + 1] = logo
+    return outer, setmetatable({ panel = panel, y = -66 }, Layout)
+end
+
 -- Small dropdown-style button that picks one of D.MINIMAP_ACTIONS.
-local function ActionPicker(panel, label, key, y)
-    local text = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    text:SetPoint("TOPLEFT", 40, y - 4)
+local function ActionPicker(L, label, key)
+    local y = L:Row(28)
+    local text = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text:SetPoint("TOPLEFT", 42, y - 4)
     text:SetText(label)
-    local b = W.Button(panel, "", 200, 22)
+    local b = W.Button(L.panel, "", 200, 22)
     b:SetPoint("TOPLEFT", 150, y)
     b:SetScript("OnClick", function(self)
         local items = { { text = label, isTitle = true } }
@@ -65,112 +132,252 @@ local function ActionPicker(panel, label, key, y)
     return b
 end
 
-function O:Build()
-    local outer = CreateFrame("Frame", "NootropicGMOptionsPanel", UIParent)
-    outer.name = PANEL_NAME
-    outer:Hide()
+-- Five small word boxes (keywords, Do Not Whisper words), three per row.
+local function WordBoxes(L, maxLetters, onChange)
+    local boxes = {}
+    local top = L:Row(54)
+    for i = 1, D.MAX_KEYWORDS do
+        local eb = CreateFrame("EditBox", nil, L.panel, "InputBoxTemplate")
+        eb:SetSize(120, 20)
+        eb:SetAutoFocus(false)
+        eb:SetFontObject("GameFontHighlightSmall")
+        eb:SetMaxLetters(maxLetters)
+        local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+        eb:SetPoint("TOPLEFT", 26 + col * 132, top - row * 26)
+        eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+        eb:HookScript("OnTextChanged", function(self, user) if user then onChange(i, ns.Trim(self:GetText())) end end)
+        boxes[i] = eb
+    end
+    return boxes
+end
+
+local function RecruitChanged() ns:Fire("RECRUITS_CHANGED") end
+
+------------------------------------------------------------------------
+-- Main page: appearance, minimap button, reset, about
+------------------------------------------------------------------------
+function O:BuildMain()
+    local outer, L = NewPage("main", PANEL_NAME,
+        ("Version %s  -  /ngm to open  -  more settings on the Recruiting, Map and Officers pages below this one"):format(ns.version))
     self.panel = outer
 
-    -- Everything scrolls, so the panel fits any screen size.
-    local scroll = W.TryCreate("ScrollFrame", "NootropicGMOptionsScroll", outer, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 0, -4)
-    scroll:SetPoint("BOTTOMRIGHT", -26, 4)
-    local panel = CreateFrame("Frame", nil, scroll)
-    panel:SetSize(600, 1000)
-    scroll:SetScrollChild(panel)
-    outer:SetScript("OnSizeChanged", function(_, w) panel:SetWidth(math.max(400, (w or 600) - 30)) end)
-    self.content = panel
+    L:Header("Appearance")
+    local y = L:Row(34)
+    local iconLabel = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    iconLabel:SetPoint("TOPLEFT", 18, y - 8)
+    iconLabel:SetText("Addon icon")
+    self.iconPreview = ns.Brand:Attach(L.panel, 28, { "TOPLEFT", L.panel, "TOPLEFT", 110, y - 2 })
+    local iconBtn = W.Button(L.panel, "", 160, 22)
+    iconBtn:SetPoint("TOPLEFT", 148, y - 4)
+    iconBtn:SetScript("OnClick", function(btn)
+        local items = { { text = "Addon icon", isTitle = true } }
+        for _, style in ipairs(D.ICON_STYLES) do
+            items[#items + 1] = {
+                text = style.label, radio = true,
+                checked = function() return (ns.DB:Settings().iconStyle or "mug") == style.key end,
+                func = function()
+                    ns.Brand:SetStyle(style.key)
+                    if style.key == "emblem" and not ns.Brand:CanShowEmblem() then
+                        ns:Print("You'll see your guild emblem once you're in a guild with a tabard. Until then the mug is shown.")
+                    end
+                    O:Refresh()
+                end,
+            }
+        end
+        W.ShowMenu(btn, items)
+    end)
+    W.Tooltip(iconBtn, "Addon icon", "Shown on the window, the minimap button and the Guild & Communities shortcut.")
+    self.iconButton = iconBtn
 
-    -- Title with the current icon
-    self.logo = ns.Brand:Attach(panel, 40, { "TOPLEFT", panel, "TOPLEFT", 16, -16 })
-    local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", self.logo.Slot, "TOPRIGHT", 10, -4)
-    title:SetText(PANEL_NAME)
-    local sub = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
-    sub:SetText(("Version %s  -  /ngm to open  -  /ngm help for commands"):format(ns.version))
-
-    local y = -76
-
-    -- Icon style
-    Header(panel, "Addon Icon", y)
-    local desc = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    desc:SetPoint("TOPLEFT", 16, y - 20)
-    desc:SetText("Shown at the top-left of the window, on the minimap button and on the Guild & Communities shortcut.")
-    self.styleButtons = {}
-    for i, style in ipairs(D.ICON_STYLES) do
-        local b = CreateFrame("Button", nil, panel, "BackdropTemplate")
-        b:SetSize(120, 92)
-        b:SetPoint("TOPLEFT", 16 + (i - 1) * 132, y - 40)
-        b:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 } })
-        b:SetBackdropColor(0, 0, 0, 0.4)
-        b.Preview = ns.Brand:Attach(b, 48, { "TOP", b, "TOP", 0, -12 }, { style = style.key })
-        b.Label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        b.Label:SetPoint("BOTTOM", 0, 12)
-        b.Label:SetText(style.label)
-        b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-        b:SetScript("OnClick", function()
-            ns.Brand:SetStyle(style.key)
-            if style.key == "emblem" and not ns.Brand:CanShowEmblem() then
-                ns:Print("You'll see your guild emblem once you're in a guild with a tabard. Until then the mug is shown.")
-            end
-            O:Refresh()
+    self.titleCheck = L:Check("Use my guild's name in the window title",
+        "\"<Guild> Guild Manager\" instead of \"Nootropic Guild Manager\".", function(on)
+            ns.DB:Settings().titleUseGuild = on
+            ns:Fire("SETTINGS_CHANGED")
         end)
-        b.key = style.key
-        self.styleButtons[i] = b
-    end
-    y = y - 152
+    self.addonCountCheck = L:Check("Show how many guildmates use the addon",
+        "The \"x using ... Guild Manager\" text at the bottom of the window.", function(on)
+            ns.DB:Settings().showAddonCount = on
+            ns:Fire("SETTINGS_CHANGED")
+        end)
+    self.communitiesCheck = L:Check("Shortcut on the Guild & Communities window",
+        "A side tab with the addon icon.", function(on) ns.Communities:SetEnabled(on) end)
+    L:Space(4)
 
-    -- Minimap button
-    Header(panel, "Minimap Button", y)
-    self.minimapCheck = Check(panel, "Show minimap button", nil, y - 20,
-        function(on) ns.Minimap:SetShown(on) end)
+    L:Header("Minimap Button")
+    self.minimapCheck = L:Check("Show minimap button", nil, function(on) ns.Minimap:SetShown(on) end)
     self.clickPickers = {
-        ActionPicker(panel, "Left-click", "left", y - 52),
-        ActionPicker(panel, "Right-click", "right", y - 80),
-        ActionPicker(panel, "Shift-click", "shift", y - 108),
+        ActionPicker(L, "Left-click", "left"),
+        ActionPicker(L, "Right-click", "right"),
+        ActionPicker(L, "Shift-click", "shift"),
     }
-    y = y - 146
+    L:Space(8)
 
-    -- Guildmate locations
-    Header(panel, "Guildmate Locations", y)
-    self.shareCheck = Check(panel, "Share my location with guildmates",
-        "Sends your map position to guildmates using the addon (not inside dungeons). Turn off to stay hidden.", y - 20,
+    L:Header("Reset")
+    y = L:Row(32)
+    local resetWin = W.Button(L.panel, "Window Size and Position", 190, 24)
+    resetWin:SetPoint("TOPLEFT", 18, y)
+    resetWin:SetScript("OnClick", function()
+        ns.UI:ResetPosition()
+        ns:Print("Window size and position reset.")
+    end)
+    local resetCols = W.Button(L.panel, "Roster Columns", 140, 24)
+    resetCols:SetPoint("LEFT", resetWin, "RIGHT", 8, 0)
+    resetCols:SetScript("OnClick", function()
+        W.Confirm("Reset the roster columns to their default order, widths and visibility?", function()
+            ns.RosterView:ResetColumns()
+            ns:Print("Roster columns reset to defaults.")
+        end)
+    end)
+    W.Tooltip(resetCols, "Reset roster columns", "Default column order, widths and which columns are shown.")
+    local resetSmall = W.Button(L.panel, "Compact Windows", 150, 24)
+    resetSmall:SetPoint("LEFT", resetCols, "RIGHT", 8, 0)
+    resetSmall:SetScript("OnClick", function() O:ResetCompactWindows() end)
+    W.Tooltip(resetSmall, "Reset compact windows", "Puts the compact roster and the recruiting bar back in their starting place and size.")
+    L:Space(6)
+
+    L:Header("About")
+    self.syncStatus = L:Text("", "GameFontHighlightSmall", 6)
+    y = L:Row(32)
+    local syncNow = W.Button(L.panel, "Sync Now", 110, 24)
+    syncNow:SetPoint("TOPLEFT", 18, y)
+    syncNow:SetScript("OnClick", function()
+        ns.Comm:Report()
+        local started = ns.Sync:Exchange(true)
+        ns:Print(started and "Comparing data with guildmates now." or "A sync just ran; it repeats automatically every few minutes.")
+        O:Refresh()
+    end)
+    W.Tooltip(syncNow, "Sync now", "Compares your data with guildmates running the addon. It also happens by itself every few minutes.")
+    local open = W.Button(L.panel, "Open Guild Manager", 170, 24)
+    open:SetPoint("LEFT", syncNow, "RIGHT", 8, 0)
+    open:SetScript("OnClick", function() ns.UI:OpenTab(ns.UI.TAB_ROSTER) end)
+    L:Text("|cffffd100Commands|r\n"
+        .. "|cffffffff/ngm|r open or close     |cffffffff/ngm compact|r compact roster     |cffffffff/ngm mini|r recruiting bar\n"
+        .. "|cffffffff/ngm find <text>|r search the roster     |cffffffff/ngm polls|r polls     |cffffffff/ngm sync|r sync now\n"
+        .. "|cffffffff/ngm diag|r troubleshooting     |cffffffff/ngm help|r every command", "GameFontHighlightSmall")
+    L:Finish()
+end
+
+-- Compact roster and recruiting bar back to their starting place and size.
+function O:ResetCompactWindows()
+    local s = ns.DB:Settings()
+    if s.compact then s.compact.pos, s.compact.size = nil, nil end
+    s.miniPos = nil
+    local CR, MR = ns.CompactRoster, ns.RecruitMini
+    if CR.frame then
+        local c = CR:Settings()
+        CR.frame:SetSize(c.size.w, c.size.h)
+        CR:RestorePosition()
+    end
+    if MR.frame then MR:RestorePosition() end
+    ns:Print("Compact roster and recruiting bar positions reset.")
+end
+
+------------------------------------------------------------------------
+-- Recruiting page
+------------------------------------------------------------------------
+function O:BuildRecruiting()
+    local outer, L = NewPage("recruiting", "Recruiting", "Saved for the guild you're in. Messages and searching are on the Recruitment tab.")
+    self.recruitNoGuild = L:Text("|cffff8080Join a guild to change these settings.|r")
+
+    L:Header("/who Window")
+    self.whoWhisperCheck = L:Check("Recruitment whisper button on /who results",
+        "A button on each player in the game's /who search that sends them your recruitment whisper.",
+        function(on) ns.WhoWhisper:SetEnabled(on) end)
+    L:Space(4)
+
+    L:Header("Auto-Invite")
+    self.autoCheck = L:Check("Invite when they reply with a keyword",
+        "Only replies from players you whispered from the addon are checked.", function(on)
+            local r = ns.Recruit:Settings()
+            if r then r.autoInvite = on end
+            RecruitChanged()
+        end)
+    self.confirmCheck = L:Check("Ask me first (one-click Invite popup)",
+        "Needed on clients that only allow guild invites from a click.", function(on)
+            local r = ns.Recruit:Settings()
+            if r then r.inviteMode = on and "confirm" or "auto" end
+            RecruitChanged()
+        end)
+    L:Text("|cffffd100Keywords|r  |cff9d9d9d(whole words, any case)|r", "GameFontHighlightSmall", 4)
+    self.keywordBoxes = WordBoxes(L, 24, function(i, text)
+        local r = ns.Recruit:Settings()
+        if r then r.keywords[i] = text end
+        RecruitChanged()
+    end)
+    L:Space(4)
+
+    L:Header("Do Not Whisper")
+    self.dnwCheck = L:Check("Add people to the Do Not Whisper list",
+        "When someone you whispered replies with one of these words, nobody in the guild whispers or invites them again.",
+        function(on)
+            local r = ns.Recruit:Settings()
+            if r then r.dnwEnabled = on end
+            RecruitChanged()
+        end)
+    L:Text("|cffffd100Words|r  |cff9d9d9d(whole words, any case)|r", "GameFontHighlightSmall", 4)
+    self.dnwBoxes = WordBoxes(L, 32, function(i, text)
+        local r = ns.Recruit:Settings()
+        if r then r.dnwWords[i] = text end
+        RecruitChanged()
+    end)
+    local y = L:Row(30)
+    self.dnwCount = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.dnwCount:SetPoint("TOPLEFT", 26, y - 5)
+    local view = W.Button(L.panel, "View List", 100, 22)
+    view:SetPoint("TOPLEFT", 290, y)
+    view:SetScript("OnClick", function(btn) ns.RecruitView:ShowDNWMenu(btn) end)
+    W.Tooltip(view, "Do Not Whisper list", "Shared with everyone in the guild using the addon. Click a name to take them off it.")
+    self.dnwView = view
+    L:Finish()
+    return outer
+end
+
+------------------------------------------------------------------------
+-- Map page
+------------------------------------------------------------------------
+function O:BuildMap()
+    local outer, L = NewPage("map", "Map", "Guildmates on your world map, and where they see you.")
+    L:Header("Guildmate Locations")
+    self.shareCheck = L:Check("Share my location with guildmates",
+        "Your map position goes to guildmates using the addon (never inside dungeons).",
         function(on) ns.Location:SetSharing(on) end)
-    self.mapCheck = Check(panel, "Show guildmates on the world map",
-        "Class-colored dots; hover one for their roster details, click it to open their profile.", y - 66,
+    self.mapCheck = L:Check("Show guildmates on the world map",
+        "Hover a dot for their roster details; click it to open their profile.",
         function(on) ns.Location:SetShowing(on) end)
-    self.customDotsCheck = Check(panel, "Custom dot colors",
-        "See the dot colors guildmates picked, and pick your own. Off: every dot is its class color.", y - 112,
+    L:Space(4)
+
+    L:Header("Dot Colors")
+    self.customDotsCheck = L:Check("Custom dot colors",
+        "See the colors guildmates picked, and pick your own. Off: every dot is its class color.",
         function(on) ns.Location:SetCustomDots(on) end)
 
     -- my dot: fill and outline swatches, a preview and a reset
-    local L = ns.Location
+    local Loc = ns.Location
     local function myColors()
         local me = ns.PlayerFullName()
         local _, cls = UnitClass and UnitClass("player")
         local fr, fg, fb = ns.ClassColor(cls)
-        local fill, outline = L:ChosenColors(me)
-        if fill then fr, fg, fb = L.RGB(fill) end
+        local fill, outline = Loc:ChosenColors(me)
+        if fill then fr, fg, fb = Loc.RGB(fill) end
         local br, bg, bb = 0, 0, 0
-        if outline then br, bg, bb = L.RGB(outline) end
+        if outline then br, bg, bb = Loc.RGB(outline) end
         return fr, fg, fb, br, bg, bb
     end
-    self.dotRow = {}
+    local y = L:Row(32)
+    local panel = L.panel
     local fillLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    fillLabel:SetPoint("TOPLEFT", 44, y - 162)
+    fillLabel:SetPoint("TOPLEFT", 44, y - 4)
     fillLabel:SetText("My dot")
     self.fillSwatch = W.Swatch(panel, 18, function() local r, g, b = myColors() return r, g, b end,
-        function(r, g, b) L:SetMyColor("fill", r, g, b) O:RefreshDot() end)
+        function(r, g, b) Loc:SetMyColor("fill", r, g, b) O:RefreshDot() end)
     self.fillSwatch:SetPoint("LEFT", fillLabel, "RIGHT", 8, 0)
     local outLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     outLabel:SetPoint("LEFT", self.fillSwatch, "RIGHT", 18, 0)
     outLabel:SetText("Outline")
     self.outlineSwatch = W.Swatch(panel, 18, function() return select(4, myColors()) end,
-        function(r, g, b) L:SetMyColor("outline", r, g, b) O:RefreshDot() end)
+        function(r, g, b) Loc:SetMyColor("outline", r, g, b) O:RefreshDot() end)
     self.outlineSwatch:SetPoint("LEFT", outLabel, "RIGHT", 8, 0)
-    -- preview, drawn like a map dot
     local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
     local prevLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     prevLabel:SetPoint("LEFT", self.outlineSwatch, "RIGHT", 18, 0)
@@ -188,78 +395,39 @@ function O:Build()
     self.dotPreview = pv
     local resetDot = W.Button(panel, "Use Class Color", 130, 22)
     resetDot:SetPoint("LEFT", pv, "RIGHT", 16, 0)
-    resetDot:SetScript("OnClick", function() L:ResetMyColors() O:RefreshDot() end)
+    resetDot:SetScript("OnClick", function() Loc:ResetMyColors() O:RefreshDot() end)
     W.Tooltip(resetDot, "Use class color", "Your dot goes back to your class color with a black outline.")
     self.resetDot = resetDot
     self.dotRow = { fillLabel, self.fillSwatch, outLabel, self.outlineSwatch, prevLabel, pv, resetDot }
-    y = y - 200
+    L:Finish()
+    return outer
+end
 
-    -- Shortcuts and window
-    Header(panel, "Window", y)
-    self.communitiesCheck = Check(panel, "Show shortcut on the Guild & Communities window",
-        "Adds a tab with the addon icon to the side of the Guild & Communities window.", y - 20,
-        function(on) ns.Communities:SetEnabled(on) end)
-    self.titleCheck = Check(panel, "Use my guild's name in the window title",
-        "Shows \"<Guild Name> Guild Manager\" instead of \"Nootropic Guild Manager\" (also at the bottom of the window).", y - 66,
-        function(on)
-            ns.DB:Settings().titleUseGuild = on
-            ns:Fire("SETTINGS_CHANGED")
-        end)
-    self.addonCountCheck = Check(panel, "Show how many guildmates use the addon",
-        "The \"x using ... Guild Manager\" text at the bottom of the window. Click it to list them.", y - 112,
-        function(on)
-            ns.DB:Settings().showAddonCount = on
-            ns:Fire("SETTINGS_CHANGED")
-        end)
-    local open = W.Button(panel, "Open Guild Manager", 170, 24)
-    open:SetPoint("TOPLEFT", 18, y - 162)
-    open:SetScript("OnClick", function() ns.UI:OpenTab(ns.UI.TAB_ROSTER) end)
-    local reset = W.Button(panel, "Reset Size and Position", 190, 24)
-    reset:SetPoint("LEFT", open, "RIGHT", 10, 0)
-    reset:SetScript("OnClick", function()
-        ns.UI:ResetPosition()
-        ns:Print("Window size and position reset.")
-    end)
-    local cols = W.Button(panel, "Reset Roster Columns", 190, 24)
-    cols:SetPoint("TOPLEFT", open, "BOTTOMLEFT", 0, -8)
-    cols:SetScript("OnClick", function()
-        W.Confirm("Reset the roster columns to their default order, widths and visibility?", function()
-            ns.RosterView:ResetColumns()
-            ns:Print("Roster columns reset to defaults.")
-        end)
-    end)
-    W.Tooltip(cols, "Reset roster columns", "Restores the default column order, widths and which columns are shown.")
-    self.resetColumns = cols
-    y = y - 236
+------------------------------------------------------------------------
+-- Officers page
+------------------------------------------------------------------------
+function O:BuildOfficers()
+    local outer, L = NewPage("officers", "Officers", "For ranks that can read officer notes.")
+    self.officerNote = L:Text("|cffff8080Only officers can change these.|r")
 
-    -- Recruiting
-    Header(panel, "Recruiting", y)
-    self.whoWhisperCheck = Check(panel, "Recruitment whisper button on /who results",
-        "Adds a button to each player in the game's /who (Looking For Group) search that sends them your recruitment whisper.", y - 20,
-        function(on) ns.WhoWhisper:SetEnabled(on) end)
-    y = y - 70
-
-    -- Guild-wide settings (officers change them for everyone)
-    Header(panel, "Guild Settings  |cff9d9d9d(officers, for the whole guild)|r", y)
-    self.reviewsCheck = Check(panel, "Guildmates can review the guild",
-        "When off, guildmates don't see the Review Guild tab. Officers still see every review.", y - 20,
+    L:Header("Guild Reviews  |cff9d9d9d(whole guild)|r")
+    self.reviewsCheck = L:Check("Guildmates can review the guild",
+        "When off, guildmates don't see the Review Guild tab. Officers still see every review.",
         function(on)
             local ok, err = ns.DB:SetReviewsEnabled(on)
             if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
             O:Refresh()
         end)
-    y = y - 70
+    L:Space(4)
 
-    -- Audit history (officers)
-    Header(panel, "Audit History  |cff9d9d9d(officers)|r", y)
-    local adesc = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adesc:SetPoint("TOPLEFT", 16, y - 20)
-    adesc:SetText("How long to keep the record of who changed what. Older entries are deleted.")
+    L:Header("Audit History  |cff9d9d9d(your copy)|r")
+    L:Text("How long to keep the record of who changed what. Older entries are deleted.")
+    local y = L:Row(30)
     self.auditRadios = {}
     for i, days in ipairs({ 30, 60, 90 }) do
-        local rb = CreateFrame("CheckButton", nil, panel, "UIRadioButtonTemplate")
+        local rb = CreateFrame("CheckButton", nil, L.panel, "UIRadioButtonTemplate")
         rb:SetSize(20, 20)
-        rb:SetPoint("TOPLEFT", 18 + (i - 1) * 110, y - 40)
+        rb:SetPoint("TOPLEFT", 20 + (i - 1) * 110, y)
         local label = rb.text or rb.Text
         if type(label) ~= "table" then label = nil end
         if not label then
@@ -277,51 +445,97 @@ function O:Build()
         end)
         self.auditRadios[i] = rb
     end
-    y = y - 74
+    L:Finish()
+    return outer
+end
 
-    -- Sync status
-    self.syncStatus = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    self.syncStatus:SetPoint("TOPLEFT", 16, y)
-    self.syncStatus:SetPoint("RIGHT", panel, "RIGHT", -16, 0)
-    self.syncStatus:SetJustifyH("LEFT")
-    panel:SetHeight(-y + 40)
+function O:Build()
+    self:BuildMain()
+    self.subPages = {
+        { key = "recruiting", frame = self:BuildRecruiting() },
+        { key = "map", frame = self:BuildMap() },
+        { key = "officers", frame = self:BuildOfficers() },
+    }
+    ns:On("SETTINGS_CHANGED", function() if O:AnyShown() then O:Refresh() end end)
+    ns:On("BRAND_CHANGED", function() if O:AnyShown() then O:Refresh() end end)
+    ns:On("GUILD_SETTINGS_CHANGED", function() if O:AnyShown() then O:Refresh() end end)
+    ns:On("OFFICER_CHANGED", function() if O:AnyShown() then O:Refresh() end end)
+    ns:On("RECRUITS_CHANGED", function()
+        if O.pages.recruiting and O.pages.recruiting:IsShown() then O:RefreshRecruiting() end
+    end)
+end
 
-    outer:SetScript("OnShow", function() O:Refresh() end)
-    ns:On("SETTINGS_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
-    ns:On("BRAND_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
-    ns:On("GUILD_SETTINGS_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
+function O:AnyShown()
+    for _, page in pairs(self.pages) do if page:IsShown() then return true end end
+    return false
+end
+
+------------------------------------------------------------------------
+-- Refresh
+------------------------------------------------------------------------
+local function SetUsable(widget, on)
+    widget:SetEnabled(on)
+    widget:SetAlpha(on and 1 or 0.45)
 end
 
 function O:Refresh()
     local s = ns.DB:Settings()
-    for _, b in ipairs(self.styleButtons) do
-        if b.key == (s.iconStyle or "mug") then
-            b:SetBackdropBorderColor(1, 0.82, 0, 1)
-            b:SetBackdropColor(0.25, 0.2, 0, 0.6)
-        else
-            b:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
-            b:SetBackdropColor(0, 0, 0, 0.4)
-        end
-        b.Preview:Apply()
-    end
+    for _, logo in ipairs(self.logos or {}) do logo:Apply() end
+
+    -- main
+    self.iconButton:SetText(D:IconStyle(s.iconStyle).label)
+    self.iconPreview:Apply()
+    self.titleCheck:SetChecked(s.titleUseGuild and true or false)
+    self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
+    self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
     self.minimapCheck:SetChecked(not s.minimap.hide)
     for _, b in ipairs(self.clickPickers) do b:SetText(D:MinimapActionLabel(s.minimap[b.key])) end
+    local st = ns.Sync.stats
+    self.syncStatus:SetText(("|cffffd100Sync this session:|r %d sent, %d received, %d applied, %d waiting to send."):format(
+        st.sent, st.received, st.applied, ns.Sync:QueueSize()))
+
+    self:RefreshRecruiting()
+
+    -- map
     self.shareCheck:SetChecked(s.shareLocation ~= false)
     self.mapCheck:SetChecked(s.showOnMap ~= false)
     self.customDotsCheck:SetChecked(s.customDots == true)
     self:RefreshDot()
-    self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
-    self.titleCheck:SetChecked(s.titleUseGuild and true or false)
-    self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
-    self.whoWhisperCheck:SetChecked(s.whoWhisperButton ~= false)
+
+    -- officers
     local officer = ns.IsOfficer()
+    self.officerNote:SetShown(not officer)
     self.reviewsCheck:SetChecked(ns.DB:ReviewsEnabled())
-    self.reviewsCheck:SetEnabled(officer and ns.DB:Guild() ~= nil)
-    self.reviewsCheck:SetAlpha(officer and 1 or 0.5)
-    for _, rb in ipairs(self.auditRadios) do rb:SetChecked((s.auditDays or 30) == rb.days) end
-    local st = ns.Sync.stats
-    self.syncStatus:SetText(("Sync this session: %d sent, %d received, %d applied, %d waiting to send.  |cffffffff/ngm sync|r runs one now.")
-        :format(st.sent, st.received, st.applied, ns.Sync:QueueSize()))
+    SetUsable(self.reviewsCheck, officer and ns.DB:Guild() ~= nil)
+    for _, rb in ipairs(self.auditRadios) do
+        rb:SetChecked((s.auditDays or 30) == rb.days)
+        SetUsable(rb, officer)
+    end
+end
+
+function O:RefreshRecruiting()
+    local s = ns.DB:Settings()
+    self.whoWhisperCheck:SetChecked(s.whoWhisperButton ~= false)
+    local r = ns.Recruit:Settings()
+    self.recruitNoGuild:SetShown(r == nil)
+    for _, w in ipairs({ self.autoCheck, self.confirmCheck, self.dnwCheck, self.dnwView }) do SetUsable(w, r ~= nil) end
+    for _, eb in ipairs(self.keywordBoxes) do eb:SetEnabled(r ~= nil) end
+    for _, eb in ipairs(self.dnwBoxes) do eb:SetEnabled(r ~= nil) end
+    if not r then
+        self.dnwCount:SetText("")
+        return
+    end
+    self.autoCheck:SetChecked(r.autoInvite)
+    self.confirmCheck:SetChecked(r.inviteMode == "confirm")
+    self.dnwCheck:SetChecked(r.dnwEnabled)
+    for i, eb in ipairs(self.keywordBoxes) do
+        if not eb:HasFocus() then eb:SetText(r.keywords[i] or "") end
+    end
+    for i, eb in ipairs(self.dnwBoxes) do
+        if not eb:HasFocus() then eb:SetText(r.dnwWords[i] or "") end
+    end
+    local n = #ns.Recruit:DNWList()
+    self.dnwCount:SetText(n == 1 and "1 person on the list" or (n .. " people on the list"))
 end
 
 -- Your dot's swatches and preview; only usable while custom colors are on.
@@ -349,24 +563,36 @@ end
 ------------------------------------------------------------------------
 function O:Init()
     self:Build()
-    local panel = self.panel
+    local main = self.panel
     if Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory then
-        local category = Settings.RegisterCanvasLayoutCategory(panel, PANEL_NAME)
-        Settings.RegisterAddOnCategory(category)
+        local category = Settings.RegisterCanvasLayoutCategory(main, PANEL_NAME)
         self.category = category
+        if Settings.RegisterCanvasLayoutSubcategory then
+            for _, p in ipairs(self.subPages) do
+                self.subcats[p.key] = Settings.RegisterCanvasLayoutSubcategory(category, p.frame, p.frame.name)
+            end
+        end
+        Settings.RegisterAddOnCategory(category)
     elseif InterfaceOptions_AddCategory then
-        InterfaceOptions_AddCategory(panel)
+        InterfaceOptions_AddCategory(main)
+        for _, p in ipairs(self.subPages) do
+            p.frame.parent = PANEL_NAME
+            InterfaceOptions_AddCategory(p.frame)
+        end
     end
 end
 
-function O:Open()
+-- key: nil for the main page, or "recruiting", "map", "officers".
+function O:Open(key)
     if not self.panel then return end
     if Settings and Settings.OpenToCategory and self.category then
-        local id = self.category.GetID and self.category:GetID() or self.category.ID
+        local cat = key and self.subcats[key] or self.category
+        local id = cat.GetID and cat:GetID() or cat.ID
         Settings.OpenToCategory(id)
     elseif InterfaceOptionsFrame_OpenToCategory then
+        local frame = key and self.pages[key] or self.panel
         -- Called twice: the first call only opens the frame on some clients.
-        InterfaceOptionsFrame_OpenToCategory(self.panel)
-        InterfaceOptionsFrame_OpenToCategory(self.panel)
+        InterfaceOptionsFrame_OpenToCategory(frame)
+        InterfaceOptionsFrame_OpenToCategory(frame)
     end
 end
