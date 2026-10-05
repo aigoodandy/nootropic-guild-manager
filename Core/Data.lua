@@ -160,14 +160,16 @@ D.TAG_COLORS = {
     { name = "Hunter",       0.67, 0.83, 0.45, class = true },
     { name = "Rogue",        1.00, 0.96, 0.41, class = true },
     { name = "Priest",       1.00, 1.00, 1.00, class = true },
-    { name = "Death Knight", 0.77, 0.12, 0.23, class = true },
+    -- hidden: classes this game doesn't have. They stay in the list (colors
+    -- are saved by number) but aren't offered.
+    { name = "Death Knight", 0.77, 0.12, 0.23, class = true, hidden = true },
     { name = "Shaman",       0.00, 0.44, 0.87, class = true },
     { name = "Mage",         0.25, 0.78, 0.92, class = true },
     { name = "Warlock",      0.53, 0.53, 0.93, class = true },
-    { name = "Monk",         0.00, 1.00, 0.60, class = true },
+    { name = "Monk",         0.00, 1.00, 0.60, class = true, hidden = true },
     { name = "Druid",        1.00, 0.49, 0.04, class = true },
-    { name = "Demon Hunter", 0.64, 0.19, 0.79, class = true },
-    { name = "Evoker",       0.20, 0.58, 0.50, class = true },
+    { name = "Demon Hunter", 0.64, 0.19, 0.79, class = true, hidden = true },
+    { name = "Evoker",       0.20, 0.58, 0.50, class = true, hidden = true },
 }
 D.BASE_COLORS = 10 -- new things cycle through the first ten
 

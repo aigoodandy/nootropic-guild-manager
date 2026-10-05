@@ -463,7 +463,13 @@ function W.ShowColorMenu(owner, getCurrent, onPick)
             checked = function() return getCurrent() == i end,
             func = function() onPick(i) end,
         }
-        if c.class then classes[#classes + 1] = item else items[#items + 1] = item end
+        if c.hidden then
+            -- not offered (a class this game doesn't have)
+        elseif c.class then
+            classes[#classes + 1] = item
+        else
+            items[#items + 1] = item
+        end
     end
     items[#items + 1] = { text = "Class Colors", submenu = classes }
     W.ShowMenu(owner, items)
