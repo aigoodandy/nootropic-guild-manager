@@ -366,6 +366,19 @@ end)
 ------------------------------------------------------------------------
 local function Fmt(n) return n and ("%.0f"):format(n) or "?" end
 
+-- Prints a line and keeps it in the saved data (NootropicGuildManagerDB.inspectLog),
+-- which the game writes to WTF\Account\...\SavedVariables on /reload or logout,
+-- so the output can be read without copying it out of chat.
+local INSPECT_KEEP = 300
+local function Out(text)
+    ns:Print(text)
+    if not NootropicGuildManagerDB then return end
+    local log = NootropicGuildManagerDB.inspectLog or {}
+    NootropicGuildManagerDB.inspectLog = log
+    log[#log + 1] = text
+    while #log > INSPECT_KEEP do table.remove(log, 1) end
+end
+
 local function PrintRegions(frame, indent)
     for _, r in ipairs({ frame:GetRegions() }) do
         if r:GetObjectType() == "Texture" then
@@ -380,7 +393,7 @@ local function PrintRegions(frame, indent)
                 end
             end
             local point, rel, relPoint, x, y = r:GetPoint(1)
-            ns:Print(("%s%s %s/%s %sx%s%s%s %s"):format(indent, tex, tostring(layer), tostring(sub or 0),
+            Out(("%s%s %s/%s %sx%s%s%s %s"):format(indent, tex, tostring(layer), tostring(sub or 0),
                 Fmt(r:GetWidth()), Fmt(r:GetHeight()), coords, r:IsShown() and "" or " (hidden)",
                 point and ("@" .. point .. " " .. Fmt(x) .. "," .. Fmt(y)) or ""))
         end
@@ -390,23 +403,29 @@ end
 function ns.InspectUnderMouse()
     local f = (GetMouseFoci and GetMouseFoci()[1]) or (GetMouseFocus and GetMouseFocus())
     if not f or f == WorldFrame then
-        ns:Print("Hover a window part, then type /ngm inspect and press Enter (keep the mouse still).")
+        Out("Hover a window part, then type /ngm inspect and press Enter (keep the mouse still).")
         return
     end
     local parent = f:GetParent()
-    ns:Print(("Frame: %s (%s) %sx%s, parent %s"):format(f.GetDebugName and f:GetDebugName() or tostring(f:GetName()),
+    Out("---- /ngm inspect " .. date("%H:%M:%S"))
+    local point, rel, relPoint, x, y = f:GetPoint(1)
+    if point then
+        Out(("  placed %s of %s %s, offset %s,%s"):format(point,
+            rel and (rel.GetDebugName and rel:GetDebugName() or tostring(rel:GetName())) or "?", tostring(relPoint), Fmt(x), Fmt(y)))
+    end
+    Out(("Frame: %s (%s) %sx%s, parent %s"):format(f.GetDebugName and f:GetDebugName() or tostring(f:GetName()),
         f:GetObjectType(), Fmt(f:GetWidth()), Fmt(f:GetHeight()),
         parent and (parent.GetDebugName and parent:GetDebugName() or tostring(parent:GetName())) or "none"))
     PrintRegions(f, "  ")
     for _, child in ipairs({ f:GetChildren() }) do
-        ns:Print(("  child %s %sx%s"):format(child.GetDebugName and child:GetDebugName() or tostring(child:GetName()),
+        Out(("  child %s %sx%s"):format(child.GetDebugName and child:GetDebugName() or tostring(child:GetName()),
             Fmt(child:GetWidth()), Fmt(child:GetHeight())))
         PrintRegions(child, "    ")
     end
     local hl = f.GetHighlightTexture and f:GetHighlightTexture()
-    if hl then ns:Print("  highlight: " .. tostring(hl.GetAtlas and hl:GetAtlas() or hl:GetTexture())) end
+    if hl then Out("  highlight: " .. tostring(hl.GetAtlas and hl:GetAtlas() or hl:GetTexture())) end
     local ck = f.GetCheckedTexture and f:GetCheckedTexture()
-    if ck then ns:Print("  checked: " .. tostring(ck.GetAtlas and ck:GetAtlas() or ck:GetTexture())) end
+    if ck then Out("  checked: " .. tostring(ck.GetAtlas and ck:GetAtlas() or ck:GetTexture())) end
 end
 
 ------------------------------------------------------------------------
