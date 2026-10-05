@@ -19,9 +19,10 @@ local HEADER_H = 22     -- a section heading in the list
 local LIST_W = 230
 local PANEL_W = 340     -- the create form's width (the panel itself is wider)
 local IW = PANEL_W - 28
-local OPTION_H = 38
-local STAT_H = 28       -- a stat result row: its name above a full-width bar
-local MAX_STAT_ROWS = 10 -- more would run into the buttons; the footer says "Showing the top 10"
+local OPTION_H = 44
+local STAT_H = 36       -- a stat result row: its name above a full-width bar
+local BAR_H = 20        -- result bars (the character panel's skill bar look)
+local MAX_STAT_ROWS = 9 -- more would run into the buttons; the footer then says "Showing the top 9"
 local PIE = 200         -- the pie's starting size; it's resized to the room left
 local PIE_MAX, PIE_MIN = 240, 80
 local STAT_PREFIX = "stat:"
@@ -342,20 +343,10 @@ function PV:BuildDetail(panel)
         r.Text:SetWordWrap(false)
         r.Count = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         r.Count:SetPoint("TOPRIGHT", -2, -3)
-        local barBg = CreateFrame("Frame", nil, r, "BackdropTemplate")
+        local barBg = W.StatBar(r, BAR_H)
         barBg:SetPoint("BOTTOMLEFT", 20, 2)
         barBg:SetPoint("BOTTOMRIGHT", -2, 2)
-        barBg:SetHeight(12)
-        barBg:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 8,
-            insets = { left = 2, right = 2, top = 2, bottom = 2 } })
-        barBg:SetBackdropColor(0, 0, 0, 0.6)
-        barBg:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
-        local bar = CreateFrame("StatusBar", nil, barBg)
-        bar:SetPoint("TOPLEFT", 2, -2)
-        bar:SetPoint("BOTTOMRIGHT", -2, 2)
-        bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-        bar:SetMinMaxValues(0, 1)
-        r.Bar = bar
+        r.Bar = barBg.Bar
         r:SetScript("OnClick", function(self) PV:OnVote(self.index) end)
         r:SetScript("OnEnter", function(self) PV:HoverResult(self.index, "row") end)
         r:SetScript("OnLeave", function() PV:HoverResult(nil, "row") end)
@@ -491,20 +482,10 @@ function PV:BuildStatRows(d)
         r.Count = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         r.Count:SetPoint("TOPRIGHT", -2, -2)
         r.Count:SetJustifyH("RIGHT")
-        local barBg = CreateFrame("Frame", nil, r, "BackdropTemplate")
+        local barBg = W.StatBar(r, BAR_H)
         barBg:SetPoint("BOTTOMLEFT", 0, 1)
         barBg:SetPoint("BOTTOMRIGHT", 0, 1)
-        barBg:SetHeight(12)
-        barBg:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 8,
-            insets = { left = 2, right = 2, top = 2, bottom = 2 } })
-        barBg:SetBackdropColor(0, 0, 0, 0.6)
-        barBg:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
-        local bar = CreateFrame("StatusBar", nil, barBg)
-        bar:SetPoint("TOPLEFT", 2, -2)
-        bar:SetPoint("BOTTOMRIGHT", -2, 2)
-        bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-        bar:SetMinMaxValues(0, 1)
-        r.Bar = bar
+        r.Bar = barBg.Bar
         r.index = i
         r:SetScript("OnClick", function(self)
             local row = PV.stat and PV.stat.rows[self.index]

@@ -451,6 +451,61 @@ function W.ShowMenu(owner, items)
     end
 end
 
+------------------------------------------------------------------------
+-- Result bar, like the character panel's skill bars: the common-stat-bar
+-- frame behind, the common-stat-bar-blue fill trimmed by its mask. The fill
+-- is greyed and tinted, so SetStatusBarColor gives any color with the
+-- game's shading. Clients without that art get a plain bordered bar.
+--   local holder = W.StatBar(parent, height)
+--   holder.Bar:SetValue(0.5); holder.Bar:SetStatusBarColor(r, g, b)
+------------------------------------------------------------------------
+local function HasAtlasArt(name)
+    return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
+end
+
+function W.StatBar(parent, height)
+    if HasAtlasArt("common-stat-bar-BG") and HasAtlasArt("common-stat-bar-blue") then
+        local bar = CreateFrame("StatusBar", nil, parent)
+        bar:SetHeight(height)
+        bar:SetMinMaxValues(0, 1)
+        local bg = bar:CreateTexture(nil, "BACKGROUND")
+        bg:SetAtlas("common-stat-bar-BG")
+        bg:SetAllPoints()
+        bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+        local fill = bar:GetStatusBarTexture()
+        fill:SetAtlas("common-stat-bar-blue")
+        fill:SetDrawLayer("BORDER")
+        fill:SetDesaturated(true)
+        if HasAtlasArt("common-stat-bar-Mask") and bar.CreateMaskTexture then
+            local mask = bar:CreateMaskTexture()
+            mask:SetAtlas("common-stat-bar-Mask", false)
+            mask:SetAllPoints()
+            fill:AddMaskTexture(mask)
+        end
+        -- greyed, the fill is a little dark; lift the tint so colors stay bright
+        local setColor = bar.SetStatusBarColor
+        function bar:SetStatusBarColor(r, g, b, a)
+            setColor(self, math.min(1, r * 1.35 + 0.1), math.min(1, g * 1.35 + 0.1), math.min(1, b * 1.35 + 0.1), a or 1)
+        end
+        bar.Bar = bar -- the holder is the bar itself
+        return bar
+    end
+    -- plain bar
+    local bg = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    bg:SetHeight(height)
+    bg:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 8,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 } })
+    bg:SetBackdropColor(0, 0, 0, 0.6)
+    bg:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+    local bar = CreateFrame("StatusBar", nil, bg)
+    bar:SetPoint("TOPLEFT", 2, -2)
+    bar:SetPoint("BOTTOMRIGHT", -2, 2)
+    bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    bar:SetMinMaxValues(0, 1)
+    bg.Bar = bar
+    return bg
+end
+
 -- The color menu for tags, kudos, polls and stats: the general colors, then
 -- the class colors in a submenu. getCurrent() returns the chosen number;
 -- onPick(number) runs on a pick.

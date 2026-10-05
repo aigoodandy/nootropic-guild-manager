@@ -13,23 +13,10 @@ local GV = {}
 ns.GoalsView = GV
 
 local MAX_NAMES = 40
-local BAR_H, PART_H = 18, 28
+local BAR_H, PART_BAR_H, PART_H = 26, 20, 36
 
-local function Bar(parent, height)
-    local bg = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    bg:SetHeight(height)
-    bg:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 8,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 } })
-    bg:SetBackdropColor(0, 0, 0, 0.6)
-    bg:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
-    local bar = CreateFrame("StatusBar", nil, bg)
-    bar:SetPoint("TOPLEFT", 2, -2)
-    bar:SetPoint("BOTTOMRIGHT", -2, 2)
-    bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    bar:SetMinMaxValues(0, 1)
-    bg.Bar = bar
-    return bg
-end
+-- the character panel's skill bar look (UI/Widgets.lua)
+local function Bar(parent, height) return W.StatBar(parent, height) end
 
 -- "Asper, Marc, Shamandy" in class colors (and "and 3 more").
 local function NameList(members, withLevel)
@@ -101,7 +88,7 @@ function GV:Build(panel)
         r.Label:SetPoint("TOPLEFT", 2, -2)
         r.Count = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         r.Count:SetPoint("TOPRIGHT", -2, -2)
-        r.BarBg = Bar(r, 12)
+        r.BarBg = Bar(r, PART_BAR_H)
         r.BarBg:SetPoint("BOTTOMLEFT", 0, 1)
         r.BarBg:SetPoint("BOTTOMRIGHT", 0, 1)
         r:EnableMouse(true)
