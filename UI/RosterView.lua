@@ -432,7 +432,7 @@ function RV:BuildToolbar(page, frame)
     end)
     W.Tooltip(search, "Searching the roster",
         "Words match names, classes, specs, professions and tags. Every word must match.",
-        "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100race:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r limit a word to one field.",
+        "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100race:|r |cffffd100role:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r limit a word to one field.",
         "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r  |cffffd100is:addon|r  |cffffd100is:online|r",
         "|cffffd100rating:4|r  four stars or better   |cffffd100level>=50|r",
         "|cffffd100-raiding|r excludes, |cffffd100tag:\"world pvp\"|r matches a phrase.",
@@ -1175,6 +1175,7 @@ function RV:ShowRowTooltip(row, e, hint)
         GameTooltip:AddLine("Kudos: " .. table.concat(parts, ", "), 0.94, 0.87, 0.69, true)
     end
     if e.spec then Pair("Specialization", e.spec .. (e.dist and (" (" .. e.dist .. ")") or "")) end
+    if e.roleList and #e.roleList > 0 then Pair("Role", table.concat(e.roleList, ", ")) end
     if e.isAlt then
         Pair("Alt of", e.mainShort)
     elseif #e.alts > 0 then

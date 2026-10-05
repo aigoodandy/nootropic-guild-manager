@@ -131,6 +131,16 @@ ST.GROUPS = {
         if not e.spec then return { KeyFor("Unknown") } end
         return { KeyFor(e.spec, "spec:" .. Quote(e.spec)) }
     end },
+    { key = "role", label = "Role", multi = true, keys = function(e)
+        local out = {}
+        for i, r in ipairs(D.ROLES) do
+            if e.roles and e.roles[r.key] then
+                out[#out + 1] = KeyFor(r.label, "role:" .. r.key, r.color[1], r.color[2], r.color[3], i, r.icon)
+            end
+        end
+        if #out == 0 then out[1] = KeyFor("Not set") end
+        return out
+    end },
     { key = "kind", label = "Main or alt", note = "Alts are characters linked to a main on their profile.", keys = function(e)
         return { e.isAlt and KeyFor("Alts", "is:alt", nil, nil, nil, 2) or KeyFor("Mains", "is:main", nil, nil, nil, 1) }
     end },

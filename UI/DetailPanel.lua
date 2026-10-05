@@ -220,13 +220,14 @@ function DP:Build(parent)
     self.editDot = self:BuildEditDot(content)
     self:BuildAltSection(content)
     self:BuildSpecSection(content)
+    self:BuildRoleSection(content)
     self.tagsEdit = self:BuildTagSection(content, "edit")
 
     self.allSections = {
         self.linkLine, self.statusBox, self.aboutBox, self.tagsRead, self.kudos, self.schedule, self.tabs,
         self.prof, self.note, self.rating, self.log, self.history,
         self.editAbout, self.editStatus, self.editPronouns, self.clearPronouns, self.editSchedule, self.editDot,
-        self.alt, self.spec, self.tagsEdit,
+        self.alt, self.spec, self.role, self.tagsEdit,
     }
 
     self.footer = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -330,7 +331,8 @@ function DP:RefreshHeader(e)
     h.Name:SetTextColor(ns.ClassColor(e.classFile))
     local specIcon = e.spec and D:SpecIcon(e.classFile, e.spec)
     local spec = e.spec and ((specIcon and ("|T" .. specIcon .. ":12:12:0:0:64:64:5:59:5:59|t ") or "") .. e.spec .. " ") or ""
-    h.Sub:SetText(("Level %d %s%s  |cff9d9d9d-|r  %s"):format(e.level, spec, e.className, e.rank))
+    local roles = (e.roleList and #e.roleList > 0) and ("  |cff9d9d9d-|r  " .. table.concat(e.roleList, ", ")) or ""
+    h.Sub:SetText(("Level %d %s%s  |cff9d9d9d-|r  %s%s"):format(e.level, spec, e.className, e.rank, roles))
     if e.online then
         h.Status:SetText("|cff40ff40Online|r  " .. (e.zone ~= "" and e.zone or ""))
     else
@@ -1633,6 +1635,41 @@ function DP:BuildSpecSection(parent)
     self.spec = s
 end
 
+-- Role: tank, healer, damage (any of them). The member or officers set it.
+function DP:BuildRoleSection(parent)
+    local s = NewSection(parent, "Role")
+    s:SetHeight(48)
+    s.checks = {}
+    for i, r in ipairs(D.ROLES) do
+        local cb = CreateFrame("CheckButton", nil, s, "UICheckButtonTemplate")
+        cb:SetSize(24, 24)
+        cb:SetPoint("TOPLEFT", (i - 1) * 110, -20)
+        local icon = s:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(16, 16)
+        icon:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+        W.SetIcon(icon, r.icon)
+        local label = s:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label:SetPoint("LEFT", icon, "RIGHT", 4, 0)
+        label:SetText(r.label)
+        cb:SetScript("OnClick", function(self)
+            local e = DP.entry
+            if not e then return end
+            local set = {}
+            for key in pairs(e.roles or {}) do set[key] = true end
+            set[r.key] = self:GetChecked() and true or nil
+            local ok, err = ns.DB:SetRoles(e.full, set)
+            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+        end)
+        s.checks[r.key] = cb
+    end
+    W.Tooltip(s.checks.tank, "Tank", "Tick every role this character plays.")
+    self.role = s
+end
+
+function DP:RefreshRoles(e)
+    for key, cb in pairs(self.role.checks) do cb:SetChecked(e.roles and e.roles[key] or false) end
+end
+
 function DP:ShowSpecMenu(owner)
     local e = self.entry
     if not e then return end
@@ -1753,6 +1790,7 @@ function DP:VisibleSections(e)
         end
         add(self.alt, ns.DB:CanEditLinks())
         add(self.spec)
+        add(self.role)
         add(self.tagsEdit, self:LayoutTags(self.tagsEdit, e))
         add(self.prof)
         return list
@@ -1829,6 +1867,7 @@ function DP:Refresh(forceText)
         end
         if ns.DB:CanEditLinks() then self:RefreshAlts(e) end
         self:RefreshSpec(e)
+        self:RefreshRoles(e)
     else
         self:RefreshLinkLine(e)
         self:RefreshTabs()

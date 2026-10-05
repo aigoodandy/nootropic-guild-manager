@@ -11,6 +11,7 @@
       is:alt  is:main        only alts / only mains
       is:addon               only members running Nootropic Guild Manager
       is:online              only members online now
+      role:tank              tank / healer / damage, as set on their profile
       rating:4  rating<3     numeric filters (rating:N means N stars or more)
       level:60  level>=50
       -raiding               a leading minus excludes matches
@@ -218,6 +219,16 @@ function R:Decorate(e)
     e.rating = (ns.IsOfficer() and m and m.rating) or 0 -- ratings are officer-only
     e.note = m and m.note
 
+    -- Roles they play (set on their profile)
+    e.roles, e.roleList = {}, {}
+    for key in ((m and m.roles) or ""):gmatch("[^,]+") do
+        local r = D:Role(key)
+        if r then
+            e.roles[key] = true
+            e.roleList[#e.roleList + 1] = r.label
+        end
+    end
+
     -- Main / alt
     e.main = m and m.main
     e.isAlt = e.main ~= nil
@@ -242,6 +253,7 @@ function R:Decorate(e)
     s.name  = e.short:lower()
     s.class = (e.className .. " " .. e.classFile):lower()
     s.race  = ((e.race or "") .. " " .. (e.raceFile or "")):lower()
+    s.role  = table.concat(e.roleList, "\n"):lower()
     s.spec  = (e.spec or ""):lower()
     s.tags  = table.concat(tagNames, "\n"):lower()
     s.profs = table.concat(profNames, "\n"):lower()
@@ -262,6 +274,7 @@ local FIELDS = {
     spec = "spec", s = "spec",
     class = "class", c = "class",
     race = "race",
+    role = "role",
     rank = "rank",
     zone = "zone", z = "zone",
     note = "note", notes = "note",

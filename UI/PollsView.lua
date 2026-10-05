@@ -596,6 +596,7 @@ function PV:FilterMenu(owner)
         { text = "Add a filter", isTitle = true },
         Sub("Class", Present(function(e) return e.classFile ~= "" and D:ClassName(e.classFile) or nil end), "class"),
         Sub("Race", Present(function(e) return e.race end), "race"),
+        Sub("Role", { "Tank", "Healer", "Damage" }, "role"),
         Sub("Rank", Present(function(e) return e.rank end), "rank"),
         Sub("Profession", Present(function(e)
             local t = {}

@@ -30,6 +30,7 @@
       MT:<member>          member's tags           officers, or the member
       M:<member>           member's main ("" = main) officers
       MS:<member>          spec override           officers, or the member
+      RL:<member>          roles: "tank,healer,damage" (any of them)   officers, or the member
       MP:<member>          manual professions      officers, or the member
       P:<member>           addon-reported spec/professions   the member only
       RT:<member>          rating 0-5              officers (officer scope)
@@ -95,6 +96,7 @@ S.TYPES = {
     MT = { scope = "guild",   officer = true, self = true, label = "Tags" },
     M  = { scope = "guild",   officer = true, label = "Main / Alt" },
     MS = { scope = "guild",   officer = true, self = true, label = "Spec" },
+    RL = { scope = "guild",   officer = true, self = true, label = "Role" },
     MP = { scope = "guild",   officer = true, self = true, label = "Professions" },
     P  = { scope = "guild",   selfOnly = true, label = "Reported spec / professions" },
     RT = { scope = "officer", officer = true, label = "Rating" },
@@ -634,6 +636,8 @@ function S:Materialize(typ, key, member, rec)
         self:Notify("links")
     elseif typ == "MS" then
         m.spec = v ~= "" and v or nil
+    elseif typ == "RL" then
+        m.roles = v ~= "" and v or nil
     elseif typ == "MP" then
         local list = Codec.ParseProfs(v)
         m.profs = #list > 0 and list or nil

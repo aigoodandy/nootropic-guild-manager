@@ -13,6 +13,7 @@ AU.CATEGORIES = {
     { key = "RT", label = "Rating" },
     { key = "M",  label = "Main / Alt" },
     { key = "MS", label = "Spec" },
+    { key = "RL", label = "Role" },
     { key = "MP", label = "Professions" },
     { key = "P",  label = "Reported by their addon" },
     { key = "L",  label = "Officer log" },
@@ -133,6 +134,16 @@ function AU:Describe(e)
             return RED .. "About me cleared|r" .. who
         end
         return "About me changed"
+    elseif t == "RL" then
+        local function Names(v)
+            local out = {}
+            for key in v:gmatch("[^,]+") do
+                local r = ns.Data:Role(key)
+                out[#out + 1] = r and r.label or key
+            end
+            return #out > 0 and table.concat(out, ", ") or "none"
+        end
+        return "Role set to " .. Names(new) .. (old ~= "" and (GRAY .. " (was " .. Names(old) .. ")|r") or "")
     elseif t == "PN" then
         if new == "" then
             local who = e.author and e.member and e.author ~= e.member and (" by " .. ShortChar(e.author)) or ""

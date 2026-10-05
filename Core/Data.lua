@@ -234,6 +234,17 @@ D.DEFAULT_KUDOS = {
 D.MAX_KUDOS = 12
 D.MAX_KUDOS_DESC = 255
 
+-- Roles a character plays (set on their profile; any of them)
+D.ROLES = {
+    { key = "tank",   label = "Tank",   icon = "Interface\\Icons\\Ability_Defend",      color = { 0.25, 0.60, 1.00 } },
+    { key = "healer", label = "Healer", icon = "Interface\\Icons\\Spell_Holy_HolyBolt", color = { 0.20, 0.80, 0.35 } },
+    { key = "damage", label = "Damage", icon = "Interface\\Icons\\Ability_DualWield",   color = { 0.92, 0.22, 0.22 } },
+}
+
+function D:Role(key)
+    for _, r in ipairs(self.ROLES) do if r.key == key then return r end end
+end
+
 -- Tag icons are stored as a file id ("134400") or a texture path.
 function D:ParseIcon(v)
     if not v or v == "" then return nil end

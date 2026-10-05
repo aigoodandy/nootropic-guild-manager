@@ -388,6 +388,15 @@ function DB:SetNote(full, text)
     ns:Fire("MEMBER_CHANGED", full)
 end
 
+-- Roles: { tank = true, ... } (the member, or officers)
+function DB:SetRoles(full, set)
+    local list = {}
+    for _, r in ipairs(ns.Data.ROLES) do
+        if set and set[r.key] then list[#list + 1] = r.key end
+    end
+    return ns.Sync:Set("RL:" .. full, table.concat(list, ","))
+end
+
 function DB:SetManualSpec(full, spec)
     spec = spec and ns.Trim(spec) or ""
     return ns.Sync:Set("MS:" .. full, spec)
