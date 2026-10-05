@@ -394,7 +394,7 @@ function ns.InspectUnderMouse()
         return
     end
     local parent = f:GetParent()
-    ns:Print(("Frame: %s (%s) %sx%s, parent %s"):format(f:GetDebugName and f:GetDebugName() or tostring(f:GetName()),
+    ns:Print(("Frame: %s (%s) %sx%s, parent %s"):format(f.GetDebugName and f:GetDebugName() or tostring(f:GetName()),
         f:GetObjectType(), Fmt(f:GetWidth()), Fmt(f:GetHeight()),
         parent and (parent.GetDebugName and parent:GetDebugName() or tostring(parent:GetName())) or "none"))
     PrintRegions(f, "  ")
