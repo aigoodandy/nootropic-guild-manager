@@ -78,7 +78,7 @@ A live preview shows the result. Whispers are limited to 255 characters.
 
 Order is priority: use the up/down arrows to move a message. Put specific messages ("Night Elf Druids in Darkshore") above broad ones ("Druids"). **New**, **Copy** (duplicate and tweak) and **Delete** manage the list, and the enable box beside each message turns it off without deleting it. While you edit, the window shows how many players in the current search match the filters, how many will actually get this message (others may be taken by a message above it), and a preview for one of them. There's no gender filter: the game doesn't reliably say a player's gender.
 
-**Built-in class messages**: a ready-made, friendly message for each class your faction can play is added for you (turned on, after any messages of your own). Edit them, switch them off or delete them; **Class Defaults** adds back any class that's missing one.
+**Built-in class messages**: a ready-made, friendly message for every class is added for you (turned on, after any messages of your own). That includes Paladins and Shamans for both factions, since WoW: Forever lets either faction play them; guilds that set up their messages before 1.13 get the one they were missing (Paladin for Horde, Shaman for Alliance) added once, turned on. Edit them, switch them off or delete them; **Class Defaults** adds back any class that's missing one.
 
 **Import / Export**: **Export...** shows every message as plain text to copy (Ctrl+C) and share on Discord, a website or a text file. **Import...** takes that text (Ctrl+V) and either adds the messages after yours or replaces your whole list. The format is easy to write by hand:
 

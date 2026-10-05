@@ -31,8 +31,10 @@ MS.FACTION_RACES = {
     Alliance = { "Human", "Dwarf", "Night Elf", "Gnome" },
     Horde = { "Orc", "Undead", "Tauren", "Troll" },
 }
--- Classes only one faction can play in Classic.
-local FACTION_CLASS = { PALADIN = "Alliance", SHAMAN = "Horde" }
+-- Classes only one faction could play in original Classic. WoW: Forever lets
+-- both factions play them (Horde Paladins exist), so every class gets a message.
+local FACTION_CLASS = {}
+local ONCE_FACTION_ONLY = { "PALADIN", "SHAMAN" } -- skipped by 1.12 and older
 
 -- Built-in message for each class.
 MS.CLASS_DEFAULTS = {
@@ -57,7 +59,7 @@ function MS:FactionRaces()
     return self.FACTION_RACES[Faction() or ""] or self.RACES
 end
 
--- Classes your faction can play.
+-- Classes your faction can play (every class in WoW: Forever).
 function MS:FactionClasses()
     local out, mine = {}, Faction()
     for _, cls in ipairs(D.CLASSES) do
@@ -78,7 +80,11 @@ function MS:Migrate(r)
             local hadRules = #r.rules > 0
             self:AddClassDefaults(r, true)
             if not hadRules then r.useRules = true end
+        elseif not r.classDefaultsAllFactions then
+            -- 1.13: Paladin (Horde) and Shaman (Alliance) were left out before
+            self:AddClassDefaults(r, true, ONCE_FACTION_ONLY)
         end
+        r.classDefaultsAllFactions = true
         return
     end
     r.rules = {}
@@ -96,12 +102,13 @@ function MS:Migrate(r)
     end
     r.templates = nil
     self:AddClassDefaults(r, true)
+    r.classDefaultsAllFactions = true
     if r.useRules == nil then r.useRules = true end
 end
 
--- Adds the built-in message for every class (of your faction) that doesn't
--- have one in the list. Returns how many were added.
-function MS:AddClassDefaults(r, silent)
+-- Adds the built-in message (turned on) for every class that doesn't have
+-- one in the list, or only for the classes in `only`. Returns how many were added.
+function MS:AddClassDefaults(r, silent, only)
     r = r or Settings()
     if not r then return 0 end
     local have = {}
@@ -115,9 +122,14 @@ function MS:AddClassDefaults(r, silent)
             have[only] = true
         end
     end
+    local wanted
+    if only then
+        wanted = {}
+        for _, cls in ipairs(only) do wanted[cls] = true end
+    end
     local added = 0
     for _, cls in ipairs(self:FactionClasses()) do
-        if not have[cls] then
+        if not have[cls] and (not wanted or wanted[cls]) then
             local rule = self:Blank(r)
             rule.name = D:ClassName(cls)
             rule.classes[cls] = true
