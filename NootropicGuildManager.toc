@@ -1,0 +1,41 @@
+## Interface: 16001, 120007, 11509
+## Title: |cffffd100Nootropic|r Guild Manager
+## Notes: Guild roster with professions, specs, mains and alts, tags, officer ratings, an officer log, audit history and recruiting tools. Fully searchable.
+## Author: Nootropic
+## Version: 1.10
+## SavedVariables: NootropicGuildManagerDB
+## Category: Guild
+## IconTexture: Interface\Icons\INV_Drink_13
+## AddonCompartmentFunc: NootropicGuildManager_OnCompartmentClick
+## AddonCompartmentFuncOnEnter: NootropicGuildManager_OnCompartmentEnter
+## AddonCompartmentFuncOnLeave: NootropicGuildManager_OnCompartmentLeave
+
+# Core
+Core\Core.lua
+Core\Data.lua
+Core\Database.lua
+Core\Sync.lua
+
+# Services
+Services\Roster.lua
+Services\Comm.lua
+Services\Messages.lua
+Services\Recruit.lua
+Services\Location.lua
+Services\Audit.lua
+
+# Interface
+UI\Widgets.lua
+UI\BrandIcon.lua
+UI\MemberPicker.lua
+UI\RosterView.lua
+UI\DetailPanel.lua
+UI\RecruitView.lua
+UI\MessagesView.lua
+UI\TagsView.lua
+UI\AuditView.lua
+UI\MainFrame.lua
+UI\MinimapButton.lua
+UI\MapPins.lua
+UI\Options.lua
+UI\Communities.lua

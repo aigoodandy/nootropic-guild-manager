@@ -1,0 +1,1053 @@
+--[[
+    Nootropic Guild Manager - Roster view
+    Search bar, tag quick filters, sortable and toggleable columns,
+    and the member list.
+]]
+local _, ns = ...
+local W, D = ns.Widgets, ns.Data
+local RV = {}
+ns.RosterView = RV
+
+local ROW_H = 26
+local MAX_COL_W = 420
+RV.LIST_WIDTH = 966 -- usable list width; follows the window size
+RV.LIST_INSET = 34  -- frame width minus list width (borders + scroll bar)
+
+-- width: default width.  min: narrowest it shrinks to.
+-- hidePriority: when the window is too narrow, lower numbers are hidden first.
+-- locked: never hidden.  The last visible column fills any leftover space.
+local COLUMNS = {
+    { key = "name",   label = "First Name",  width = 104, min = 78, locked = true },
+    { key = "second", label = "Second Name", width = 92,  min = 60, hidePriority = 9 },
+    { key = "level",  label = "Lvl",         width = 36,  min = 30, justify = "CENTER", hidePriority = 3 },
+    { key = "class",  label = "Class",       width = 84,  min = 56, hidePriority = 2 },
+    { key = "spec",   label = "Spec",        width = 110, min = 70, hidePriority = 7 },
+    { key = "main",   label = "Main / Alt",  width = 126, min = 80, hidePriority = 6 },
+    { key = "zone",   label = "Location",    width = 130, min = 74, hidePriority = 3.5 },
+    { key = "profs",  label = "Professions", width = 150, min = 56, hidePriority = 4 },
+    { key = "tags",   label = "Tags",        width = 160, min = 70, hidePriority = 8 },
+    { key = "rating", label = "Rating",      width = 86,  min = 76, hidePriority = 5, officerOnly = true },
+    { key = "rank",   label = "Rank",        width = 96,  min = 56, hidePriority = 1 },
+}
+local COL = {}
+for _, c in ipairs(COLUMNS) do COL[c.key] = c end
+
+-- Columns in the order the player arranged them (saved in settings.columnOrder).
+-- Unknown keys are ignored and new columns are added at their default spot.
+function RV:Ordered()
+    local order = ns.DB:Settings().columnOrder
+    if not order or #order == 0 then return COLUMNS end
+    local out, used = {}, {}
+    for _, key in ipairs(order) do
+        local c = COL[key]
+        if c and not used[key] then
+            out[#out + 1] = c
+            used[key] = true
+        end
+    end
+    for i, c in ipairs(COLUMNS) do
+        if not used[c.key] then
+            -- insert after the column that precedes it by default
+            local pos = #out + 1
+            local prev = COLUMNS[i - 1]
+            for j, o in ipairs(out) do if prev and o.key == prev.key then pos = j + 1 end end
+            table.insert(out, pos, c)
+            used[c.key] = true
+        end
+    end
+    return out
+end
+
+function RV:SaveOrder(list)
+    local keys = {}
+    for i, c in ipairs(list) do keys[i] = c.key end
+    ns.DB:Settings().columnOrder = keys
+end
+
+-- Moves column `key` so it sits before `beforeKey` (nil = at the end).
+function RV:MoveColumn(key, beforeKey)
+    if key == beforeKey then return end
+    local list = {}
+    for _, c in ipairs(self:Ordered()) do if c.key ~= key then list[#list + 1] = c end end
+    local pos = #list + 1
+    for i, c in ipairs(list) do if c.key == beforeKey then pos = i break end end
+    table.insert(list, pos, COL[key])
+    self:SaveOrder(list)
+    self:Relayout()
+end
+
+-- Restores default order, widths and visibility.
+function RV:ResetColumns()
+    local s = ns.DB:Settings()
+    s.columnOrder = nil
+    wipe(s.columnWidths)
+    wipe(s.hiddenColumns)
+    s.hiddenColumns.rating = true
+    self:Relayout()
+    self:Refresh()
+end
+RV.COLUMNS = COLUMNS
+
+local STATUS_ICONS = {
+    [0] = "Interface\\FriendsFrame\\StatusIcon-Online",
+    [1] = "Interface\\FriendsFrame\\StatusIcon-Away",
+    [2] = "Interface\\FriendsFrame\\StatusIcon-DnD",
+}
+
+RV.query = ""
+RV.tagFilter = {}
+RV.selected = nil
+RV.layoutVersion = 0
+
+------------------------------------------------------------------------
+-- Column layout
+------------------------------------------------------------------------
+-- Is the column turned on in the Columns menu? (It may still be auto-hidden.)
+function RV:IsColumnShown(key)
+    local c = COL[key]
+    if c.officerOnly and not ns.IsOfficer() then return false end
+    return c.locked or not ns.DB:Settings().hiddenColumns[key]
+end
+
+-- Can this player turn the column on at all? (Rating is for officers.)
+function RV:IsColumnAvailable(key)
+    local c = COL[key]
+    return not c.locked and not (c.officerOnly and not ns.IsOfficer())
+end
+
+local function Clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
+
+-- Fits the visible columns into LIST_WIDTH:
+--   1. columns start at their saved (or default) width
+--   2. if that's too wide, every column shrinks proportionally toward its minimum
+--   3. if even the minimums don't fit, columns are hidden by priority (never Name)
+--   4. the last visible column fills whatever space is left
+function RV:ComputeLayout()
+    local s = ns.DB:Settings()
+    local avail = self.LIST_WIDTH
+    local vis = {}
+    local ordered = self:Ordered()
+    for _, c in ipairs(ordered) do
+        c.autoHidden = false
+        c.pref = Clamp(s.columnWidths[c.key] or c.width, c.min, MAX_COL_W)
+        if self:IsColumnShown(c.key) then vis[#vis + 1] = c end
+    end
+
+    while true do
+        local minSum = 0
+        for _, c in ipairs(vis) do minSum = minSum + c.min end
+        if minSum <= avail then break end
+        local victim, vi
+        for i, c in ipairs(vis) do
+            if not c.locked and (not victim or c.hidePriority < victim.hidePriority) then victim, vi = c, i end
+        end
+        if not victim then break end
+        victim.autoHidden = true
+        table.remove(vis, vi)
+    end
+    -- Bring back any hidden column that fits in the space left over.
+    local minSum = 0
+    for _, c in ipairs(vis) do minSum = minSum + c.min end
+    local hidden = {}
+    for _, c in ipairs(COLUMNS) do if c.autoHidden then hidden[#hidden + 1] = c end end
+    table.sort(hidden, function(a, b) return a.hidePriority > b.hidePriority end)
+    for _, c in ipairs(hidden) do
+        if minSum + c.min <= avail then
+            c.autoHidden = false
+            minSum = minSum + c.min
+        end
+    end
+    wipe(vis)
+    for _, c in ipairs(ordered) do
+        if self:IsColumnShown(c.key) and not c.autoHidden then vis[#vis + 1] = c end
+    end
+
+    -- The last column only needs its minimum; it fills whatever is left.
+    local filler = vis[#vis]
+    if filler then filler.pref = filler.min end
+
+    -- Shrink columns you haven't sized yourself first, then hand-sized ones.
+    for _, c in ipairs(vis) do c.w = c.pref end
+    local total = 0
+    for _, c in ipairs(vis) do total = total + c.w end
+    local need = total - avail
+    for pass = 1, 2 do
+        if need <= 0 then break end
+        local slack = 0
+        for _, c in ipairs(vis) do
+            local userSized = s.columnWidths[c.key] ~= nil
+            if (pass == 1) ~= userSized then slack = slack + (c.w - c.min) end
+        end
+        if slack > 0 then
+            local take = math.min(need, slack)
+            for _, c in ipairs(vis) do
+                local userSized = s.columnWidths[c.key] ~= nil
+                if (pass == 1) ~= userSized then
+                    c.w = c.w - math.min(c.w - c.min, math.ceil((c.w - c.min) * take / slack))
+                end
+            end
+            need = need - take
+        end
+    end
+
+    local x = 0
+    for _, c in ipairs(COLUMNS) do c.shown = false end
+    for i, c in ipairs(vis) do
+        c.shown = true
+        if i == #vis then c.w = math.max(c.min, avail - x) end
+        c.x = x
+        x = x + c.w
+        c.last = (i == #vis)
+    end
+    self.layoutVersion = self.layoutVersion + 1
+end
+
+function RV:ApplyHeaderLayout()
+    for _, c in ipairs(COLUMNS) do
+        local h = self.headers[c.key]
+        if c.shown then
+            h:ClearAllPoints()
+            h:SetPoint("TOPLEFT", c.x, 0)
+            h:SetColumnWidth(c.w)
+            h:Show()
+            h.Grip:SetShown(not c.last)
+        else
+            h:Hide()
+        end
+    end
+end
+
+-- Recomputes columns and redraws visible rows without re-querying.
+function RV:Relayout()
+    if not self.headers then return end
+    self:ComputeLayout()
+    self:ApplyHeaderLayout()
+    if self.scrollBox and self.scrollBox.ForEachFrame then
+        self.scrollBox:ForEachFrame(function(row)
+            if row.entry then RV:InitRow(row, row.entry) end
+        end)
+    end
+    self:RefreshTagBar()
+end
+
+function RV:SetListWidth(w)
+    w = math.floor(w)
+    if w == self.LIST_WIDTH then return end
+    self.LIST_WIDTH = w
+    if self.header then self.header:SetWidth(w) end
+    self:Relayout()
+end
+
+function RV:SetColumnShown(key, shown)
+    if COL[key].locked then return end
+    ns.DB:Settings().hiddenColumns[key] = (not shown) or nil
+    self:Relayout()
+    self:Refresh()
+end
+
+-- Dragging a header's right edge.
+function RV:StartColumnResize(c)
+    local scale = self.page:GetEffectiveScale()
+    local startX = GetCursorPosition() / scale
+    local startW = c.w
+    self.page:SetScript("OnUpdate", function()
+        local x = GetCursorPosition() / scale
+        local w = math.floor(Clamp(startW + (x - startX), c.min, MAX_COL_W))
+        local widths = ns.DB:Settings().columnWidths
+        if widths[c.key] ~= w then
+            widths[c.key] = w
+            RV:Relayout()
+        end
+    end)
+end
+
+-- Column moving: drag a header, a gold marker shows where it will land.
+function RV:DropTarget()
+    local scale = self.header:GetEffectiveScale()
+    local x = GetCursorPosition() / scale - (self.header:GetLeft() or 0)
+    local before, markerX = nil, nil
+    for _, c in ipairs(self:Ordered()) do
+        if c.shown then
+            if x < c.x + c.w / 2 then
+                before, markerX = c.key, c.x
+                break
+            end
+            markerX = c.x + c.w
+        end
+    end
+    return before, markerX or 0
+end
+
+function RV:StartColumnMove(c)
+    self.moving = c
+    local h = self.headers[c.key]
+    h:SetAlpha(0.5)
+    if not self.dropMarker then
+        local m = self.header:CreateTexture(nil, "OVERLAY")
+        m:SetColorTexture(1, 0.82, 0, 1)
+        m:SetWidth(3)
+        self.dropMarker = m
+    end
+    self.page:SetScript("OnUpdate", function()
+        local _, mx = RV:DropTarget()
+        RV.dropMarker:ClearAllPoints()
+        RV.dropMarker:SetPoint("TOPLEFT", RV.header, "TOPLEFT", mx - 1, 2)
+        RV.dropMarker:SetPoint("BOTTOMLEFT", RV.header, "BOTTOMLEFT", mx - 1, -2)
+        RV.dropMarker:Show()
+    end)
+end
+
+function RV:StopColumnMove()
+    local c = self.moving
+    self.page:SetScript("OnUpdate", nil)
+    if self.dropMarker then self.dropMarker:Hide() end
+    if not c then return end
+    self.moving = nil
+    self.headers[c.key]:SetAlpha(1)
+    local before = self:DropTarget()
+    self:MoveColumn(c.key, before)
+    ns.PlaySound("U_CHAT_SCROLL_BUTTON")
+end
+
+function RV:StopColumnResize()
+    self.page:SetScript("OnUpdate", nil)
+end
+
+function RV:ShowColumnsMenu(owner)
+    local items = { { text = "Columns", isTitle = true } }
+    for _, c in ipairs(COLUMNS) do
+        if self:IsColumnAvailable(c.key) then
+            items[#items + 1] = {
+                text = c.label .. (c.autoHidden and "  |cff9d9d9d(window too narrow)|r" or ""),
+                checked = function() return RV:IsColumnShown(c.key) end,
+                func = function() RV:SetColumnShown(c.key, not RV:IsColumnShown(c.key)) end,
+            }
+        end
+    end
+    items[#items + 1] = { divider = true }
+    items[#items + 1] = {
+        text = "Show all",
+        func = function()
+            wipe(ns.DB:Settings().hiddenColumns)
+            RV:Relayout()
+            RV:Refresh()
+        end,
+    }
+    items[#items + 1] = {
+        text = "Reset column order",
+        func = function()
+            ns.DB:Settings().columnOrder = nil
+            RV:Relayout()
+        end,
+    }
+    items[#items + 1] = {
+        text = "Reset column widths",
+        func = function()
+            wipe(ns.DB:Settings().columnWidths)
+            RV:Relayout()
+        end,
+    }
+    W.ShowMenu(owner, items)
+end
+
+------------------------------------------------------------------------
+-- Build
+------------------------------------------------------------------------
+function RV:Build(frame)
+    local page = CreateFrame("Frame", nil, frame)
+    page:SetAllPoints()
+    self.page, self.frame = page, frame
+    page:SetScript("OnShow", function() if RV.dirty then RV:Refresh() end end)
+
+    self:ComputeLayout()
+    self:BuildToolbar(page, frame)
+    self:BuildTagBar(page, frame)
+    self:BuildList(page, frame.Inset)
+    self:ApplyHeaderLayout()
+
+    ns:On("ROSTER_UPDATED", function() ns.Debounce("rosterview", 0.05, function() RV:Refresh() end) end)
+    ns:On("TAGS_CHANGED", function()
+        for id in pairs(RV.tagFilter) do
+            if not ns.DB:GetTag(id) then RV.tagFilter[id] = nil end
+        end
+        RV:RefreshTagBar()
+    end)
+end
+
+function RV:BuildToolbar(page, frame)
+    local search = CreateFrame("EditBox", "NootropicGMSearchBox", page, "SearchBoxTemplate")
+    search:SetSize(260, 20)
+    search:SetPoint("TOPLEFT", frame, "TOPLEFT", 78, -33)
+    search:SetAutoFocus(false)
+    if search.Instructions then
+        search.Instructions:SetText("Search name, tag, profession, spec, class...")
+    end
+    search:HookScript("OnTextChanged", function(eb)
+        RV.query = eb:GetText() or ""
+        ns.Debounce("search", 0.12, function() RV:Refresh() end)
+    end)
+    W.Tooltip(search, "Searching the roster",
+        "Words match names, classes, specs, professions and tags. Every word must match.",
+        "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r limit a word to one field.",
+        "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r",
+        "|cffffd100rating:4|r  four stars or better   |cffffd100level>=50|r",
+        "|cffffd100-raiding|r excludes, |cffffd100tag:\"world pvp\"|r matches a phrase.")
+    self.searchBox = search
+
+    local online = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
+    online:SetSize(24, 24)
+    online:SetPoint("LEFT", search, "RIGHT", 14, 0)
+    local label = online.Text or online.text
+    if not label then
+        label = online:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label:SetPoint("LEFT", online, "RIGHT", 2, 1)
+    end
+    label:SetFontObject("GameFontHighlightSmall")
+    label:SetText("Online only")
+    online:SetChecked(ns.DB:Settings().onlineOnly)
+    online:SetScript("OnClick", function(self)
+        ns.DB:Settings().onlineOnly = self:GetChecked() and true or false
+        RV:Refresh()
+    end)
+    self.onlineCheck = online
+
+    local sync = W.Button(page, "Sync", 70, 22)
+    sync:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -32)
+    sync:SetScript("OnClick", function()
+        ns.Comm:Broadcast(true)
+        ns.Comm:RequestLog()
+        ns.Roster:Request()
+        ns:Print("Asked guildmates running Nootropic Guild Manager to share their data.")
+    end)
+    W.Tooltip(sync, "Sync with guildmates",
+        "Asks everyone online who runs Nootropic Guild Manager to share their professions and specialization.",
+        "Officers also exchange Officer Log entries.")
+
+    local columns = W.Button(page, "Columns", 84, 22)
+    columns:SetPoint("RIGHT", sync, "LEFT", -6, 0)
+    columns:SetScript("OnClick", function(self) RV:ShowColumnsMenu(self) end)
+    W.Tooltip(columns, "Choose columns", "Show or hide roster columns. Your choice is saved.",
+        "Drag a column header sideways to move it, or its edge to resize it. Your layout is saved.", "Narrow windows hide low-priority columns automatically.")
+    self.columnsButton = columns
+
+    local count = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    count:SetPoint("RIGHT", columns, "LEFT", -10, 0)
+    self.countText = count
+end
+
+------------------------------------------------------------------------
+-- Tag quick-filter bar
+------------------------------------------------------------------------
+function RV:BuildTagBar(page, frame)
+    local bar = CreateFrame("Frame", nil, page)
+    bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 78, -60)
+    bar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -60)
+    bar:SetHeight(20)
+    self.tagBar = bar
+
+    bar.Label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    bar.Label:SetPoint("LEFT", 0, 0)
+    bar.Label:SetText("Tags:")
+
+    bar.Clear = W.Pill(bar, 16)
+    bar.Clear:SetLabel("Clear")
+    bar.Clear:SetScript("OnClick", function()
+        wipe(RV.tagFilter)
+        RV:RefreshTagBar()
+        RV:Refresh()
+    end)
+
+    bar.More = W.Pill(bar, 16)
+    bar.More:SetLabel("More...")
+    bar.More:SetScript("OnClick", function(self)
+        local items = { { text = "Filter by tag", isTitle = true } }
+        for _, tag in ipairs(ns.DB:GetTags()) do
+            items[#items + 1] = {
+                text = tag.name,
+                checked = function() return RV.tagFilter[tag.id] end,
+                func = function() RV:ToggleTagFilter(tag.id) end,
+            }
+        end
+        W.ShowMenu(self, items)
+    end)
+
+    bar.pills = {}
+end
+
+function RV:ToggleTagFilter(id)
+    self.tagFilter[id] = not self.tagFilter[id] or nil
+    self:RefreshTagBar()
+    self:Refresh()
+end
+
+function RV:RefreshTagBar()
+    local bar = self.tagBar
+    if not bar then return end
+    local width = bar:GetWidth()
+    if width < 50 then width = 850 end
+    local x = bar.Label:GetStringWidth() + 8
+    local tags = ns.DB:GetTags()
+    local anyActive = next(self.tagFilter) ~= nil
+    local reserve = 60 + (anyActive and 46 or 0)
+    local overflow = false
+
+    for i, tag in ipairs(tags) do
+        local p = bar.pills[i]
+        if not p then
+            p = W.Pill(bar, 16)
+            p:SetScript("OnClick", function(self) RV:ToggleTagFilter(self.tag.id) end)
+            bar.pills[i] = p
+        end
+        p:SetTag(tag, self.tagFilter[tag.id] and true or false)
+        if overflow or x + p:GetWidth() > width - reserve then
+            overflow = true
+            p:Hide()
+        else
+            p:ClearAllPoints()
+            p:SetPoint("LEFT", x, 0)
+            p:Show()
+            x = x + p:GetWidth() + 4
+        end
+    end
+    for i = #tags + 1, #bar.pills do bar.pills[i]:Hide() end
+
+    bar.More:ClearAllPoints()
+    bar.More:SetPoint("LEFT", x, 0)
+    bar.More:SetShown(overflow)
+    if overflow then x = x + bar.More:GetWidth() + 4 end
+
+    bar.Clear:ClearAllPoints()
+    bar.Clear:SetPoint("LEFT", x + 6, 0)
+    bar.Clear:SetShown(anyActive)
+end
+
+------------------------------------------------------------------------
+-- Headers and list
+------------------------------------------------------------------------
+function RV:BuildList(page, inset)
+    local header = CreateFrame("Frame", nil, page)
+    header:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -4)
+    header:SetSize(self.LIST_WIDTH, 24)
+    self.header = header
+    self.headers = {}
+    for _, c in ipairs(COLUMNS) do
+        local h = W.ColumnHeader(header, c.label, c.width, c.justify)
+        h:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        h:SetScript("OnClick", function(self, button)
+            if button == "RightButton" then
+                RV:ShowColumnsMenu(self)
+                return
+            end
+            local s = ns.DB:Settings()
+            if s.sortKey == c.key then
+                s.sortAsc = not s.sortAsc
+            else
+                s.sortKey = c.key
+                s.sortAsc = not ns.Roster.DEFAULT_DESC[c.key]
+            end
+            ns.PlaySound("U_CHAT_SCROLL_BUTTON")
+            RV:Refresh()
+        end)
+
+        -- Drag a header sideways to move the column
+        h:RegisterForDrag("LeftButton")
+        h:SetScript("OnDragStart", function() RV:StartColumnMove(c) end)
+        h:SetScript("OnDragStop", function() RV:StopColumnMove() end)
+
+        -- Resize grip on the right edge
+        local grip = CreateFrame("Button", nil, h)
+        grip:SetWidth(8)
+        grip:SetPoint("TOPRIGHT", 4, 0)
+        grip:SetPoint("BOTTOMRIGHT", 4, 0)
+        grip:SetFrameLevel(h:GetFrameLevel() + 5)
+        grip.Line = grip:CreateTexture(nil, "OVERLAY")
+        grip.Line:SetColorTexture(1, 0.82, 0, 0.9)
+        grip.Line:SetWidth(2)
+        grip.Line:SetPoint("TOP", 0, -2)
+        grip.Line:SetPoint("BOTTOM", 0, 2)
+        grip.Line:Hide()
+        grip:SetScript("OnEnter", function(self)
+            self.Line:Show()
+            if SetCursor then pcall(SetCursor, "UI_RESIZE_CURSOR") end
+        end)
+        grip:SetScript("OnLeave", function(self)
+            if not RV.page:GetScript("OnUpdate") then self.Line:Hide() end
+            if ResetCursor then ResetCursor() end
+        end)
+        grip:SetScript("OnMouseDown", function() RV:StartColumnResize(c) end)
+        grip:SetScript("OnMouseUp", function(self)
+            RV:StopColumnResize()
+            if not self:IsMouseOver() then self.Line:Hide() end
+        end)
+        h.Grip = grip
+
+        self.headers[c.key] = h
+    end
+
+    local scrollBox = CreateFrame("Frame", nil, page, "WowScrollBoxList")
+    scrollBox:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
+    scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 4)
+    local scrollBar = CreateFrame("EventFrame", nil, page, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 6, 0)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 6, 0)
+
+    local view = CreateScrollBoxListLinearView()
+    view:SetElementExtent(ROW_H)
+    view:SetElementInitializer("Button", function(row, entry) RV:InitRow(row, entry) end)
+    ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
+    self.scrollBox = scrollBox
+
+    local empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    empty:SetPoint("CENTER", scrollBox, "CENTER", 0, 20)
+    empty:SetWidth(420)
+    self.emptyText = empty
+end
+
+------------------------------------------------------------------------
+-- Rows: every column is its own cell frame, so hiding a column just hides
+-- its cell and moves the others.
+------------------------------------------------------------------------
+local function Text(parent, font, justify)
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+    fs:SetJustifyH(justify or "LEFT")
+    fs:SetWordWrap(false)
+    return fs
+end
+
+local function BuildRow(row)
+    row:SetHeight(ROW_H)
+    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+
+    row.Stripe = row:CreateTexture(nil, "BACKGROUND")
+    row.Stripe:SetAllPoints()
+    row.Stripe:SetColorTexture(1, 1, 1, 0.035)
+
+    row.Selected = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+    row.Selected:SetAllPoints()
+    row.Selected:SetTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight")
+    row.Selected:SetBlendMode("ADD")
+    row.Selected:SetVertexColor(1, 0.82, 0, 0.5)
+
+    row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    row:GetHighlightTexture():SetAlpha(0.45)
+
+    local content = CreateFrame("Frame", nil, row)
+    content:SetAllPoints()
+    content:EnableMouse(false)
+    row.Content = content
+
+    row.cells = {}
+    for _, c in ipairs(COLUMNS) do
+        local cell = CreateFrame("Frame", nil, content)
+        cell:SetHeight(ROW_H)
+        cell:EnableMouse(false)
+        row.cells[c.key] = cell
+    end
+    local cells = row.cells
+
+    -- Name
+    row.Status = cells.name:CreateTexture(nil, "ARTWORK")
+    row.Status:SetSize(12, 12)
+    row.Status:SetPoint("LEFT", 4, 0)
+    row.ClassIcon = cells.name:CreateTexture(nil, "ARTWORK")
+    row.ClassIcon:SetSize(16, 16)
+    row.ClassIcon:SetPoint("LEFT", 18, 0)
+    row.Name = Text(cells.name, "GameFontNormal")
+    row.Name:SetPoint("LEFT", row.ClassIcon, "RIGHT", 5, 0)
+    row.Name:SetPoint("RIGHT", -4, 0)
+
+    -- Second name
+    row.Second = Text(cells.second, "GameFontNormal")
+    row.Second:SetPoint("LEFT", 6, 0)
+    row.Second:SetPoint("RIGHT", -4, 0)
+
+    -- Level
+    row.Level = Text(cells.level, nil, "CENTER")
+    row.Level:SetAllPoints()
+
+    -- Class
+    row.Class = Text(cells.class)
+    row.Class:SetPoint("LEFT", 6, 0)
+    row.Class:SetPoint("RIGHT", -4, 0)
+
+    -- Spec
+    row.SpecIcon = cells.spec:CreateTexture(nil, "ARTWORK")
+    row.SpecIcon:SetSize(16, 16)
+    row.SpecIcon:SetPoint("LEFT", 6, 0)
+    row.Spec = Text(cells.spec)
+    row.Spec:SetPoint("LEFT", row.SpecIcon, "RIGHT", 4, 0)
+    row.Spec:SetPoint("RIGHT", -4, 0)
+
+    -- Main / Alt
+    row.Main = Text(cells.main)
+    row.Main:SetPoint("LEFT", 6, 0)
+    row.Main:SetPoint("RIGHT", -4, 0)
+
+    -- Location: map button + zone
+    row.MapBtn = CreateFrame("Button", nil, cells.zone)
+    row.MapBtn:SetSize(16, 16)
+    row.MapBtn:SetPoint("LEFT", 4, 0)
+    row.MapBtn.Icon = row.MapBtn:CreateTexture(nil, "ARTWORK")
+    row.MapBtn.Icon:SetAllPoints()
+    W.SetIcon(row.MapBtn.Icon, "Interface\\Icons\\INV_Misc_Map_01")
+    row.MapBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    row.MapBtn:SetScript("OnClick", function()
+        local e = row.entry
+        if e then ns.Location:OpenMap(ns.Location:MapFor(e), e.full) end
+    end)
+    row.MapBtn:SetScript("OnEnter", function(self)
+        local e = row.entry
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Show on map")
+        if e and ns.Location:Get(e.full) then
+            GameTooltip:AddLine("Opens the map at " .. e.short .. "'s location.", 1, 1, 1, true)
+        else
+            GameTooltip:AddLine("Opens the map to " .. (e and e.zone or "their zone") .. ".", 1, 1, 1, true)
+        end
+        GameTooltip:Show()
+    end)
+    row.MapBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    row.Zone = Text(cells.zone)
+    row.Zone:SetPoint("LEFT", 24, 0)
+    row.Zone:SetPoint("RIGHT", -4, 0)
+
+    -- Professions (up to 3)
+    row.Profs = {}
+    for i = 1, 3 do
+        local icon = cells.profs:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(16, 16)
+        icon:SetPoint("LEFT", 6 + (i - 1) * 48, 0)
+        local text = Text(cells.profs)
+        text:SetPoint("LEFT", icon, "RIGHT", 3, 0)
+        row.Profs[i] = { icon = icon, text = text }
+    end
+    row.NoProfs = Text(cells.profs, "GameFontDisableSmall")
+    row.NoProfs:SetPoint("LEFT", 6, 0)
+    row.NoProfs:SetText("-")
+
+    -- Tags
+    row.Pills = {}
+    row.MorePill = W.Pill(cells.tags, 16, 10)
+    row.MorePill:EnableMouse(false)
+
+    -- Rating
+    row.Stars = W.Stars(cells.rating, 13, false)
+    row.Stars:SetPoint("LEFT", 8, 0)
+
+    -- Rank
+    row.Rank = Text(cells.rank)
+    row.Rank:SetPoint("LEFT", 6, 0)
+    row.Rank:SetPoint("RIGHT", -4, 0)
+    row.Rank:SetTextColor(0.8, 0.8, 0.8)
+
+    row:SetScript("OnClick", function(self, button)
+        local e = self.entry
+        if not e then return end
+        if button == "RightButton" then
+            RV:ShowRowMenu(self, e)
+        else
+            RV:Select(e.full)
+        end
+    end)
+    row:SetScript("OnEnter", function(self) RV:ShowRowTooltip(self, self.entry) end)
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+local function LayoutRow(row)
+    for _, c in ipairs(COLUMNS) do
+        local cell = row.cells[c.key]
+        if c.shown then
+            cell:ClearAllPoints()
+            cell:SetPoint("LEFT", row.Content, "LEFT", c.x, 0)
+            cell:SetWidth(c.w)
+            cell:Show()
+        else
+            cell:Hide()
+        end
+    end
+    row.layoutVersion = RV.layoutVersion
+end
+
+local function RowPill(row, i)
+    local p = row.Pills[i]
+    if not p then
+        p = W.Pill(row.cells.tags, 16, 10)
+        p:EnableMouse(false)
+        row.Pills[i] = p
+    end
+    return p
+end
+
+local function MainLabel(e)
+    if not e.isAlt then return "|cffd0d0d0Main|r" end
+    local mainEntry = ns.Roster.byName[e.main]
+    local hex = mainEntry and ns.ClassHex(mainEntry.classFile) or "ffbbbbbb"
+    return ("|cff9d9d9dAlt of|r |c%s%s|r"):format(hex, e.mainShort)
+end
+RV.MainLabel = MainLabel
+
+function RV:InitRow(row, e)
+    if not row.built then
+        BuildRow(row)
+        row.built = true
+    end
+    if row.layoutVersion ~= self.layoutVersion then LayoutRow(row) end
+    row.entry = e
+
+    row.Stripe:SetShown(e._stripe)
+    row.Selected:SetShown(self.selected == e.full)
+    row.Content:SetAlpha(e.online and 1 or 0.55)
+
+    -- Name
+    if e.online then
+        row.Status:SetTexture(STATUS_ICONS[e.status] or STATUS_ICONS[0])
+        row.Status:Show()
+    else
+        row.Status:Hide()
+    end
+    W.SetClassIcon(row.ClassIcon, e.classFile)
+    row.Name:SetText(e.first)
+    row.Name:SetTextColor(ns.ClassColor(e.classFile))
+    row.Second:SetText(e.second)
+    row.Second:SetTextColor(ns.ClassColor(e.classFile))
+
+    row.Level:SetText(e.level > 0 and e.level or "")
+
+    row.Class:SetText(e.className)
+    row.Class:SetTextColor(ns.ClassColor(e.classFile))
+
+    local specIcon = D:SpecIcon(e.classFile, e.spec)
+    if specIcon then
+        W.SetIcon(row.SpecIcon, specIcon)
+        row.SpecIcon:Show()
+    else
+        row.SpecIcon:Hide()
+    end
+    row.Spec:ClearAllPoints()
+    row.Spec:SetPoint("LEFT", specIcon and row.SpecIcon or row.cells.spec, specIcon and "RIGHT" or "LEFT", specIcon and 4 or 6, 0)
+    row.Spec:SetPoint("RIGHT", -4, 0)
+    row.Spec:SetText(e.spec or "|cff6d6d6d-|r")
+
+    row.Main:SetText(MainLabel(e))
+
+    -- Location (map button only when we know which map to open)
+    if COL.zone.shown then
+        local zone = (e.zone ~= "" and e.zone) or nil
+        row.Zone:SetText(zone or "|cff6d6d6d-|r")
+        local hasMap = zone and ns.Location:MapFor(e) ~= nil
+        row.MapBtn:SetShown(hasMap and true or false)
+        row.Zone:SetPoint("LEFT", hasMap and 24 or 6, 0)
+    end
+
+    -- Professions
+    local fit = COL.profs.shown and math.max(1, math.floor((COL.profs.w - 6) / 48)) or 0
+    for i = 1, 3 do
+        local slot, p = row.Profs[i], e.profs[i]
+        if p and i <= fit then
+            W.SetIcon(slot.icon, D:ProfIcon(p))
+            slot.icon:Show()
+            slot.text:SetText(p.rank and p.rank > 0 and p.rank or "")
+            slot.text:Show()
+        else
+            slot.icon:Hide()
+            slot.text:Hide()
+        end
+    end
+    row.NoProfs:SetShown(#e.profs == 0)
+
+    -- Tags
+    if COL.tags.shown then
+        local maxW = COL.tags.w - 10
+        local x, shown = 0, 0
+        for i, tag in ipairs(e.tagList) do
+            local p = RowPill(row, i)
+            p:SetTag(tag)
+            local reserve = (i < #e.tagList) and 28 or 0
+            if x + p:GetWidth() + reserve > maxW then break end
+            p:ClearAllPoints()
+            p:SetPoint("LEFT", row.cells.tags, "LEFT", 6 + x, 0)
+            p:Show()
+            x = x + p:GetWidth() + 3
+            shown = i
+        end
+        for i = shown + 1, #row.Pills do row.Pills[i]:Hide() end
+        if shown < #e.tagList then
+            row.MorePill:SetLabel("+" .. (#e.tagList - shown))
+            row.MorePill:ClearAllPoints()
+            row.MorePill:SetPoint("LEFT", row.cells.tags, "LEFT", 6 + x, 0)
+            row.MorePill:Show()
+        else
+            row.MorePill:Hide()
+        end
+    end
+
+    row.Stars:SetValue(e.rating)
+    row.Rank:SetText(e.rank)
+end
+
+------------------------------------------------------------------------
+-- Row interactions
+------------------------------------------------------------------------
+-- hint: replaces the bottom "Click for details" line (used by the map dots).
+function RV:ShowRowTooltip(row, e, hint)
+    if not e then return end
+    local GOLD = { 1, 0.82, 0 }
+    local function Pair(left, right)
+        GameTooltip:AddDoubleLine(left, right, GOLD[1], GOLD[2], GOLD[3], 1, 1, 1)
+    end
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(e.short, ns.ClassColor(e.classFile))
+    GameTooltip:AddLine(("Level %d %s"):format(e.level, e.className), 1, 1, 1)
+    if e.spec then Pair("Specialization", e.spec .. (e.dist and (" (" .. e.dist .. ")") or "")) end
+    if e.isAlt then
+        Pair("Alt of", e.mainShort)
+    elseif #e.alts > 0 then
+        local names = {}
+        for i, full in ipairs(e.alts) do names[i] = ns.ShortName(full) end
+        Pair("Alts", table.concat(names, ", "))
+    end
+    Pair("Rank", e.rank)
+    if e.online then
+        Pair("Zone", e.zone)
+    else
+        Pair("Last online", ns.FormatLastSeen(e.lastOnline) .. " ago")
+    end
+    for _, p in ipairs(e.profs) do
+        local rank = (p.rank and p.rank > 0) and (p.max and p.max > 0 and (p.rank .. " / " .. p.max) or tostring(p.rank)) or "-"
+        GameTooltip:AddDoubleLine("|T" .. D:ProfIcon(p) .. ":14:14:0:0:64:64:5:59:5:59|t " .. p.name, rank, 1, 1, 1, 0.8, 0.8, 0.8)
+    end
+    if #e.tagList > 0 then
+        local names = {}
+        for i, tag in ipairs(e.tagList) do names[i] = tag.name end
+        GameTooltip:AddLine("Tags: " .. table.concat(names, ", "), 0.6, 0.85, 1, true)
+    end
+    if ns.IsOfficer() then Pair("Rating", D:StarText(e.rating)) end
+    if e.note then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(e.note, 0.85, 0.85, 0.85, true)
+    end
+    if e.publicNote ~= "" then
+        GameTooltip:AddLine("Guild note: " .. e.publicNote, 0.6, 0.6, 0.6, true)
+    end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(hint or "Click for details, right-click for quick actions.", 0.5, 0.5, 0.5)
+    GameTooltip:Show()
+end
+
+function RV:ShowRowMenu(row, e)
+    local full = e.full
+    local tagItems = {}
+    for _, tag in ipairs(ns.DB:GetTags()) do
+        tagItems[#tagItems + 1] = {
+            text = tag.name,
+            checked = function() local m = ns.DB:GetMember(full); return m and m.tags and m.tags[tag.id] end,
+            func = function() ns.DB:SetTag(full, tag.id) end,
+        }
+    end
+    local ratingItems = {}
+    for i = 5, 0, -1 do
+        ratingItems[#ratingItems + 1] = {
+            text = i > 0 and D:StarText(i, 12) or "Clear rating",
+            radio = true,
+            checked = function() local m = ns.DB:GetMember(full); return (m and m.rating or 0) == i end,
+            func = function() ns.DB:SetRating(full, i) end,
+        }
+    end
+
+    local altItems
+    if e.isAlt then
+        altItems = {
+            { text = "Change main...", func = function() ns.DetailPanel:PickMainFor(full) end },
+            { text = "Make " .. e.short .. " the main", func = function() ns.DB:MakeMain(full) end },
+            { text = "Unlink from " .. e.mainShort, func = function() ns.DB:ClearMain(full) end },
+        }
+    else
+        altItems = {
+            { text = "Mark as alt of...", func = function() ns.DetailPanel:PickMainFor(full) end },
+            { text = "Add an alt...", func = function() ns.DetailPanel:PickAltFor(full) end },
+        }
+    end
+
+    local items = { { text = e.short, isTitle = true } }
+    if ns.DB:CanEditTags(full) and #tagItems > 0 then items[#items + 1] = { text = "Tags", submenu = tagItems } end
+    if ns.DB:CanRate() then items[#items + 1] = { text = "Rating", submenu = ratingItems } end
+    if ns.DB:CanEditLinks() then items[#items + 1] = { text = "Main / Alt", submenu = altItems } end
+    for _, it in ipairs({
+        { divider = true },
+        { text = "Open Profile", func = function() RV:Select(full) end },
+        { text = "Whisper", func = function()
+            local target = ns.ChatName(full)
+            if ChatFrame_SendTell then ChatFrame_SendTell(target)
+            elseif ChatFrameUtil and ChatFrameUtil.SendTell then ChatFrameUtil.SendTell(target) end
+        end },
+        { text = "Invite to Group", disabled = not e.online, func = function()
+            local target = ns.ChatName(full)
+            if C_PartyInfo and C_PartyInfo.InviteUnit then C_PartyInfo.InviteUnit(target)
+            elseif InviteUnit then InviteUnit(target) end
+        end },
+    }) do items[#items + 1] = it end
+    W.ShowMenu(row, items)
+end
+
+function RV:Select(full)
+    self.selected = full
+    self:UpdateSelection()
+    ns.DetailPanel:Show(full)
+end
+
+function RV:ClearSelection()
+    self.selected = nil
+    self:UpdateSelection()
+end
+
+function RV:UpdateSelection()
+    if not self.scrollBox or not self.scrollBox.ForEachFrame then return end
+    self.scrollBox:ForEachFrame(function(row)
+        if row.Selected then row.Selected:SetShown(row.entry and row.entry.full == RV.selected) end
+    end)
+end
+
+------------------------------------------------------------------------
+-- Refresh
+------------------------------------------------------------------------
+function RV:SetSearch(text)
+    if self.searchBox then self.searchBox:SetText(text or "") end
+end
+
+function RV:Refresh()
+    if not self.page then return end
+    if not self.page:IsVisible() then
+        self.dirty = true
+        return
+    end
+    self.dirty = false
+
+    local s = ns.DB:Settings()
+    if s.sortKey and not COL[s.sortKey] then s.sortKey = "rank" end -- from an older version
+    local list = ns.Roster:Query(self.query, { onlineOnly = s.onlineOnly, tagIds = self.tagFilter })
+    ns.Roster:Sort(list, s.sortKey, s.sortAsc)
+    for i, e in ipairs(list) do e._stripe = (i % 2 == 0) end
+
+    local provider = CreateDataProvider(list)
+    local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition
+    self.scrollBox:SetDataProvider(provider, retain)
+
+    for key, h in pairs(self.headers) do
+        h:SetSortState(key == s.sortKey and (s.sortAsc and "asc" or "desc") or nil)
+    end
+
+    local total = #ns.Roster.members
+    self.countText:SetText(("%d of %d members"):format(#list, total))
+
+    if not IsInGuild() then
+        self.emptyText:SetText("You are not in a guild.")
+    elseif total == 0 then
+        self.emptyText:SetText("Loading guild roster...")
+    elseif #list == 0 then
+        self.emptyText:SetText("No members match your search.")
+    else
+        self.emptyText:SetText("")
+    end
+
+    self:RefreshTagBar()
+end
