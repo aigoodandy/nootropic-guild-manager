@@ -256,7 +256,7 @@ function O:BuildMain()
     L:Text("|cffffd100Commands|r\n"
         .. "|cffffffff/ngm|r open or close     |cffffffff/ngm compact|r compact roster     |cffffffff/ngm mini|r recruiting bar\n"
         .. "|cffffffff/ngm find <text>|r search the roster     |cffffffff/ngm polls|r polls     |cffffffff/ngm sync|r sync now\n"
-        .. "|cffffffff/ngm diag|r troubleshooting     |cffffffff/ngm help|r every command", "GameFontHighlightSmall")
+        .. "|cffffffff/ngm export|r copy the roster for a spreadsheet     |cffffffff/ngm diag|r troubleshooting     |cffffffff/ngm help|r every command", "GameFontHighlightSmall")
     L:Finish()
 end
 

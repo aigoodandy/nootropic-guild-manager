@@ -35,6 +35,7 @@ UI\IconPicker.lua
 UI\TagEditor.lua
 UI\RosterView.lua
 UI\CompactRoster.lua
+UI\ExportView.lua
 UI\DetailPanel.lua
 UI\RecruitView.lua
 UI\RecruitMini.lua

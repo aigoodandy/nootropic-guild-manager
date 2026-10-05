@@ -291,6 +291,7 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm recruit|r  - open the Recruitment tab")
     ns:Print("  |cffffffff/ngm mini|r  - show or hide the small recruiting bar")
     ns:Print("  |cffffffff/ngm compact|r  - show or hide the compact guild roster")
+    ns:Print("  |cffffffff/ngm export|r  - copy the roster as text for a spreadsheet or .csv file")
     ns:Print("  |cffffffff/ngm options|r  - open the options")
     ns:Print("  |cffffffff/ngm diag|r  - troubleshoot the Guild & Communities shortcut")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
@@ -320,6 +321,8 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns.RecruitMini:Toggle()
     elseif cmd == "compact" then
         ns.CompactRoster:Toggle()
+    elseif cmd == "export" then
+        ns.Export:Open()
     elseif cmd == "sync" then
         ns.Comm:Report()
         local started = ns.Sync:Exchange(true)

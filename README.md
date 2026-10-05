@@ -31,6 +31,7 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 - **Tags column** shows each tag's icon, framed in the tag's color. Hover the member to see every tag's icon and name in the tooltip.
 - **The bar at the top:** search on the left, **Tags** and **Filter** on the right. **Tags** opens a list of every tag (icon and color) to tick, showing members with **all** ticked tags or **any** of them. **Filter** has **Online only**, **Show** (mains and alts, mains only, alts only), **Class**, **Rank** and **Only guildmates using the addon**, plus **Reset filters**; your filter choices are saved. The buttons show how many are on, e.g. "Tags (2)".
 - **The summary line** under the bar shows members, how many are online and how many use the addon (and how many are showing when you search or filter). Active tags and filters are listed on its right, with **Clear** to turn them all off.
+- **Export the roster:** right-click any column header and choose **Export roster...** (or type `/ngm export`). A window shows the roster as text, already selected: press Ctrl+C and paste it into Excel, Google Sheets, or Notepad (save as `.csv`). Choose **Members** (the ones shown on the roster with your search, tags and filters, or the whole guild), **Columns** (the roster's visible columns in your order, or every field: names, level, class, spec, main/alt and alts, location, last online, professions, tags, rank, addon version, public note) and **Separator** (tab pastes straight into spreadsheet columns; comma for a `.csv` file; or semicolon). Big exports are split into parts: type how many members per part in **Part size** (250 to start, anything from 10 to 5000), then copy each part and use **Next**; the column headings are only on part 1, so the parts paste together into one table. Rating and officer notes are only exported for officers, and your private notes only when you tick **Include my private notes**. Your choices are remembered.
 - **Compact roster:** the red **Compact** button beside the close button (on the Roster tab) closes the big window and opens a small roster with no tabs that you can move and resize. It shows **First Name** and **Location**; right-click a column header to add Level, Class, Second Name, Spec, Main / Alt or Rank. Columns move (drag a header), resize (drag its edge) and hide just like on the Roster tab. It has its own search and **Online** box, sorts by clicking a header, and shows the same tooltip and right-click menu as the Roster tab. Click a name to open their profile in the full window, or the **expand arrow** to go back. `/ngm compact` shows or hides it.
 - **"x using Nootropic Guild Manager"** at the bottom of the window (it says your guild's name instead when that option is on): click it to list only guildmates running the addon, with the Version column turned on. It turns on **Filter > Only guildmates using the addon**; click **Clear** on the summary line to see everyone again. Options can hide it.
 
@@ -237,6 +238,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm recruit` | open the Recruitment tab |
 | `/ngm mini` | show or hide the small recruiting bar |
 | `/ngm compact` | show or hide the compact guild roster |
+| `/ngm export` | copy the roster as text for a spreadsheet or `.csv` file |
 | `/ngm options` | open the options |
 | `/ngm diag` | report what the Guild & Communities shortcut and the /who whisper buttons can see, and which name and version the addon uses for you |
 | `/ngm sync` | sync now and show sync stats |
@@ -252,7 +254,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data)  Sync.lua (records, repair, transport)
 Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)
-UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  CompactRoster.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoWhisper.lua
+UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  CompactRoster.lua  ExportView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoWhisper.lua
 ```
 
 ## Names in WoW: Forever

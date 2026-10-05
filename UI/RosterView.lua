@@ -351,6 +351,8 @@ function RV:ShowColumnsMenu(owner)
             RV:Relayout()
         end,
     }
+    items[#items + 1] = { divider = true }
+    items[#items + 1] = { text = "Export roster...", func = function() ns.Export:Open() end }
     W.ShowMenu(owner, items)
 end
 
