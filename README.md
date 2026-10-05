@@ -109,12 +109,14 @@ Each message starts with `message:`. Lines you leave out mean "any"; `guild` is 
 
 Messages and keywords are saved per guild.
 
-**Polls tab** — guild polls.
+**Polls tab** — guild polls and guild stats.
 
 - **Officers** create polls: a question (up to 120 characters) and 2 to 6 answers. Choose when voting closes in minutes, hours or days (1 week by default), and how many days the results stay after it closes (7 by default, 0 to 365). Officers can also close voting early or delete a poll.
 - **Everyone** running the addon can vote, and change their vote until the poll closes. Results (votes and percentages for each answer) show while it's open and after it closes, until its days are up; then the poll is deleted. Only votes cast before a poll closed are counted.
-- Open polls are listed first (closing soonest at the top), then closed ones. You get a chat message the first time you see a new poll you haven't voted on.
+- The list shows **Open Polls** (closing soonest at the top), then **Guild Stats**, then **Closed Polls**. The tab opens on an open poll you haven't voted on, if there is one. You get a chat message the first time you see a new poll you haven't voted on.
 - Votes are shared with everyone running the addon, like tags; they aren't secret ballots.
+- Every poll's results show as bars and a **pie chart**, each answer in its own color. Hover an answer to light up its slice, or a slice to light up its answer.
+- **Guild Stats** look like closed polls nobody votes on, worked out live from the roster: Classes (in class colors), Levels, Ranks, Professions, Mains and alts, Addon users, Busiest days and Busiest times (from everyone's usual online hours, in your game clock's time; alts count with their main) and Kudos given (last 90 days). Hover a row or slice for the count and percentage; click it to see those members in the roster.
 
 **Reviews tab** (the last tab; called **Review Guild** for members) — anonymous reviews of the guild.
 
@@ -261,8 +263,8 @@ A note on trust: the addon checks permissions before sending anything, and offic
 ```
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data)  Sync.lua (records, repair, transport)
-Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)  Profile.lua (About me, status, usually online, kudos)
-UI/        Widgets.lua  Columns.lua  ScheduleGrid.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  RosterView.lua  CompactRoster.lua  ExportView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoWhisper.lua
+Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)  Stats.lua (guild stats)  Profile.lua (About me, status, usually online, kudos)
+UI/        Widgets.lua  Columns.lua  PieChart.lua  ScheduleGrid.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  RosterView.lua  CompactRoster.lua  ExportView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoWhisper.lua
 ```
 
 ## Names in WoW: Forever

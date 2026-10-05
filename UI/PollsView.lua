@@ -3,16 +3,34 @@
     Everyone: see the guild's polls, vote (and change your vote) until a poll
     closes, and see the results, also after it closes.
     Officers: create polls, close voting early, delete polls.
+    Guild stats (Services/Stats.lua) are listed with the polls and shown the
+    same way, without voting: result rows with bars, and a pie chart.
+    Hovering a row highlights its slice, and hovering a slice its row.
 ]]
 local _, ns = ...
-local W = ns.Widgets
+local W, D = ns.Widgets, ns.Data
 local PV = {}
 ns.PollsView = PV
 
-local ROW_H = 46
-local PANEL_W = 340
+local ROW_H = 46        -- a poll in the list
+local STAT_ROW_H = 24   -- a stat in the list
+local HEADER_H = 22     -- a section heading in the list
+local LIST_W = 230
+local PANEL_W = 340     -- the create form's width (the panel itself is wider)
 local IW = PANEL_W - 28
 local OPTION_H = 38
+local STAT_H = 20       -- a stat result row
+local MAX_STAT_ROWS = 14
+local PIE = 120
+local STAT_PREFIX = "stat:"
+
+-- Poll answers get chart colors in order (tag palette, most distinct first).
+local PALETTE = { 2, 1, 6, 4, 3, 5 }
+local function OptionColor(i) return D:TagColor(PALETTE[(i - 1) % #PALETTE + 1]) end
+
+local function StatId(key)
+    return type(key) == "string" and key:sub(1, #STAT_PREFIX) == STAT_PREFIX and key:sub(#STAT_PREFIX + 1) or nil
+end
 
 local function Para(parent, font, width)
     local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
@@ -88,12 +106,23 @@ function PV:Build(frame)
     ns:On("POLLS_CHANGED", changed)
     ns:On("POLLS_TICK", changed)
     ns:On("OFFICER_CHANGED", changed)
+    -- stats follow the roster, profiles and kudos
+    local function statsChanged()
+        if page:IsVisible() and StatId(PV.selected) then
+            ns.Debounce("pollsview", 0.3, function() PV:Refresh() end)
+        end
+    end
+    ns:On("ROSTER_UPDATED", statsChanged)
+    ns:On("KUDOS_CHANGED", statsChanged)
+    ns:On("LINKS_CHANGED", statsChanged)
 end
 
 function PV:BuildList(page, inset)
     local box = CreateFrame("Frame", nil, page)
     box:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -4)
-    box:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -(PANEL_W + 14), 4)
+    box:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", 4, 4)
+    box:SetWidth(LIST_W)
+    self.listBox = box
 
     local scrollBox = CreateFrame("Frame", nil, box, "WowScrollBoxList")
     scrollBox:SetPoint("TOPLEFT", 0, 0)
@@ -102,60 +131,106 @@ function PV:BuildList(page, inset)
     scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 4, 0)
     scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 4, 0)
     local view = CreateScrollBoxListLinearView()
-    view:SetElementExtent(ROW_H)
-    view:SetElementInitializer("Button", function(row, p) PV:InitRow(row, p) end)
+    if view.SetElementExtentCalculator then
+        view:SetElementExtentCalculator(function(_, item)
+            return item.header and HEADER_H or item.stat and STAT_ROW_H or ROW_H
+        end)
+    else
+        view:SetElementExtent(ROW_H)
+    end
+    view:SetElementInitializer("Button", function(row, item) PV:InitRow(row, item) end)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
-
-    self.emptyText = box:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-    self.emptyText:SetPoint("CENTER", 0, 20)
-    self.emptyText:SetWidth(360)
 end
 
-function PV:InitRow(row, p)
+local function BuildListRow(row)
+    row.Stripe = row:CreateTexture(nil, "BACKGROUND")
+    row.Stripe:SetAllPoints()
+    row.Stripe:SetColorTexture(1, 1, 1, 0.035)
+    row.Selected = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+    row.Selected:SetAllPoints()
+    row.Selected:SetTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight")
+    row.Selected:SetBlendMode("ADD")
+    row.Selected:SetVertexColor(1, 0.82, 0, 0.45)
+    row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    row:GetHighlightTexture():SetAlpha(0.3)
+    -- poll
+    row.Question = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    row.Question:SetPoint("TOPLEFT", 10, -7)
+    row.Question:SetPoint("RIGHT", -64, 0)
+    row.Question:SetJustifyH("LEFT")
+    row.Question:SetWordWrap(false)
+    row.Votes = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.Votes:SetPoint("TOPRIGHT", -8, -8)
+    row.Status = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.Status:SetPoint("TOPLEFT", row.Question, "BOTTOMLEFT", 0, -5)
+    row.Status:SetPoint("RIGHT", -64, 0)
+    row.Status:SetJustifyH("LEFT")
+    row.Status:SetWordWrap(false)
+    row.Mine = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    row.Mine:SetPoint("TOPRIGHT", row.Votes, "BOTTOMRIGHT", 0, -5)
+    -- stat
+    row.StatName = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.StatName:SetPoint("LEFT", 12, 0)
+    row.Live = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    row.Live:SetPoint("RIGHT", -8, 0)
+    row.Live:SetText("live")
+    -- section heading
+    row.Header = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.Header:SetPoint("BOTTOMLEFT", 6, 4)
+    row.HeaderLine = row:CreateTexture(nil, "ARTWORK")
+    row.HeaderLine:SetColorTexture(1, 0.82, 0, 0.22)
+    row.HeaderLine:SetHeight(1)
+    row.HeaderLine:SetPoint("LEFT", row.Header, "RIGHT", 6, 0)
+    row.HeaderLine:SetPoint("RIGHT", -4, 0)
+    row:SetScript("OnClick", function(self)
+        local item = self.item
+        if item and item.poll then
+            PV:Select(item.poll.id)
+        elseif item and item.stat then
+            PV:Select(STAT_PREFIX .. item.stat.id)
+        end
+    end)
+end
+
+-- item: { header = text } | { poll = p } | { stat = { id, name } }
+function PV:InitRow(row, item)
     if not row.built then
         row.built = true
-        row:SetHeight(ROW_H)
-        row.Stripe = row:CreateTexture(nil, "BACKGROUND")
-        row.Stripe:SetAllPoints()
-        row.Stripe:SetColorTexture(1, 1, 1, 0.035)
-        row.Selected = row:CreateTexture(nil, "BACKGROUND", nil, 1)
-        row.Selected:SetAllPoints()
-        row.Selected:SetTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight")
-        row.Selected:SetBlendMode("ADD")
-        row.Selected:SetVertexColor(1, 0.82, 0, 0.45)
-        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-        row:GetHighlightTexture():SetAlpha(0.3)
-        row.Question = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        row.Question:SetPoint("TOPLEFT", 10, -7)
-        row.Question:SetPoint("RIGHT", -90, 0)
-        row.Question:SetJustifyH("LEFT")
-        row.Question:SetWordWrap(false)
-        row.Votes = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        row.Votes:SetPoint("TOPRIGHT", -10, -8)
-        row.Status = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        row.Status:SetPoint("TOPLEFT", row.Question, "BOTTOMLEFT", 0, -5)
-        row.Mine = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        row.Mine:SetPoint("TOPRIGHT", row.Votes, "BOTTOMRIGHT", 0, -5)
-        row:SetScript("OnClick", function(self) if self.poll then PV:Select(self.poll.id) end end)
+        BuildListRow(row)
     end
-    row.poll = p
-    row.Stripe:SetShown(p._stripe)
-    row.Selected:SetShown(p.id == self.selected and self.mode == "detail")
-    row.Question:SetText(p.question)
-    if p.open then
-        row.Question:SetTextColor(1, 0.82, 0)
+    row.item = item
+    local p, stat, header = item.poll, item.stat, item.header
+    row:SetHeight(header and HEADER_H or stat and STAT_ROW_H or ROW_H)
+    row:EnableMouse(not header)
+    for _, part in ipairs({ row.Question, row.Votes, row.Status, row.Mine }) do part:SetShown(p ~= nil) end
+    row.StatName:SetShown(stat ~= nil)
+    row.Live:SetShown(stat ~= nil)
+    row.Header:SetShown(header ~= nil)
+    row.HeaderLine:SetShown(header ~= nil)
+    row.Stripe:SetShown(item.stripe and not header)
+    local key = p and p.id or stat and (STAT_PREFIX .. stat.id)
+    row.Selected:SetShown(key ~= nil and key == self.selected and self.mode == "detail")
+    if header then
+        row.Header:SetText(header)
+    elseif stat then
+        row.StatName:SetText(stat.name)
     else
-        row.Question:SetTextColor(0.7, 0.7, 0.7)
-    end
-    row.Status:SetText(StatusText(p))
-    row.Votes:SetText(VotesText(p.total))
-    if p.myVote then
-        row.Mine:SetText("|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t voted")
-    elseif p.open then
-        row.Mine:SetText("|cffffd100not voted|r")
-    else
-        row.Mine:SetText("")
+        row.Question:SetText(p.question)
+        if p.open then
+            row.Question:SetTextColor(1, 0.82, 0)
+        else
+            row.Question:SetTextColor(0.7, 0.7, 0.7)
+        end
+        row.Status:SetText(StatusText(p))
+        row.Votes:SetText(VotesText(p.total))
+        if p.myVote then
+            row.Mine:SetText("|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t voted")
+        elseif p.open then
+            row.Mine:SetText("|cffffd100not voted|r")
+        else
+            row.Mine:SetText("")
+        end
     end
 end
 
@@ -164,9 +239,8 @@ end
 ------------------------------------------------------------------------
 function PV:BuildPanel(page, inset)
     local panel = CreateFrame("Frame", nil, page, "BackdropTemplate")
-    panel:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -6, -4)
+    panel:SetPoint("TOPLEFT", self.listBox, "TOPRIGHT", 12, 0)
     panel:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -6, 6)
-    panel:SetWidth(PANEL_W)
     panel:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12,
         insets = { left = 3, right = 3, top = 3, bottom = 3 } })
     panel:SetBackdropColor(0, 0, 0, 0.35)
@@ -196,16 +270,33 @@ function PV:BuildDetail(panel)
     local title, line = W.SectionHeader(d, "Poll")
     title:SetPoint("TOPLEFT", 14, -12)
     line:SetPoint("RIGHT", d, "RIGHT", -12, 0)
+    self.dTitle = title
 
-    self.dQuestion = Para(d, "GameFontHighlight", IW)
+    self.dQuestion = Para(d, "GameFontHighlight")
     self.dQuestion:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    self.dStatus = Para(d, "GameFontHighlightSmall", IW)
+    self.dQuestion:SetPoint("RIGHT", d, "RIGHT", -14, 0)
+    self.dStatus = Para(d, "GameFontHighlightSmall")
     self.dStatus:SetPoint("TOPLEFT", self.dQuestion, "BOTTOMLEFT", 0, -6)
+    self.dStatus:SetPoint("RIGHT", d, "RIGHT", -14, 0)
+
+    -- the pie, to the right of the result rows
+    local pie = W.PieChart(d, PIE)
+    pie:SetPoint("TOPRIGHT", d, "TOPRIGHT", -18, 0) -- top set in Refresh
+    pie.OnSliceEnter = function(_, index) PV:HoverResult(index, "pie") end
+    -- clicking a stat's slice opens those members in the roster, like its row
+    pie:SetScript("OnMouseUp", function(self)
+        local index = self:IndexAtCursor()
+        local row = index and PV.stat and PV.stat.rows[index]
+        if row and row.query then ns.UI:ShowRosterWithSearch(row.query) end
+    end)
+    self.pie = pie
+
+    self:BuildStatRows(d)
 
     self.optionRows = {}
     for i = 1, ns.Polls.MAX_OPTIONS do
         local r = CreateFrame("Button", nil, d)
-        r:SetSize(IW, OPTION_H - 4)
+        r:SetHeight(OPTION_H - 4)
         r:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         r:GetHighlightTexture():SetAlpha(0.3)
         r.Check = r:CreateTexture(nil, "OVERLAY")
@@ -234,27 +325,14 @@ function PV:BuildDetail(panel)
         bar:SetMinMaxValues(0, 1)
         r.Bar = bar
         r:SetScript("OnClick", function(self) PV:OnVote(self.index) end)
-        r:SetScript("OnEnter", function(self)
-            local p = PV.current
-            if not p then return end
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(p.options[self.index] or "", 1, 1, 1, true)
-            if p.open then
-                GameTooltip:AddLine(p.myVote == self.index and "Your vote." or "Click to vote for this answer.", 0.6, 0.85, 1, true)
-                if p.myVote and p.myVote ~= self.index then
-                    GameTooltip:AddLine("You can change your vote until the poll closes.", 0.7, 0.7, 0.7, true)
-                end
-            else
-                GameTooltip:AddLine("Voting has closed.", 0.7, 0.7, 0.7)
-            end
-            GameTooltip:Show()
-        end)
-        r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        r:SetScript("OnEnter", function(self) PV:HoverResult(self.index, "row") end)
+        r:SetScript("OnLeave", function() PV:HoverResult(nil, "row") end)
         r.index = i
         self.optionRows[i] = r
     end
 
-    self.dFooter = Para(d, "GameFontDisableSmall", IW)
+    self.dFooter = Para(d, "GameFontDisableSmall")
+    self.dFooter:SetPoint("RIGHT", d, "RIGHT", -14, 0)
 
     local close = W.Button(d, "Close Voting", 120, 22)
     close:SetPoint("BOTTOMLEFT", 12, 12)
@@ -283,6 +361,91 @@ function PV:BuildDetail(panel)
         end)
     end)
     self.deleteBtn = del
+end
+
+-- Stat result rows: label, bar, count and percent on one line.
+function PV:BuildStatRows(d)
+    self.statRows = {}
+    for i = 1, MAX_STAT_ROWS do
+        local r = CreateFrame("Button", nil, d)
+        r:SetHeight(STAT_H)
+        r:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        r:GetHighlightTexture():SetAlpha(0.3)
+        r.Label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        r.Label:SetPoint("LEFT", 2, 0)
+        r.Label:SetWidth(92)
+        r.Label:SetJustifyH("LEFT")
+        r.Label:SetWordWrap(false)
+        r.Count = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        r.Count:SetPoint("RIGHT", -2, 0)
+        r.Count:SetWidth(64)
+        r.Count:SetJustifyH("RIGHT")
+        local barBg = CreateFrame("Frame", nil, r, "BackdropTemplate")
+        barBg:SetPoint("LEFT", r.Label, "RIGHT", 4, 0)
+        barBg:SetPoint("RIGHT", r.Count, "LEFT", -6, 0)
+        barBg:SetHeight(12)
+        barBg:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 8,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 } })
+        barBg:SetBackdropColor(0, 0, 0, 0.6)
+        barBg:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+        local bar = CreateFrame("StatusBar", nil, barBg)
+        bar:SetPoint("TOPLEFT", 2, -2)
+        bar:SetPoint("BOTTOMRIGHT", -2, 2)
+        bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        bar:SetMinMaxValues(0, 1)
+        r.Bar = bar
+        r.index = i
+        r:SetScript("OnClick", function(self)
+            local row = PV.stat and PV.stat.rows[self.index]
+            if row and row.query then ns.UI:ShowRosterWithSearch(row.query) end
+        end)
+        r:SetScript("OnEnter", function(self) PV:HoverResult(self.index, "row") end)
+        r:SetScript("OnLeave", function() PV:HoverResult(nil, "row") end)
+        self.statRows[i] = r
+    end
+end
+
+------------------------------------------------------------------------
+-- Hovering a result: the row and its pie slice light up together
+------------------------------------------------------------------------
+-- index: the answer / stat row (nil = nothing). from: "row" or "pie".
+function PV:HoverResult(index, from)
+    local rows = self.stat and self.statRows or self.optionRows
+    for i, r in ipairs(rows) do
+        if i == index then r:LockHighlight() else r:UnlockHighlight() end
+    end
+    self.pie:SetHighlight(index)
+    if not index then
+        GameTooltip:Hide()
+        return
+    end
+    local owner = from == "pie" and self.pie or rows[index]
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if self.stat then
+        local s, row = self.stat, self.stat.rows[index]
+        if not row then return end
+        GameTooltip:AddLine(row.label, row.r, row.g, row.b)
+        local pct = s.total > 0 and math.floor(row.count * 100 / s.total + 0.5) or 0
+        GameTooltip:AddLine(("%d of %d %s (%d%%)"):format(row.count, s.total, s.pctOf, pct), 1, 1, 1)
+        if row.tip then GameTooltip:AddLine(row.tip, 0.8, 0.8, 0.8, true) end
+        if row.query and row.count > 0 then GameTooltip:AddLine("Click to see them in the roster.", 0.6, 0.85, 1) end
+    else
+        local p = self.current
+        if not p then return end
+        local n = p.counts[index] or 0
+        local pct = p.total > 0 and math.floor(n * 100 / p.total + 0.5) or 0
+        GameTooltip:AddLine(p.options[index] or "", 1, 1, 1, true)
+        GameTooltip:AddLine(("%s (%d%%)"):format(VotesText(n), pct), 0.8, 0.8, 0.8)
+        if p.open then
+            GameTooltip:AddLine(p.myVote == index and "Your vote." or "Click to vote for this answer.", 0.6, 0.85, 1, true)
+            if p.myVote and p.myVote ~= index then
+                GameTooltip:AddLine("You can change your vote until the poll closes.", 0.7, 0.7, 0.7, true)
+            end
+        else
+            GameTooltip:AddLine("Voting has closed.", 0.7, 0.7, 0.7)
+        end
+    end
+    GameTooltip:Show()
 end
 
 function PV:BuildCreate(panel)
@@ -447,42 +610,67 @@ end
 ------------------------------------------------------------------------
 -- Refresh
 ------------------------------------------------------------------------
+-- Rows sit to the left of the pie; the pie lines up with the first row.
+local function PlaceRow(r, prev, gap, d)
+    r:ClearAllPoints()
+    r:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, gap)
+    r:SetPoint("RIGHT", d, "RIGHT", -(18 + PIE + 14), 0)
+end
+
+local function PlaceFooter(self, prev)
+    self.dFooter:ClearAllPoints()
+    self.dFooter:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -12)
+    self.dFooter:SetPoint("RIGHT", self.detailPane, "RIGHT", -14, 0)
+end
+
+local function PlacePie(self, firstRow)
+    local d = self.detailPane
+    self.pie:ClearAllPoints()
+    if firstRow then
+        self.pie:SetPoint("TOPLEFT", firstRow, "TOPRIGHT", 14, 0)
+    else
+        self.pie:SetPoint("TOPRIGHT", d, "TOPRIGHT", -18, 0)
+        self.pie:SetPoint("TOP", self.dStatus, "BOTTOM", 0, -12)
+    end
+end
+
 function PV:RefreshDetail(p)
-    self.current = p
+    self.current, self.stat = p, nil
+    for _, r in ipairs(self.statRows) do r:Hide() end
+    self.dTitle:SetText("Poll")
     self.dQuestion:SetText(p.question)
     self.dStatus:SetText(StatusText(p) .. "  -  " .. VotesText(p.total))
 
     local most = 0
     for _, n in ipairs(p.counts) do most = math.max(most, n) end
-    local prev, gap = self.dStatus, -12
+    local d, prev, gap = self.detailPane, self.dStatus, -12
+    local slices = {}
     for i, r in ipairs(self.optionRows) do
         local text = p.options[i]
         if text then
             local n = p.counts[i]
             local pct = p.total > 0 and math.floor(n * 100 / p.total + 0.5) or 0
+            local cr, cg, cb = OptionColor(i)
+            slices[i] = { n, cr, cg, cb }
             r.Text:SetText(text)
-            r.Count:SetText(("%d  |cff9d9d9d%d%%|r"):format(n, pct))
+            -- the leading answer's count turns gold once voting closed
+            local lead = not p.open and n > 0 and n == most
+            r.Count:SetText(("%s%d|r  |cff9d9d9d%d%%|r"):format(lead and "|cffffd100" or "|cffffffff", n, pct))
             r.Bar:SetValue(p.total > 0 and n / p.total or 0)
-            -- the leading answer is gold once voting closed, otherwise blue
-            if not p.open and n > 0 and n == most then
-                r.Bar:SetStatusBarColor(1, 0.75, 0.1)
-            else
-                r.Bar:SetStatusBarColor(0.15, 0.45, 0.9)
-            end
+            r.Bar:SetStatusBarColor(cr, cg, cb)
             r.Check:SetShown(p.myVote == i)
             if p.myVote == i then r.Text:SetTextColor(0.4, 1, 0.4) else r.Text:SetTextColor(1, 1, 1) end
-            r:SetEnabled(p.open)
-            r:ClearAllPoints()
-            r:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, gap)
+            PlaceRow(r, prev, gap, d)
             r:Show()
             prev, gap = r, -4
         else
             r:Hide()
         end
     end
+    PlacePie(self, self.optionRows[1])
+    self.pie:SetSlices(slices)
 
-    self.dFooter:ClearAllPoints()
-    self.dFooter:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -12)
+    PlaceFooter(self, prev)
     if p.open then
         self.dFooter:SetText(p.myVote and "You can change your vote until the poll closes."
             or "Click an answer to vote. You can change your vote until the poll closes.")
@@ -501,52 +689,121 @@ function PV:RefreshDetail(p)
     end
 end
 
+-- A guild stat, shown like a closed poll: rows with bars and the pie.
+function PV:RefreshStat(id)
+    local s = ns.Stats:Compute(id)
+    self.current, self.stat = nil, s
+    for _, r in ipairs(self.optionRows) do r:Hide() end
+    self.closeBtn:Hide()
+    self.deleteBtn:Hide()
+    self.dTitle:SetText("Guild Stat")
+    self.dQuestion:SetText(s.title)
+    self.dStatus:SetText("|cff66bbff" .. s.sub .. "|r")
+
+    local d, prev, gap = self.detailPane, self.dStatus, -12
+    local slices = {}
+    for i, r in ipairs(self.statRows) do
+        local row = s.rows[i]
+        if row then
+            local pct = s.total > 0 and math.floor(row.count * 100 / s.total + 0.5) or 0
+            slices[i] = { row.count, row.r, row.g, row.b }
+            r.Label:SetText(row.label)
+            r.Label:SetTextColor(row.r, row.g, row.b)
+            r.Count:SetText(("%d  |cff9d9d9d%d%%|r"):format(row.count, pct))
+            r.Bar:SetValue(s.total > 0 and row.count / s.total or 0)
+            r.Bar:SetStatusBarColor(row.r, row.g, row.b)
+            PlaceRow(r, prev, gap, d)
+            r:Show()
+            prev, gap = r, -2
+        else
+            r:Hide()
+        end
+    end
+    PlacePie(self, s.rows[1] and self.statRows[1] or nil)
+    self.pie:SetSlices(slices)
+
+    PlaceFooter(self, prev)
+    local foot = {}
+    if #s.rows == 0 then foot[#foot + 1] = "Nothing to show yet." end
+    if #s.rows > MAX_STAT_ROWS then foot[#foot + 1] = ("Showing the top %d."):format(MAX_STAT_ROWS) end
+    if s.note then foot[#foot + 1] = s.note end
+    for _, row in ipairs(s.rows) do
+        if row.query then
+            foot[#foot + 1] = "Click a row or slice to see those members in the roster."
+            break
+        end
+    end
+    self.dFooter:SetText(table.concat(foot, "\n"))
+end
+
+-- The list: open polls, guild stats, closed polls.
+local function ListItems(polls)
+    local items, open, closed = {}, {}, {}
+    for _, p in ipairs(polls) do
+        if p.open then open[#open + 1] = p else closed[#closed + 1] = p end
+    end
+    local function Section(title, list, wrap)
+        if #list == 0 then return end
+        items[#items + 1] = { header = title }
+        for i, x in ipairs(list) do
+            local item = wrap(x)
+            item.stripe = i % 2 == 0
+            items[#items + 1] = item
+        end
+    end
+    Section("Open Polls", open, function(p) return { poll = p } end)
+    Section("Guild Stats", ns.Stats.LIST, function(s) return { stat = s } end)
+    Section("Closed Polls", closed, function(p) return { poll = p } end)
+    return items
+end
+
 function PV:Refresh()
     if not self.page or not self.page:IsVisible() then return end
     local officer = ns.IsOfficer()
-    local list = ns.Polls:List()
+    local inGuild = IsInGuild() and ns.DB:Guild() ~= nil
+    local list = inGuild and ns.Polls:List() or {}
     local open = 0
-    for i, p in ipairs(list) do
-        p._stripe = (i % 2 == 0)
-        if p.open then open = open + 1 end
-    end
+    for _, p in ipairs(list) do if p.open then open = open + 1 end end
     self.summary:SetText("Guild Polls")
     self.sub:SetText(#list == 0 and "" or (open == 1 and "1 open" or (open .. " open")) .. (#list > open and ("  -  " .. (#list - open) .. " closed") or ""))
     self.newBtn:SetShown(officer)
     if self.mode == "create" and not officer then self.mode = nil end
 
-    -- pick the first poll when nothing is chosen
-    local current = self.selected and ns.Polls:Get(self.selected)
-    if self.mode ~= "create" then
-        if not current and #list > 0 then
-            current = list[1]
-            self.selected = current.id
+    -- keep the selection; else an open poll you haven't voted on, any open
+    -- poll, or the first stat
+    local statId = StatId(self.selected)
+    local current = not statId and self.selected and ns.Polls:Get(self.selected)
+    if self.mode ~= "create" and inGuild and not current and not statId then
+        for _, p in ipairs(list) do
+            if p.open and not p.myVote then current = p break end
         end
-        self.mode = current and "detail" or nil
+        if not current and list[1] and list[1].open then current = list[1] end
+        if current then
+            self.selected = current.id
+        else
+            statId = ns.Stats.LIST[1].id
+            self.selected = STAT_PREFIX .. statId
+        end
+    end
+    if self.mode ~= "create" then
+        self.mode = inGuild and "detail" or nil
     end
 
     local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition
-    self.scrollBox:SetDataProvider(CreateDataProvider(list), retain)
-    if not IsInGuild() or not ns.DB:Guild() then
-        self.emptyText:SetText("Join a guild to see its polls.")
-    elseif #list == 0 then
-        self.emptyText:SetText(officer and "No polls yet. Click New Poll to ask the guild something."
-            or "No polls yet. Officers can create polls; you'll be able to vote on them here.")
-    else
-        self.emptyText:SetText("")
-    end
+    self.scrollBox:SetDataProvider(CreateDataProvider(inGuild and ListItems(list) or {}), retain)
 
     self.createPane:SetShown(self.mode == "create")
     self.detailPane:SetShown(self.mode == "detail")
     self.infoPane:SetShown(self.mode == nil)
     if self.mode == "create" then
+        self.current, self.stat = nil, nil
         self:RefreshCreate()
     elseif self.mode == "detail" then
-        self:RefreshDetail(current)
+        if statId then self:RefreshStat(statId) else self:RefreshDetail(current) end
     else
-        self.current = nil
-        self.infoText:SetText(officer
-            and "Ask the guild a question: click |cffffd100New Poll|r, write 2 to 6 answers and choose when voting closes (1 week unless you change it).\n\nEveryone running the addon can vote and change their vote until the poll closes. Results stay visible after closing for the number of days you choose (7 by default)."
-            or "Officers post polls here. Pick an answer to vote; you can change your vote until the poll closes.\n\nResults stay visible for a while after voting closes.")
+        self.current, self.stat = nil, nil
+        self.infoText:SetText("Join a guild to see its polls and stats.")
     end
 end
+
+
