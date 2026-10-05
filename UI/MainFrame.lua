@@ -234,35 +234,6 @@ function UI:TabsOnLeft()
     return self:TabSide() == "left"
 end
 
--- The classic text tabs along the bottom edge.
-local function CreateBottomTab(f, i)
-    local tab, template = W.TryCreate("Button", "NootropicGMFrameBottomTab" .. i, f,
-        "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate")
-    tab:SetID(i)
-    tab.gap = template == "PanelTabButtonTemplate" and 3 or -15
-    tab:SetScript("OnClick", function(self)
-        UI:SelectTab(self:GetID())
-        ns.PlaySound("IG_CHARACTER_INFO_TAB")
-    end)
-    if OFFICER_TABS[i] then
-        tab:HookScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(UI:TabTitle(self:GetID()) .. " |cff9d9d9d(officers only)|r")
-            GameTooltip:Show()
-        end)
-        tab:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    end
-    function tab:SetSelected(on)
-        if on then
-            if PanelTemplates_SelectTab then PanelTemplates_SelectTab(self) end
-        elseif PanelTemplates_DeselectTab then
-            PanelTemplates_DeselectTab(self)
-        end
-    end
-    tab:Hide()
-    return tab
-end
-
 local function CreateSideTab(f, i)
     local tab = CreateFrame("CheckButton", "NootropicGMFrameTab" .. i, f)
     if HasAtlas("common-sidetab") then
@@ -318,46 +289,55 @@ local function CreateSideTab(f, i)
     tab:SetID(i)
     -- shows or hides the selected art (instead of a checked texture)
     function tab:SetSelected(on) self.Selected:SetShown(on and true or false) end
-    -- Puts the tab's art the right way round for its side: the art opens
-    -- toward the window, so on the left it's mirrored.
-    function tab:SetSide(left)
-        if self.side == left then return end
-        self.side = left
+    -- Puts the tab's art the right way round for where it is ("right",
+    -- "left" or "bottom"): the art opens toward the window. On the left it's
+    -- mirrored; at the bottom it's turned a quarter so it opens upward. The
+    -- icon itself is never flipped or turned.
+    function tab:SetSide(side)
+        if self.side == side then return end
+        self.side = side
+        local left, bottom = side == "left", side == "bottom"
         if self.atlases then
-            -- the frame, selected border and hover glow are mirrored; the icon
-            -- never is
+            -- frame, selected border, hover glow
             for key, atlas in pairs(self.atlases) do
                 local tex = self[key]
                 if tex and key ~= "Mask" then
                     tex:SetAtlas(atlas)
+                    if tex.SetRotation then pcall(tex.SetRotation, tex, bottom and -math.pi / 2 or 0) end
                     if left then pcall(Mirror, tex) end
                 end
             end
             -- The shaped trim can't be mirrored (the game then hides the whole
             -- icon), but it can be turned: the tab is the same shape top and
-            -- bottom, so half a turn gives the left-side shape. Where turning
-            -- isn't possible, the icon goes untrimmed and a little smaller.
+            -- bottom, so half a turn gives the left-side shape, and a quarter
+            -- turn the bottom one. Where turning isn't possible, the icon goes
+            -- untrimmed and a little smaller.
             if self.Mask then
                 self.Mask:SetAtlas(self.atlases.Mask, false)
-                local turned = false
-                if left and self.Mask.SetRotation then
-                    turned = pcall(self.Mask.SetRotation, self.Mask, math.pi)
-                elseif self.Mask.SetRotation then
-                    pcall(self.Mask.SetRotation, self.Mask, 0)
+                local angle = left and math.pi or bottom and -math.pi / 2 or 0
+                local turned = angle == 0
+                if self.Mask.SetRotation then
+                    local ok = pcall(self.Mask.SetRotation, self.Mask, angle)
+                    turned = turned or ok
                 end
-                if left and not turned then
-                    self.Icon:RemoveMaskTexture(self.Mask)
-                    self.Icon:SetSize(44, 44)
-                else
-                    self.Icon:RemoveMaskTexture(self.Mask)
+                self.Icon:RemoveMaskTexture(self.Mask)
+                if turned then
                     self.Icon:AddMaskTexture(self.Mask)
                     self.Icon:SetSize(50, 50)
+                else
+                    self.Icon:SetSize(44, 44)
                 end
             end
+            -- the icon sits a little toward the window
             self.Icon:ClearAllPoints()
-            self.Icon:SetPoint("CENTER", left and self.iconX or -self.iconX, 0)
+            if bottom then
+                self.Icon:SetPoint("CENTER", 0, self.iconX)
+            else
+                self.Icon:SetPoint("CENTER", left and self.iconX or -self.iconX, 0)
+            end
         else
             self.Bg:SetTexCoord(left and 1 or 0, left and 0 or 1, 0, 1)
+            if self.Bg.SetRotation then self.Bg:SetRotation(bottom and -math.pi / 2 or 0) end
             self.Bg:ClearAllPoints()
             if left then self.Bg:SetPoint("TOPRIGHT", 3, 11) else self.Bg:SetPoint("TOPLEFT", -3, 11) end
         end
@@ -368,7 +348,7 @@ local function CreateSideTab(f, i)
     end)
     tab:SetScript("OnEnter", function(self)
         local id = self:GetID()
-        GameTooltip:SetOwner(self, self.side and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
+        GameTooltip:SetOwner(self, self.side == "left" and "ANCHOR_LEFT" or self.side == "bottom" and "ANCHOR_BOTTOM" or "ANCHOR_RIGHT")
         GameTooltip:AddLine(UI:TabTitle(id) .. (OFFICER_TABS[id] and " |cff9d9d9d(officers only)|r" or ""))
         GameTooltip:Show()
     end)
@@ -378,11 +358,7 @@ end
 
 function UI:BuildTabs(f)
     f.Tabs = {}
-    f.BottomTabs = {}
-    for i in ipairs(TAB_LABELS) do
-        f.Tabs[i] = CreateSideTab(f, i)
-        f.BottomTabs[i] = CreateBottomTab(f, i)
-    end
+    for i in ipairs(TAB_LABELS) do f.Tabs[i] = CreateSideTab(f, i) end
     self:LayoutTabs()
 end
 
@@ -415,69 +391,42 @@ function UI:TabTitle(id)
     return title or self:DefaultTabTitle(id)
 end
 
--- The classic text tabs under the window, left to right.
-function UI:LayoutBottomTabs()
-    local f = self.frame
-    local prev
-    for i, tab in ipairs(f.BottomTabs) do
-        local label = self:TabTitle(i)
-        if tab:GetText() ~= label then
-            tab:SetText(label)
-            if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
-        end
-        tab:ClearAllPoints()
-        if self:IsTabAvailable(i) then
-            if prev then
-                tab:SetPoint("TOPLEFT", prev, "TOPRIGHT", tab.gap or 3, 0)
-            else
-                tab:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 12, 2)
-            end
-            tab:Show()
-            tab:SetSelected(i == self.tab)
-            prev = tab
-        else
-            tab:Hide()
-        end
-    end
-end
-
--- Shows only the tabs this player may use: down the chosen side, or along the bottom.
+-- Shows only the tabs this player may use: down the chosen side, or along
+-- the bottom (left to right).
 function UI:LayoutTabs()
     local f = self.frame
     if not (f and f.Tabs) then return end
     local side = self:TabSide()
-    local left = side == "left"
+    local left, bottom = side == "left", side == "bottom"
     -- keep the tabs on screen when the window is dragged to that edge
     if f.SetClampRectInsets then
-        if side == "bottom" then
-            f:SetClampRectInsets(0, 0, 0, -32)
+        if bottom then
+            f:SetClampRectInsets(0, 0, 0, -UI.TAB_OUTSIDE)
         elseif left then
             f:SetClampRectInsets(-UI.TAB_OUTSIDE, 0, 0, 0)
         else
             f:SetClampRectInsets(0, UI.TAB_OUTSIDE, 0, 0)
         end
     end
-    if side == "bottom" then
-        for _, tab in ipairs(f.Tabs) do tab:Hide() end
-        self:LayoutBottomTabs()
-        if self.tab and not self:IsTabAvailable(self.tab) then self:SelectTab(UI.TAB_ROSTER) end
-        self:UpdateTitle()
-        return
-    end
-    for _, tab in ipairs(f.BottomTabs or {}) do tab:Hide() end
     local prev
     for i, tab in ipairs(f.Tabs) do
-        tab:SetSide(left)
+        tab:SetSide(side)
         W.SetIcon(tab.Icon, self:TabIcon(i))
         if tab.iconCoords then tab.Icon:SetTexCoord(unpack(tab.iconCoords)) end
         tab:ClearAllPoints()
         if self:IsTabAvailable(i) then
             if prev then
-                if left then
+                if bottom then
+                    -- turned, the art is a little wider than the tab
+                    tab:SetPoint("TOPLEFT", prev, "TOPRIGHT", tab.gap + 5, 0)
+                elseif left then
                     tab:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, -tab.gap)
                 else
                     tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -tab.gap)
                 end
+            elseif bottom then
+                -- under the window, starting near its left corner
+                tab:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 24, 2)
             elseif left then
                 -- below the round portrait in the top-left corner
                 tab:SetPoint("TOPRIGHT", f, "TOPLEFT", 2, -72)
@@ -500,9 +449,6 @@ function UI:SelectTab(id)
     if not self:IsTabAvailable(id) then id = UI.TAB_ROSTER end
     self.tab = id
     for i, tab in ipairs(f.Tabs or {}) do tab:SetSelected(i == id) end
-    for i, tab in ipairs(f.BottomTabs or {}) do
-        if tab:IsShown() then tab:SetSelected(i == id) end
-    end
     self:UpdateTitle()
 
     -- Roster and Recruitment need room above the inset for a second toolbar row.
