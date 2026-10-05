@@ -427,7 +427,7 @@ end
 
 function O:BuildTabControls(L)
     L:Header("Tabs  |cff9d9d9d(whole guild)|r")
-    L:Text("Rename a tab, or choose which ranks see it. Leave a title empty to keep the usual name. The Guild Master always sees every tab.")
+    L:Text("Change a tab's icon (click it; right-click for the usual one), rename it, or choose which ranks see it. Leave a title empty to keep the usual name. The Guild Master always sees every tab.")
     local head = L:Row(18)
     local function HeadText(text, x)
         local fs = L.panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -440,8 +440,31 @@ function O:BuildTabControls(L)
     self.tabRows = {}
     for i, key in ipairs(ns.DB.TAB_KEYS) do
         local y = L:Row(28)
+        -- the tab's icon: click to choose another, right-click for the usual one
+        local icon = CreateFrame("Button", nil, L.panel)
+        icon:SetSize(22, 22)
+        icon:SetPoint("TOPLEFT", 14, y)
+        icon.Tex = icon:CreateTexture(nil, "ARTWORK")
+        icon.Tex:SetAllPoints()
+        icon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+        icon:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        icon:SetScript("OnClick", function(self, button)
+            if not ns.IsOfficer() then return end
+            if button == "RightButton" then
+                local ok, err = ns.DB:SetTabIcon(key, nil)
+                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+                O:Refresh()
+                return
+            end
+            ns.IconPicker:Open(ns.UI:TabIcon(i), function(chosen)
+                local ok, err = ns.DB:SetTabIcon(key, chosen)
+                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+                O:Refresh()
+            end, self)
+        end)
+        W.Tooltip(icon, "Tab icon", "Click to choose another icon. Right-click for the usual one.")
         local name = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        name:SetPoint("TOPLEFT", 20, y - 4)
+        name:SetPoint("TOPLEFT", 42, y - 4)
         name:SetText(ns.UI:DefaultTabTitle(i) == "Review Guild" and "Reviews" or ns.UI:DefaultTabTitle(i))
         local box = CreateFrame("EditBox", nil, L.panel, "InputBoxTemplate")
         box:SetSize(130, 20)
@@ -473,7 +496,7 @@ function O:BuildTabControls(L)
         local note = L.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         note:SetPoint("LEFT", ranks, "RIGHT", 8, 0)
         note:SetText(TAB_NOTES[key] or "")
-        self.tabRows[i] = { key = key, box = box, ranks = ranks }
+        self.tabRows[i] = { key = key, box = box, ranks = ranks, icon = icon, index = i }
     end
     L:Space(10)
 end
@@ -488,6 +511,9 @@ function O:RefreshTabControls(officer)
         row.box:SetAlpha(usable and 1 or 0.45)
         row.ranks:SetEnabled(usable and row.key ~= "roster")
         row.ranks:SetAlpha((usable and row.key ~= "roster") and 1 or 0.45)
+        W.SetIcon(row.icon.Tex, ns.UI:TabIcon(row.index))
+        row.icon:SetEnabled(usable)
+        row.icon:SetAlpha(usable and 1 or 0.45)
     end
 end
 function O:BuildOfficers()

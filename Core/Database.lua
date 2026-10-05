@@ -264,21 +264,24 @@ end
 DB.TAB_KEYS = { "roster", "recruit", "polls", "tags", "audit", "reviews" }
 DB.TAB_TITLE_MAX = 16
 
--- allowed ranks ({ [rankIndex] = true }, or nil for everyone), title (or nil)
+-- allowed ranks ({ [rankIndex] = true }, or nil for everyone), title (or
+-- nil), icon (or nil). Saved as "ranks;title;icon" (older: "ranks;title").
 function DB:TabSetting(key)
     local v = ns.Sync:Value("GS:tab_" .. key)
-    if not v or v == "" then return nil, nil end
-    local ranks, title = v:match("^([^;]*);(.*)$")
-    if not ranks then return nil, nil end
+    if not v or v == "" then return nil, nil, nil end
+    local ranks, rest = v:match("^([^;]*);(.*)$")
+    if not ranks then return nil, nil, nil end
+    local title, icon = rest:match("^([^;]*);(.*)$")
+    if not title then title, icon = rest, "" end
     local set
     if ranks ~= "*" then
         set = {}
         for n in ranks:gmatch("%d+") do set[tonumber(n)] = true end
     end
-    return set, (title ~= "" and title or nil)
+    return set, (title ~= "" and title or nil), (icon ~= "" and ns.Data:ParseIcon(icon) or nil)
 end
 
-local function SaveTab(key, set, title)
+local function SaveTab(key, set, title, icon)
     if not ns.IsOfficer() then return nil, "Only officers can change the tabs." end
     local ranks = "*"
     if set then
@@ -288,19 +291,26 @@ local function SaveTab(key, set, title)
         ranks = table.concat(list, ",")
     end
     title = ns.Trim(((title or ""):gsub("[;|\r\n\t]", ""))):sub(1, DB.TAB_TITLE_MAX)
-    local v = (ranks == "*" and title == "") and "" or (ranks .. ";" .. title)
+    icon = icon and (tostring(icon):gsub("[;|\r\n\t]", "")) or ""
+    local v = (ranks == "*" and title == "" and icon == "") and "" or (ranks .. ";" .. title .. ";" .. icon)
     return ns.Sync:Set("GS:tab_" .. key, v)
 end
 
 function DB:SetTabRanks(key, set)
-    local _, title = self:TabSetting(key)
+    local _, title, icon = self:TabSetting(key)
     if key == "roster" then set = nil end
-    return SaveTab(key, set, title)
+    return SaveTab(key, set, title, icon)
 end
 
 function DB:SetTabTitle(key, title)
-    local set = self:TabSetting(key)
-    return SaveTab(key, set, title)
+    local set, _, icon = self:TabSetting(key)
+    return SaveTab(key, set, title, icon)
+end
+
+-- icon nil = the tab's usual icon
+function DB:SetTabIcon(key, icon)
+    local set, title = self:TabSetting(key)
+    return SaveTab(key, set, title, icon)
 end
 
 -- What guildmates (not officers) call the Reviews tab.

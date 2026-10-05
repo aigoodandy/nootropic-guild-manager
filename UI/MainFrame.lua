@@ -180,32 +180,62 @@ function UI:SaveSize()
     ns.DB:Settings().frameSize = { w = math.floor(f:GetWidth()), h = math.floor(f:GetHeight()) }
 end
 
+------------------------------------------------------------------------
+-- Tabs: icon tabs down the right side of the window, like the spellbook's
+-- (the game's own art). Hover one for its title; the chosen one is lit.
+------------------------------------------------------------------------
+local TAB_SIZE, TAB_GAP = 32, 17
+UI.TAB_OUTSIDE = 44 -- how far the tabs reach past the window's right edge
+
+-- The usual icon of each tab (officers can pick another in Options).
+UI.DEFAULT_TAB_ICONS = {
+    "Interface\\Icons\\Spell_Holy_PrayerOfFortitude", -- Roster
+    "Interface\\Icons\\Ability_Warrior_BattleShout",  -- Recruitment
+    "Interface\\Icons\\INV_Scroll_03",                -- Insights
+    "Interface\\Icons\\INV_Misc_Note_01",             -- Tags
+    "Interface\\Icons\\INV_Misc_Spyglass_02",         -- Audit
+    "Interface\\Icons\\INV_Scroll_05",                -- Reviews
+}
+
+local function CreateSideTab(f, i)
+    local tab = CreateFrame("CheckButton", "NootropicGMFrameTab" .. i, f)
+    tab:SetSize(TAB_SIZE, TAB_SIZE)
+    tab:SetID(i)
+    -- the tab's frame (the spellbook's skill line tab)
+    tab.Bg = tab:CreateTexture(nil, "BACKGROUND")
+    tab.Bg:SetTexture("Interface\\SpellBook\\SpellBook-SkillLineTab")
+    tab.Bg:SetSize(64, 64)
+    tab.Bg:SetPoint("TOPLEFT", -3, 11)
+    tab.Icon = tab:CreateTexture(nil, "ARTWORK")
+    tab.Icon:SetAllPoints()
+    tab:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    tab:SetCheckedTexture("Interface\\Buttons\\CheckButtonHilight", "ADD")
+    tab:SetScript("OnClick", function(self)
+        UI:SelectTab(self:GetID())
+        ns.PlaySound("IG_CHARACTER_INFO_TAB")
+    end)
+    tab:SetScript("OnEnter", function(self)
+        local id = self:GetID()
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(UI:TabTitle(id) .. (OFFICER_TABS[id] and " |cff9d9d9d(officers only)|r" or ""))
+        GameTooltip:Show()
+    end)
+    tab:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return tab
+end
+
 function UI:BuildTabs(f)
     f.Tabs = {}
-    local prev
-    for i, label in ipairs(TAB_LABELS) do
-        local tab, template = W.TryCreate("Button", "NootropicGMFrameTab" .. i, f,
-            "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate")
-        tab:SetID(i)
-        tab:SetText(label)
-        tab.gap = template == "PanelTabButtonTemplate" and 3 or -15
-        tab:SetScript("OnClick", function(self)
-            UI:SelectTab(self:GetID())
-            ns.PlaySound("IG_CHARACTER_INFO_TAB")
-        end)
-        if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
-        if OFFICER_TABS[i] then
-            tab:HookScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_TOP")
-                GameTooltip:AddLine(UI:TabTitle(self:GetID()) .. " |cff9d9d9d(officers only)|r")
-                GameTooltip:Show()
-            end)
-            tab:HookScript("OnLeave", function() GameTooltip:Hide() end)
-        end
-        f.Tabs[i] = tab
-    end
-    if PanelTemplates_SetNumTabs then PanelTemplates_SetNumTabs(f, #TAB_LABELS) end
+    for i in ipairs(TAB_LABELS) do f.Tabs[i] = CreateSideTab(f, i) end
+    -- keep the tabs on screen too when the window is dragged to the right edge
+    if f.SetClampRectInsets then f:SetClampRectInsets(0, UI.TAB_OUTSIDE, 0, 0) end
     self:LayoutTabs()
+end
+
+-- The icon officers gave the tab, or its usual one.
+function UI:TabIcon(id)
+    local _, _, icon = ns.DB:TabSetting(ns.DB.TAB_KEYS[id])
+    return icon or self.DEFAULT_TAB_ICONS[id]
 end
 
 function UI:IsTabAvailable(id)
@@ -231,26 +261,21 @@ function UI:TabTitle(id)
     return title or self:DefaultTabTitle(id)
 end
 
--- Shows only the tabs this player may use, packed left to right.
+-- Shows only the tabs this player may use, top to bottom.
 function UI:LayoutTabs()
     local f = self.frame
     if not (f and f.Tabs) then return end
-    for i, tab in ipairs(f.Tabs) do
-        local label = self:TabTitle(i)
-        if tab:GetText() ~= label then
-            tab:SetText(label)
-            if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
-        end
-    end
     local prev
     for i, tab in ipairs(f.Tabs) do
+        W.SetIcon(tab.Icon, self:TabIcon(i))
         tab:ClearAllPoints()
         if self:IsTabAvailable(i) then
             if prev then
-                tab:SetPoint("TOPLEFT", prev, "TOPRIGHT", tab.gap or 3, 0)
+                tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -TAB_GAP)
             else
-                tab:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 12, 2)
+                tab:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, -48)
             end
+            tab:SetChecked(i == self.tab)
             tab:Show()
             prev = tab
         else
@@ -258,13 +283,15 @@ function UI:LayoutTabs()
         end
     end
     if self.tab and not self:IsTabAvailable(self.tab) then self:SelectTab(UI.TAB_ROSTER) end
+    self:UpdateTitle()
 end
 
 function UI:SelectTab(id)
     local f = self.frame
     if not self:IsTabAvailable(id) then id = UI.TAB_ROSTER end
     self.tab = id
-    if PanelTemplates_SetTab then PanelTemplates_SetTab(f, id) end
+    for i, tab in ipairs(f.Tabs or {}) do tab:SetChecked(i == id) end
+    self:UpdateTitle()
 
     -- Roster and Recruitment need room above the inset for a second toolbar row.
     f.Inset:ClearAllPoints()
@@ -293,8 +320,12 @@ function UI:Title()
     return "Nootropic Guild Manager"
 end
 
+-- The window title, with the open tab's name ("Nootropic Guild Manager - Insights").
 function UI:UpdateTitle()
-    if self.frame then W.SetTitle(self.frame, self:Title()) end
+    if not self.frame then return end
+    local title = self:Title()
+    if self.tab and self.frame.Tabs then title = title .. "  |cffffffff-  " .. self:TabTitle(self.tab) .. "|r" end
+    W.SetTitle(self.frame, title)
 end
 
 -- "x using <title>" after the status line. Click: roster of addon users with versions.
