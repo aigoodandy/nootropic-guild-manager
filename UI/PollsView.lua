@@ -22,7 +22,7 @@ local IW = PANEL_W - 28
 local OPTION_H = 44
 local STAT_H = 36       -- a stat result row: its name above a full-width bar
 local BAR_H = 20        -- result bars (the character panel's skill bar look)
-local MAX_STAT_ROWS = 9 -- more would run into the buttons; the footer then says "Showing the top 9"
+local MAX_STAT_ROWS = 30 -- rows a stat shows (the page scrolls); the footer says "Showing the top 30" past that
 local PIE = 200         -- the pie's starting size; it's resized to the room left
 local PIE_MAX, PIE_MIN = 240, 80
 local STAT_PREFIX = "stat:"
@@ -298,20 +298,31 @@ function PV:BuildDetail(panel)
     d:Hide()
     self.detailPane = d
 
-    local title, line = W.SectionHeader(d, "Poll")
+    -- everything but the buttons scrolls, so every row shows and the pie
+    -- keeps its full size
+    local scroll = W.TryCreate("ScrollFrame", nil, d, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 0, -4)
+    scroll:SetPoint("BOTTOMRIGHT", -26, 42)
+    local c = CreateFrame("Frame", nil, scroll)
+    c:SetSize(300, 10)
+    scroll:SetScrollChild(c)
+    scroll:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then c:SetWidth(w) end end)
+    self.dScroll, self.dContent = scroll, c
+
+    local title, line = W.SectionHeader(c, "Poll")
     title:SetPoint("TOPLEFT", 14, -12)
-    line:SetPoint("RIGHT", d, "RIGHT", -12, 0)
+    line:SetPoint("RIGHT", c, "RIGHT", -12, 0)
     self.dTitle = title
 
-    self.dQuestion = Para(d, "GameFontHighlight")
+    self.dQuestion = Para(c, "GameFontHighlight")
     self.dQuestion:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    self.dQuestion:SetPoint("RIGHT", d, "RIGHT", -14, 0)
-    self.dStatus = Para(d, "GameFontHighlightSmall")
+    self.dQuestion:SetPoint("RIGHT", c, "RIGHT", -14, 0)
+    self.dStatus = Para(c, "GameFontHighlightSmall")
     self.dStatus:SetPoint("TOPLEFT", self.dQuestion, "BOTTOMLEFT", 0, -6)
-    self.dStatus:SetPoint("RIGHT", d, "RIGHT", -14, 0)
+    self.dStatus:SetPoint("RIGHT", c, "RIGHT", -14, 0)
 
     -- the pie, under the result rows (placed and sized in Refresh)
-    local pie = W.PieChart(d, PIE)
+    local pie = W.PieChart(c, PIE)
     pie.OnSliceEnter = function(_, index) PV:HoverResult(index, "pie") end
     -- clicking a stat's slice opens those members in the roster, like its row
     pie:SetScript("OnMouseUp", function(self)
@@ -321,11 +332,11 @@ function PV:BuildDetail(panel)
     end)
     self.pie = pie
 
-    self:BuildStatRows(d)
+    self:BuildStatRows(c)
 
     self.optionRows = {}
     for i = 1, ns.Polls.MAX_OPTIONS do
-        local r = CreateFrame("Button", nil, d)
+        local r = CreateFrame("Button", nil, c)
         r:SetHeight(OPTION_H - 4)
         r:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         r:GetHighlightTexture():SetAlpha(0.3)
@@ -354,8 +365,8 @@ function PV:BuildDetail(panel)
         self.optionRows[i] = r
     end
 
-    self.dFooter = Para(d, "GameFontDisableSmall")
-    self.dFooter:SetPoint("RIGHT", d, "RIGHT", -14, 0)
+    self.dFooter = Para(c, "GameFontDisableSmall")
+    self.dFooter:SetPoint("RIGHT", c, "RIGHT", -14, 0)
 
     local close = W.Button(d, "Close Voting", 120, 22)
     close:SetPoint("BOTTOMLEFT", 12, 12)
@@ -1052,8 +1063,9 @@ function PV:StartAnimation()
     end)
 end
 
--- Rows stretch across the panel; the pie sits under them (and the footer
--- text), centered, as big as the room left allows.
+-- Rows stretch across the page; the pie sits under them (and the footer
+-- text), centered, at full size. The page scrolls when it's taller than the
+-- panel (the buttons stay put).
 local function PlaceRow(r, prev, gap, d)
     r:ClearAllPoints()
     r:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, gap)
@@ -1063,34 +1075,30 @@ end
 local function PlaceFooter(self, prev)
     self.dFooter:ClearAllPoints()
     self.dFooter:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -10)
-    self.dFooter:SetPoint("RIGHT", self.detailPane, "RIGHT", -14, 0)
+    self.dFooter:SetPoint("RIGHT", self.dContent, "RIGHT", -14, 0)
 end
 
--- Sizes the pie to the room between the footer text and the buttons, measured
--- on screen (the page is laid out by the next frame, so it measures then).
-local function SizePie(self)
-    local d, pie = self.detailPane, self.pie
-    local footerBottom, paneBottom = self.dFooter:GetBottom(), d:GetBottom()
-    if not (footerBottom and paneBottom) then return false end
-    local room = footerBottom - paneBottom - 14 - 44 -- gap above the pie, the buttons along the bottom
-    local size = math.floor(math.min(PIE_MAX, room))
-    pie:ClearAllPoints()
-    if size < PIE_MIN then
-        pie:Hide() -- no room (lots of rows); the bars say it all
-        return true
-    end
-    pie:SetSize(size, size)
-    -- the footer spans the panel, so this centers the pie under it
-    pie:SetPoint("TOP", self.dFooter, "BOTTOM", 0, -14)
-    pie:Show()
-    return true
+-- The scrolling page's height: down to the bottom of the pie (or the footer).
+local function SizeContent(self)
+    local c = self.dContent
+    local top = c:GetTop()
+    local last = self.pie:IsShown() and self.pie or self.dFooter
+    local bottom = last:GetBottom()
+    if top and bottom then c:SetHeight(math.max(10, top - bottom + 16)) end
 end
 
 -- Call after the footer's text is set.
 local function PlacePie(self)
-    SizePie(self)
-    -- measure again once the page has its final layout
-    C_Timer.After(0, function() if PV.detailPane:IsVisible() then SizePie(PV) end end)
+    local pie, c = self.pie, self.dContent
+    local size = math.floor(math.min(PIE_MAX, math.max(PIE_MIN, (c:GetWidth() or 300) - 60)))
+    pie:ClearAllPoints()
+    pie:SetSize(size, size)
+    -- the footer spans the page, so this centers the pie under it
+    pie:SetPoint("TOP", self.dFooter, "BOTTOM", 0, -14)
+    pie:Show()
+    SizeContent(self)
+    -- again once the page has its final layout
+    C_Timer.After(0, function() if PV.detailPane:IsVisible() then SizeContent(PV) end end)
 end
 
 function PV:RefreshDetail(p)
@@ -1104,7 +1112,7 @@ function PV:RefreshDetail(p)
 
     local most = 0
     for _, n in ipairs(p.counts) do most = math.max(most, n) end
-    local d, prev, gap = self.detailPane, self.dStatus, -12
+    local d, prev, gap = self.dContent, self.dStatus, -12
     local slices, rowsHeight = {}, 0
     for i, r in ipairs(self.optionRows) do
         local text = p.options[i]
@@ -1171,7 +1179,7 @@ function PV:RefreshStat(id)
     self.dQuestion:SetText(s.title)
     self.dStatus:SetText("|cff66bbff" .. s.sub .. "|r")
 
-    local d, prev, gap = self.detailPane, self.dStatus, -12
+    local d, prev, gap = self.dContent, self.dStatus, -12
     local slices, rowsHeight = {}, 0
     for i, r in ipairs(self.statRows) do
         local row = s.rows[i]
@@ -1320,6 +1328,10 @@ function PV:Refresh()
         local animate = self.animateNext or key ~= self.shownKey
         self.shownKey, self.animateNext = key, false
         if animate then
+            if key ~= self.lastScrolledKey then
+                self.dScroll:SetVerticalScroll(0) -- something new starts at the top
+                self.lastScrolledKey = key
+            end
             self:StartAnimation()
         elseif self.animating then
             self:AnimStep(math.min(1, (GetTime() - self.animStart) / ANIM_TIME))
