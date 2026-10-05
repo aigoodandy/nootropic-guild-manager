@@ -198,3 +198,70 @@ function GL:Percent(id)
     local p = self:Progress(id)
     return p and p.pct or 0, p and p.done
 end
+
+------------------------------------------------------------------------
+-- History: one count a day for each goal, for the goal page's progress
+-- line. Kept in your own saved data (guild.goalHistory, not synced) for
+-- HISTORY_DAYS; today's count follows the roster all day. A goal whose
+-- filter changes starts its history over.
+------------------------------------------------------------------------
+GL.HISTORY_DAYS = 90
+
+-- A whole number for the local calendar day of time t (the UTC day of its
+-- noon), so date("!%b %d", day * 86400) names that day.
+function GL.Day(t)
+    local d = date("*t", t)
+    return math.floor(time({ year = d.year, month = d.month, day = d.day, hour = 12 }) / 86400)
+end
+
+local function HistoryTable()
+    local g = ns.DB:Guild()
+    if not g then return nil end
+    g.goalHistory = g.goalHistory or {}
+    return g.goalHistory
+end
+
+-- Saves today's count for every goal you can see.
+function GL:Snapshot()
+    local hist = HistoryTable()
+    if not hist or not ns.Roster.members or #ns.Roster.members == 0 then return end
+    local today = GL.Day(ns.DB:Now())
+    local oldest = today - self.HISTORY_DAYS
+    local seen = {}
+    for _, g in ipairs(self:All()) do
+        seen[g.id] = true
+        local sig = g.filter or ""
+        local h = hist[g.id]
+        if not h or h.sig ~= sig then
+            h = { sig = sig, days = {} }
+            hist[g.id] = h
+        end
+        h.days[today] = #ns.Roster:Query(sig)
+        for day in pairs(h.days) do
+            if day < oldest then h.days[day] = nil end
+        end
+    end
+    -- goals that are gone (officer goals stay while you can't see them)
+    for id in pairs(hist) do
+        if not seen[id] and id:sub(1, 2) ~= "o:" then hist[id] = nil end
+    end
+end
+
+-- { { day, count }, ... } oldest first.
+function GL:History(id)
+    local hist = HistoryTable()
+    local h = hist and hist[id]
+    local g = self:Get(id)
+    local out = {}
+    if h and g and h.sig == (g.filter or "") then
+        for day, n in pairs(h.days) do out[#out + 1] = { day = day, count = n } end
+        table.sort(out, function(a, b) return a.day < b.day end)
+    end
+    return out
+end
+
+function GL:Init()
+    local function later() ns.Debounce("goalhistory", 5, function() GL:Snapshot() end) end
+    ns:On("ROSTER_UPDATED", later)
+    ns:On("STATS_CHANGED", later) -- goals saved or changed
+end

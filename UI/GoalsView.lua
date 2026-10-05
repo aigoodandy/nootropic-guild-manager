@@ -15,6 +15,7 @@ ns.GoalsView = GV
 
 local MAX_NAMES = 40
 local BAR_H, PART_BAR_H, PART_H = 26, 20, 36
+local CHART_H = 130
 
 -- the character panel's skill bar look (UI/Widgets.lua)
 local function Bar(parent, height) return W.StatBar(parent, height) end
@@ -46,10 +47,19 @@ end
 ------------------------------------------------------------------------
 function GV:Build(panel)
     local PV = ns.PollsView
-    local p = CreateFrame("Frame", nil, panel)
-    p:SetAllPoints()
-    p:Hide()
-    self.page = p
+    local page = CreateFrame("Frame", nil, panel)
+    page:SetAllPoints()
+    page:Hide()
+    self.page = page
+    -- everything but the buttons scrolls
+    local scroll = W.TryCreate("ScrollFrame", nil, page, "ScrollFrameTemplate", "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 0, -4)
+    scroll:SetPoint("BOTTOMRIGHT", -26, 42)
+    local p = CreateFrame("Frame", nil, scroll)
+    p:SetSize(300, 10)
+    scroll:SetScrollChild(p)
+    scroll:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then p:SetWidth(w) end end)
+    self.scroll, self.content = scroll, p
 
     local title, line = W.SectionHeader(p, "Guild Goal")
     title:SetPoint("TOPLEFT", 14, -12)
@@ -107,6 +117,15 @@ function GV:Build(panel)
         self.partRows[i] = r
     end
 
+    -- progress over time: one point a day (Services/Goals.lua history)
+    self.chartLabel = PV.Label(p, "Progress over time")
+    self.chart = W.LineChart(p, CHART_H)
+    self.chart:SetPoint("TOPLEFT", self.chartLabel, "BOTTOMLEFT", 0, -6)
+    self.chart:SetPoint("RIGHT", p, "RIGHT", -14, 0)
+    self.chartNote = PV.Para(p, "GameFontDisableSmall")
+    self.chartNote:SetPoint("TOPLEFT", self.chart, "BOTTOMLEFT", 2, -4)
+    self.chartNote:SetPoint("RIGHT", p, "RIGHT", -14, 0)
+
     -- who counts, who's almost there
     self.whoLabel = PV.Label(p, "Who counts")
     self.who = PV.Para(p, "GameFontHighlightSmall")
@@ -118,10 +137,10 @@ function GV:Build(panel)
     self.almost:SetPoint("TOPLEFT", self.almostLabel, "BOTTOMLEFT", 0, -4)
     self.almost:SetPoint("RIGHT", p, "RIGHT", -14, 0)
 
-    local edit = W.Button(p, "Edit Goal", 100, 22)
+    local edit = W.Button(page, "Edit Goal", 100, 22)
     edit:SetPoint("BOTTOMLEFT", 12, 12)
     edit:SetScript("OnClick", function() if GV.goal then GV:ShowEditor(GV.goal) end end)
-    local del = W.Button(p, DELETE or "Delete", 90, 22)
+    local del = W.Button(page, DELETE or "Delete", 90, 22)
     del:SetPoint("LEFT", edit, "RIGHT", 8, 0)
     del:SetScript("OnClick", function() if GV.goal then GV:Delete(GV.goal.id) end end)
     self.editBtn, self.deleteBtn = edit, del
@@ -172,8 +191,11 @@ function GV:ShowGoal(id)
         end
     end
 
+    self.chartLabel:ClearAllPoints()
+    self.chartLabel:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -16)
+    self:DrawHistory(pr)
     self.whoLabel:ClearAllPoints()
-    self.whoLabel:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -14)
+    self.whoLabel:SetPoint("TOPLEFT", self.chartNote, "BOTTOMLEFT", -2, -14)
     self.who:SetText(#pr.members > 0 and NameList(pr.members) or "|cff9d9d9dNobody yet.|r")
     if pr.almost then
         self.almostLabel:SetText(("Almost there  |cff9d9d9d(level %d+)|r"):format(pr.almostFrom))
@@ -188,7 +210,72 @@ function GV:ShowGoal(id)
     local editable = ns.Goals:CanEdit(g)
     self.editBtn:SetShown(editable)
     self.deleteBtn:SetShown(editable)
+
+    -- a different goal starts at the top; the page is as tall as its content
+    if id ~= self.shownId then
+        self.scroll:SetVerticalScroll(0)
+        self.shownId = id
+    end
+    local function Fit()
+        local lowest = self.almost:IsShown() and self.almost or self.who
+        local top, bottom = self.content:GetTop(), lowest:GetBottom()
+        if top and bottom then self.content:SetHeight(math.max(10, top - bottom + 16)) end
+    end
+    Fit()
+    C_Timer.After(0, function() if self.page:IsVisible() then Fit() end end)
     return true
+end
+
+-- The progress line: one point a day from the saved history, today's
+-- point live, the target dashed across and, with a target date, the pace
+-- that would reach it.
+function GV:DrawHistory(pr)
+    local GL, g = ns.Goals, pr.goal
+    local today = GL.Day(ns.DB:Now())
+    local points = {}
+    for _, h in ipairs(GL:History(g.id)) do
+        if h.day < today then points[#points + 1] = { x = h.day, y = h.count } end
+    end
+    points[#points + 1] = { x = today, y = pr.count } -- today, as it is now
+    local first = points[1].x
+    local dueDay = g.due and GL.Day(g.due)
+    local xMax = math.max(today, dueDay or today)
+    local yMax = 0
+    for _, pt in ipairs(points) do yMax = math.max(yMax, pt.y) end
+
+    local pace
+    if dueDay and dueDay > first and not pr.done then
+        pace = { first, points[1].y, dueDay, g.target }
+    end
+    local function Day(x) return date("!%b %d", x * 86400) end
+    self.chart:SetData({
+        points = points, xMin = first, xMax = xMax, yMax = yMax, target = g.target, pace = pace,
+        color = pr.done and { 0.2, 0.8, 0.3 } or { 1, 0.75, 0.1 },
+        xLabel = Day,
+        tip = function(pt)
+            local when = pt.x == today and "Today" or date("!%a %b %d", pt.x * 86400)
+            return when, ("%d of %d members"):format(pt.y, g.target)
+        end,
+    })
+
+    -- under the chart: how it's going
+    local note
+    if #points < 2 then
+        note = "The line adds a point each day you log in, starting today."
+    elseif pace and today <= dueDay then
+        local expected = points[1].y + (g.target - points[1].y) * (today - first) / (dueDay - first)
+        expected = math.floor(expected + 0.5)
+        if pr.count >= expected then
+            note = ("|cff40ff40On pace|r: %d now, about %d needed by today."):format(pr.count, expected)
+        else
+            note = ("|cffff9933Behind pace|r: %d now, about %d needed by today."):format(pr.count, expected)
+        end
+    elseif dueDay and today > dueDay and not pr.done then
+        note = "|cffff6060The target date has passed.|r"
+    else
+        note = ("Since %s. One point a day, from the days you logged in."):format(date("!%b %d", first * 86400))
+    end
+    self.chartNote:SetText(note)
 end
 
 ------------------------------------------------------------------------
