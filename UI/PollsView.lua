@@ -1066,24 +1066,31 @@ local function PlaceFooter(self, prev)
     self.dFooter:SetPoint("RIGHT", self.detailPane, "RIGHT", -14, 0)
 end
 
--- rowsHeight: the height of the result rows shown. Call after the footer's text is set.
-local function PlacePie(self, rowsHeight)
+-- Sizes the pie to the room between the footer text and the buttons, measured
+-- on screen (the page is laid out by the next frame, so it measures then).
+local function SizePie(self)
     local d, pie = self.detailPane, self.pie
-    local paneH = d:GetHeight()
-    if not paneH or paneH < 50 then paneH = 420 end
-    local used = 12 + 18 + 10 + (self.dQuestion:GetStringHeight() or 16) + 6 + (self.dStatus:GetStringHeight() or 12)
-        + 12 + rowsHeight + 10 + (self.dFooter:GetStringHeight() or 0)
-    local room = paneH - used - 14 - 44 -- gap above the pie, the buttons along the bottom
+    local footerBottom, paneBottom = self.dFooter:GetBottom(), d:GetBottom()
+    if not (footerBottom and paneBottom) then return false end
+    local room = footerBottom - paneBottom - 14 - 44 -- gap above the pie, the buttons along the bottom
     local size = math.floor(math.min(PIE_MAX, room))
     pie:ClearAllPoints()
     if size < PIE_MIN then
         pie:Hide() -- no room (lots of rows); the bars say it all
-        return
+        return true
     end
     pie:SetSize(size, size)
     -- the footer spans the panel, so this centers the pie under it
     pie:SetPoint("TOP", self.dFooter, "BOTTOM", 0, -14)
     pie:Show()
+    return true
+end
+
+-- Call after the footer's text is set.
+local function PlacePie(self)
+    SizePie(self)
+    -- measure again once the page has its final layout
+    C_Timer.After(0, function() if PV.detailPane:IsVisible() then SizePie(PV) end end)
 end
 
 function PV:RefreshDetail(p)
@@ -1136,7 +1143,7 @@ function PV:RefreshDetail(p)
     else
         self.dFooter:SetText("Voting has closed. Only votes cast before it closed are counted.")
     end
-    PlacePie(self, rowsHeight)
+    PlacePie(self)
 
     local officer = ns.IsOfficer()
     self.closeBtn:SetShown(officer and p.open)
@@ -1200,7 +1207,7 @@ function PV:RefreshStat(id)
         end
     end
     self.dFooter:SetText(table.concat(foot, "\n"))
-    PlacePie(self, rowsHeight)
+    PlacePie(self)
 end
 
 -- The list: open polls, guild stats, closed polls.

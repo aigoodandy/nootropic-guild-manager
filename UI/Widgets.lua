@@ -471,21 +471,24 @@ function W.StatBar(parent, height)
         local bg = bar:CreateTexture(nil, "BACKGROUND")
         bg:SetAtlas("common-stat-bar-BG")
         bg:SetAllPoints()
-        bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+        -- a bright fill tinted with the row's color...
+        bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
         local fill = bar:GetStatusBarTexture()
-        fill:SetAtlas("common-stat-bar-blue")
         fill:SetDrawLayer("BORDER")
-        fill:SetDesaturated(true)
+        -- ...with the skill bar's own fill, greyed, laid over it as a light
+        -- sheen so the game's shading shows through
+        local sheen = bar:CreateTexture(nil, "BORDER", nil, 1)
+        sheen:SetAtlas("common-stat-bar-blue")
+        sheen:SetDesaturated(true)
+        sheen:SetBlendMode("ADD")
+        sheen:SetAlpha(0.35)
+        sheen:SetAllPoints(fill)
         if HasAtlasArt("common-stat-bar-Mask") and bar.CreateMaskTexture then
             local mask = bar:CreateMaskTexture()
             mask:SetAtlas("common-stat-bar-Mask", false)
             mask:SetAllPoints()
             fill:AddMaskTexture(mask)
-        end
-        -- greyed, the fill is a little dark; lift the tint so colors stay bright
-        local setColor = bar.SetStatusBarColor
-        function bar:SetStatusBarColor(r, g, b, a)
-            setColor(self, math.min(1, r * 1.35 + 0.1), math.min(1, g * 1.35 + 0.1), math.min(1, b * 1.35 + 0.1), a or 1)
+            sheen:AddMaskTexture(mask)
         end
         bar.Bar = bar -- the holder is the bar itself
         return bar
