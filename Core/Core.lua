@@ -267,9 +267,6 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
     ns.Communities:Init()
     ns.Brand:Init()
     ns.MapPins:Init()
-    if ns.DB.imported then
-        ns:Print("Imported your Guild Ledger data. You can now delete the old GuildLedger folder from Interface/AddOns.")
-    end
     ns:Print(("v%s loaded. Type |cffffffff/ngm|r to open."):format(ns.version))
 end)
 
