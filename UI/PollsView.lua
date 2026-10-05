@@ -730,19 +730,20 @@ function PV:BuildStatEditor(panel)
     line:SetPoint("RIGHT", c, "RIGHT", -12, 0)
     self.sHeader = title
 
-    -- two columns over a bottom bar
+    -- two pages over a bottom bar: Settings, and Look & preview
     local left = CreateFrame("Frame", nil, c)
     left:SetPoint("TOPLEFT", 0, -36)
-    left:SetPoint("BOTTOMLEFT", 0, 44)
-    left:SetWidth(FORM_LEFT_W + 28)
-    local divider = c:CreateTexture(nil, "ARTWORK")
-    divider:SetColorTexture(1, 0.82, 0, 0.18)
-    divider:SetWidth(1)
-    divider:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
-    divider:SetPoint("BOTTOMLEFT", left, "BOTTOMRIGHT", 0, 0)
+    left:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -8, 44)
     local right = CreateFrame("Frame", nil, c)
-    right:SetPoint("TOPLEFT", left, "TOPRIGHT", 10, 0)
+    right:SetPoint("TOPLEFT", 10, -36)
     right:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -8, 44)
+    right:Hide()
+    self.sPages = { settings = left, preview = right }
+    -- the page switch, on the header line
+    self.sPageSeg = FK.Segment(c, 220, { { key = "settings", label = "Settings" }, { key = "preview", label = "Look & preview" } },
+        function() return PV.sPage end, function(key) PV:ShowStatPage(key) end)
+    self.sPageSeg:SetPoint("TOPRIGHT", c, "TOPRIGHT", -14, -8)
+    self.sPageSeg:SetFrameLevel(c:GetFrameLevel() + 5)
 
     ---------------- What ----------------
     local what = FK.Section(left, "What", left)
@@ -852,12 +853,17 @@ function PV:BuildStatEditor(panel)
         PV.mode = nil
         PV:Refresh()
     end)
+    -- to the other page
+    local flip = W.Button(c, "", 110, 22)
+    flip:SetPoint("RIGHT", cancel, "LEFT", -8, 0)
+    flip:SetScript("OnClick", function() PV:ShowStatPage(PV.sPage == "settings" and "preview" or "settings") end)
+    self.sFlipBtn = flip
     local formDelete = W.Button(c, DELETE or "Delete", 90, 22)
     formDelete:SetPoint("BOTTOMLEFT", 12, 12)
     formDelete:SetScript("OnClick", function() PV:DeleteStat(PV.sEditing) end)
     self.sDeleteBtn = formDelete
     self.sError = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    self.sError:SetPoint("RIGHT", cancel, "LEFT", -10, 0)
+    self.sError:SetPoint("RIGHT", flip, "LEFT", -10, 0)
     self.sError:SetPoint("LEFT", c, "LEFT", 112, 0)
     self.sError:SetJustifyH("RIGHT")
     self.sError:SetWordWrap(false)
@@ -876,6 +882,19 @@ function PV:BuildStatEditor(panel)
     del:SetPoint("LEFT", edit, "RIGHT", 8, 0)
     del:SetScript("OnClick", function() PV:DeleteStat(PV.stat and PV.stat.custom and PV.stat.custom.id) end)
     self.statDeleteBtn = del
+end
+
+-- Shows one page of the stat form: "settings" or "preview".
+function PV:ShowStatPage(page)
+    self.sPage = page
+    for key, frame in pairs(self.sPages) do frame:SetShown(key == page) end
+    self.sPageSeg:Refresh()
+    self.sFlipBtn:SetText(page == "settings" and "Preview  >" or "<  Settings")
+    if page == "preview" then
+        self.sTitle:ClearFocus()
+        self.sDesc:ClearFocus()
+        self:RefreshStatRowLooks()
+    end
 end
 
 -- Asks, then deletes a stat.
@@ -912,6 +931,7 @@ function PV:ShowStatEditor(custom)
     for label, l in pairs(custom and custom.looks or {}) do self.sLooks[label] = { color = l.color, icon = l.icon } end
     self.sError:SetText("")
     self.sPrevScroll:SetVerticalScroll(0)
+    self:ShowStatPage("settings")
     self:Refresh()
     self.sTitle:SetFocus()
 end
