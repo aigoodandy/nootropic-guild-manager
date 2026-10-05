@@ -19,9 +19,10 @@ local LIST_W = 230
 local PANEL_W = 340     -- the create form's width (the panel itself is wider)
 local IW = PANEL_W - 28
 local OPTION_H = 38
-local STAT_H = 20       -- a stat result row
-local MAX_STAT_ROWS = 14
-local PIE = 120
+local STAT_H = 28       -- a stat result row: its name above a full-width bar
+local MAX_STAT_ROWS = 10 -- more would run into the buttons; the footer says "Showing the top 10"
+local PIE = 200         -- the pie's starting size; it's resized to the room left
+local PIE_MAX, PIE_MIN = 240, 80
 local STAT_PREFIX = "stat:"
 
 local function StatId(key)
@@ -287,9 +288,8 @@ function PV:BuildDetail(panel)
     self.dStatus:SetPoint("TOPLEFT", self.dQuestion, "BOTTOMLEFT", 0, -6)
     self.dStatus:SetPoint("RIGHT", d, "RIGHT", -14, 0)
 
-    -- the pie, to the right of the result rows
+    -- the pie, under the result rows (placed and sized in Refresh)
     local pie = W.PieChart(d, PIE)
-    pie:SetPoint("TOPRIGHT", d, "TOPRIGHT", -18, 0) -- top set in Refresh
     pie.OnSliceEnter = function(_, index) PV:HoverResult(index, "pie") end
     -- clicking a stat's slice opens those members in the roster, like its row
     pie:SetScript("OnMouseUp", function(self)
@@ -450,7 +450,8 @@ local function LookControls(parent, get, set)
 end
 
 
--- Stat result rows: label, bar, count and percent on one line.
+-- Stat result rows: icon, name and count on top, a full-width bar under them
+-- (the same layout as poll answers).
 function PV:BuildStatRows(d)
     self.statRows = {}
     for i = 1, MAX_STAT_ROWS do
@@ -459,20 +460,19 @@ function PV:BuildStatRows(d)
         r:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         r:GetHighlightTexture():SetAlpha(0.3)
         r.Icon = r:CreateTexture(nil, "ARTWORK")
-        r.Icon:SetSize(16, 16)
-        r.Icon:SetPoint("LEFT", 2, 0)
+        r.Icon:SetSize(14, 14)
+        r.Icon:SetPoint("TOPLEFT", 2, -1)
         r.Label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        r.Label:SetPoint("LEFT", 22, 0)
-        r.Label:SetWidth(82)
+        r.Label:SetPoint("TOPLEFT", 20, -2)
+        r.Label:SetPoint("RIGHT", -80, 0)
         r.Label:SetJustifyH("LEFT")
         r.Label:SetWordWrap(false)
         r.Count = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        r.Count:SetPoint("RIGHT", -2, 0)
-        r.Count:SetWidth(64)
+        r.Count:SetPoint("TOPRIGHT", -2, -2)
         r.Count:SetJustifyH("RIGHT")
         local barBg = CreateFrame("Frame", nil, r, "BackdropTemplate")
-        barBg:SetPoint("LEFT", r.Label, "RIGHT", 4, 0)
-        barBg:SetPoint("RIGHT", r.Count, "LEFT", -6, 0)
+        barBg:SetPoint("BOTTOMLEFT", 0, 1)
+        barBg:SetPoint("BOTTOMRIGHT", 0, 1)
         barBg:SetHeight(12)
         barBg:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 8,
             insets = { left = 2, right = 2, top = 2, bottom = 2 } })
@@ -1014,28 +1014,38 @@ end
 ------------------------------------------------------------------------
 -- Refresh
 ------------------------------------------------------------------------
--- Rows sit to the left of the pie; the pie lines up with the first row.
+-- Rows stretch across the panel; the pie sits under them (and the footer
+-- text), centered, as big as the room left allows.
 local function PlaceRow(r, prev, gap, d)
     r:ClearAllPoints()
     r:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, gap)
-    r:SetPoint("RIGHT", d, "RIGHT", -(18 + PIE + 14), 0)
+    r:SetPoint("RIGHT", d, "RIGHT", -14, 0)
 end
 
 local function PlaceFooter(self, prev)
     self.dFooter:ClearAllPoints()
-    self.dFooter:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -12)
+    self.dFooter:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -10)
     self.dFooter:SetPoint("RIGHT", self.detailPane, "RIGHT", -14, 0)
 end
 
-local function PlacePie(self, firstRow)
-    local d = self.detailPane
-    self.pie:ClearAllPoints()
-    if firstRow then
-        self.pie:SetPoint("TOPLEFT", firstRow, "TOPRIGHT", 14, 0)
-    else
-        self.pie:SetPoint("TOPRIGHT", d, "TOPRIGHT", -18, 0)
-        self.pie:SetPoint("TOP", self.dStatus, "BOTTOM", 0, -12)
+-- rowsHeight: the height of the result rows shown. Call after the footer's text is set.
+local function PlacePie(self, rowsHeight)
+    local d, pie = self.detailPane, self.pie
+    local paneH = d:GetHeight()
+    if not paneH or paneH < 50 then paneH = 420 end
+    local used = 12 + 18 + 10 + (self.dQuestion:GetStringHeight() or 16) + 6 + (self.dStatus:GetStringHeight() or 12)
+        + 12 + rowsHeight + 10 + (self.dFooter:GetStringHeight() or 0)
+    local room = paneH - used - 14 - 44 -- gap above the pie, the buttons along the bottom
+    local size = math.floor(math.min(PIE_MAX, room))
+    pie:ClearAllPoints()
+    if size < PIE_MIN then
+        pie:Hide() -- no room (lots of rows); the bars say it all
+        return
     end
+    pie:SetSize(size, size)
+    -- the footer spans the panel, so this centers the pie under it
+    pie:SetPoint("TOP", self.dFooter, "BOTTOM", 0, -14)
+    pie:Show()
 end
 
 function PV:RefreshDetail(p)
@@ -1050,7 +1060,7 @@ function PV:RefreshDetail(p)
     local most = 0
     for _, n in ipairs(p.counts) do most = math.max(most, n) end
     local d, prev, gap = self.detailPane, self.dStatus, -12
-    local slices = {}
+    local slices, rowsHeight = {}, 0
     for i, r in ipairs(self.optionRows) do
         local text = p.options[i]
         if text then
@@ -1072,12 +1082,12 @@ function PV:RefreshDetail(p)
             if p.myVote == i then r.Text:SetTextColor(0.4, 1, 0.4) else r.Text:SetTextColor(1, 1, 1) end
             PlaceRow(r, prev, gap, d)
             r:Show()
+            rowsHeight = rowsHeight + r:GetHeight() + (prev == self.dStatus and 0 or 4)
             prev, gap = r, -4
         else
             r:Hide()
         end
     end
-    PlacePie(self, self.optionRows[1])
     self.pie:SetSlices(slices)
 
     PlaceFooter(self, prev)
@@ -1087,6 +1097,7 @@ function PV:RefreshDetail(p)
     else
         self.dFooter:SetText("Voting has closed. Only votes cast before it closed are counted.")
     end
+    PlacePie(self, rowsHeight)
 
     local officer = ns.IsOfficer()
     self.closeBtn:SetShown(officer and p.open)
@@ -1115,13 +1126,13 @@ function PV:RefreshStat(id)
     self.dStatus:SetText("|cff66bbff" .. s.sub .. "|r")
 
     local d, prev, gap = self.detailPane, self.dStatus, -12
-    local slices = {}
+    local slices, rowsHeight = {}, 0
     for i, r in ipairs(self.statRows) do
         local row = s.rows[i]
         if row then
             local pct = s.total > 0 and math.floor(row.count * 100 / s.total + 0.5) or 0
             slices[i] = { row.count, row.r, row.g, row.b }
-            SetRowIcon(r.Icon, row)
+            r.Label:SetPoint("TOPLEFT", SetRowIcon(r.Icon, row) and 20 or 2, -2)
             r.Label:SetText(row.label)
             r.Label:SetTextColor(row.r, row.g, row.b)
             r.Count:SetText(("%d  |cff9d9d9d%d%%|r"):format(row.count, pct))
@@ -1129,12 +1140,12 @@ function PV:RefreshStat(id)
             r.Bar:SetStatusBarColor(row.r, row.g, row.b)
             PlaceRow(r, prev, gap, d)
             r:Show()
-            prev, gap = r, -2
+            rowsHeight = rowsHeight + r:GetHeight() + (prev == self.dStatus and 0 or 4)
+            prev, gap = r, -4
         else
             r:Hide()
         end
     end
-    PlacePie(self, s.rows[1] and self.statRows[1] or nil)
     self.pie:SetSlices(slices)
 
     PlaceFooter(self, prev)
@@ -1149,6 +1160,7 @@ function PV:RefreshStat(id)
         end
     end
     self.dFooter:SetText(table.concat(foot, "\n"))
+    PlacePie(self, rowsHeight)
 end
 
 -- The list: open polls, guild stats, closed polls.
