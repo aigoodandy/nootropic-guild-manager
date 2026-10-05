@@ -181,11 +181,19 @@ function UI:SaveSize()
 end
 
 ------------------------------------------------------------------------
--- Tabs: icon tabs down the right side of the window, like the spellbook's
--- (the game's own art). Hover one for its title; the chosen one is lit.
+-- Tabs: icon tabs down the right side of the window, built exactly like
+-- the character panel's (CharacterFrameModeTab1..: a 55x55 frame, the
+-- common-sidetab art at 55x60, a 50x50 icon nudged 4 left, the
+-- common-sidetab-selected art when chosen, common-sidetab-hover on hover,
+-- each tab 2 below the last). Hover one for its title.
+-- Clients without that art fall back to the spellbook's tab art.
 ------------------------------------------------------------------------
-local TAB_SIZE, TAB_GAP = 32, 17
-UI.TAB_OUTSIDE = 44 -- how far the tabs reach past the window's right edge
+local TAB_SIZE, TAB_GAP = 55, 2
+UI.TAB_OUTSIDE = 55 -- how far the tabs reach past the window's right edge
+
+local function HasAtlas(name)
+    return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
+end
 
 -- The usual icon of each tab (officers can pick another in Options).
 UI.DEFAULT_TAB_ICONS = {
@@ -199,17 +207,47 @@ UI.DEFAULT_TAB_ICONS = {
 
 local function CreateSideTab(f, i)
     local tab = CreateFrame("CheckButton", "NootropicGMFrameTab" .. i, f)
-    tab:SetSize(TAB_SIZE, TAB_SIZE)
+    if HasAtlas("common-sidetab") then
+        -- the character panel's tabs
+        tab:SetSize(TAB_SIZE, TAB_SIZE)
+        tab.Bg = tab:CreateTexture(nil, "BACKGROUND")
+        tab.Bg:SetAtlas("common-sidetab")
+        tab.Bg:SetSize(55, 60)
+        tab.Bg:SetPoint("CENTER")
+        tab.Icon = tab:CreateTexture(nil, "ARTWORK")
+        tab.Icon:SetSize(50, 50)
+        tab.Icon:SetPoint("CENTER", -4, 0)
+        tab.iconCoords = { 0.031, 0.969, 0.031, 0.969 }
+        tab.Selected = tab:CreateTexture(nil, "OVERLAY")
+        tab.Selected:SetAtlas("common-sidetab-selected")
+        tab.Selected:SetSize(55, 60)
+        tab.Selected:SetPoint("CENTER")
+        tab.Selected:Hide()
+        local hl = tab:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAtlas("common-sidetab-hover")
+        hl:SetSize(55, 60)
+        hl:SetPoint("CENTER")
+        tab.gap = TAB_GAP
+    else
+        -- older clients: the spellbook's skill line tab
+        tab:SetSize(32, 32)
+        tab.Bg = tab:CreateTexture(nil, "BACKGROUND")
+        tab.Bg:SetTexture("Interface\\SpellBook\\SpellBook-SkillLineTab")
+        tab.Bg:SetSize(64, 64)
+        tab.Bg:SetPoint("TOPLEFT", -3, 11)
+        tab.Icon = tab:CreateTexture(nil, "ARTWORK")
+        tab.Icon:SetAllPoints()
+        tab:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+        tab.Selected = tab:CreateTexture(nil, "OVERLAY")
+        tab.Selected:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+        tab.Selected:SetBlendMode("ADD")
+        tab.Selected:SetAllPoints()
+        tab.Selected:Hide()
+        tab.gap = 17
+    end
     tab:SetID(i)
-    -- the tab's frame (the spellbook's skill line tab)
-    tab.Bg = tab:CreateTexture(nil, "BACKGROUND")
-    tab.Bg:SetTexture("Interface\\SpellBook\\SpellBook-SkillLineTab")
-    tab.Bg:SetSize(64, 64)
-    tab.Bg:SetPoint("TOPLEFT", -3, 11)
-    tab.Icon = tab:CreateTexture(nil, "ARTWORK")
-    tab.Icon:SetAllPoints()
-    tab:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    tab:SetCheckedTexture("Interface\\Buttons\\CheckButtonHilight", "ADD")
+    -- shows or hides the selected art (instead of a checked texture)
+    function tab:SetSelected(on) self.Selected:SetShown(on and true or false) end
     tab:SetScript("OnClick", function(self)
         UI:SelectTab(self:GetID())
         ns.PlaySound("IG_CHARACTER_INFO_TAB")
@@ -268,14 +306,15 @@ function UI:LayoutTabs()
     local prev
     for i, tab in ipairs(f.Tabs) do
         W.SetIcon(tab.Icon, self:TabIcon(i))
+        if tab.iconCoords then tab.Icon:SetTexCoord(unpack(tab.iconCoords)) end
         tab:ClearAllPoints()
         if self:IsTabAvailable(i) then
             if prev then
-                tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -TAB_GAP)
+                tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -tab.gap)
             else
-                tab:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, -48)
+                tab:SetPoint("TOPLEFT", f, "TOPRIGHT", -2, -48)
             end
-            tab:SetChecked(i == self.tab)
+            tab:SetSelected(i == self.tab)
             tab:Show()
             prev = tab
         else
@@ -290,7 +329,7 @@ function UI:SelectTab(id)
     local f = self.frame
     if not self:IsTabAvailable(id) then id = UI.TAB_ROSTER end
     self.tab = id
-    for i, tab in ipairs(f.Tabs or {}) do tab:SetChecked(i == id) end
+    for i, tab in ipairs(f.Tabs or {}) do tab:SetSelected(i == id) end
     self:UpdateTitle()
 
     -- Roster and Recruitment need room above the inset for a second toolbar row.
