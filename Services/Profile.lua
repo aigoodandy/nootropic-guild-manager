@@ -15,8 +15,9 @@
       time; shown in local or server time the way your game clock is set
       (see the "Usually online" section below).
 
-    Kudos (KT:<id> types, KU:<member>:<type>:<id> kudos)
-      Officers manage the list of kudos (like tags). Anyone can give each
+    Kudos (KT:<id> types, KD:<id> descriptions, KU:<member>:<type>:<id> kudos)
+      Officers manage the list of kudos (like tags), each with a short
+      description shown in tooltips. Anyone can give each
       kudos to each person once a week. A kudos is anonymous: no author, a
       random id, sent a few minutes after you give it, kept 90 days. The
       once-a-week limit is kept by your own copy of the addon.
@@ -379,6 +380,7 @@ function PF:KudosTypes(includeRetired)
                 local k = ns.Sync.Codec.ParseKudosType(rec.v)
                 if k then
                     k.id = key:sub(4)
+                    k.desc = self.KudosDesc(k.id)
                     list[#list + 1] = k
                 end
             end
@@ -393,6 +395,28 @@ function PF:KudosTypes(includeRetired)
     local out = {}
     for _, k in ipairs(DB.kudosCache) do if not k.retired then out[#out + 1] = k end end
     return out
+end
+
+-- A kudos' description: its KD record, or a default kudos' own text.
+function PF.KudosDesc(id)
+    local rec = ns.Sync:Get("KD:" .. id)
+    if rec then return rec.v end
+    local i = tonumber(id:match("^d(%d+)$"))
+    local def = i and D.DEFAULT_KUDOS[i]
+    return def and def[4] or ""
+end
+
+function PF:SetKudosDesc(id, text)
+    if not ns.IsOfficer() then return nil, "Only officers can manage kudos." end
+    text = ns.Trim(((text or ""):gsub("[|\t\r\n]+", " ")))
+    if #text > D.MAX_KUDOS_DESC then text = text:sub(1, D.MAX_KUDOS_DESC) end
+    if text == self.KudosDesc(id) then return true end
+    return ns.Sync:Set("KD:" .. id, text)
+end
+
+-- Adds a kudos' description to a tooltip (nothing when it has none).
+function PF.AddKudosDesc(tooltip, k)
+    if k and k.desc and k.desc ~= "" then tooltip:AddLine(k.desc, 1, 1, 1, true) end
 end
 
 function PF:KudosType(id)
@@ -410,7 +434,7 @@ local function CleanName(name)
     return name
 end
 
-function PF:CreateKudos(name, color, icon)
+function PF:CreateKudos(name, color, icon, desc)
     if not ns.IsOfficer() then return nil, "Only officers can manage kudos." end
     local clean, err = CleanName(name)
     if not clean then return nil, err end
@@ -424,6 +448,8 @@ function PF:CreateKudos(name, color, icon)
     local id = "c" .. ns.Sync.Base36(Now()) .. ns.Sync.Base36(math.random(0, 1295))
     local ok, serr = SaveType(id, { color = color or 1, order = order, retired = false, icon = icon, name = clean })
     if not ok then return nil, serr end
+    if desc and ns.Trim(desc) ~= "" then self:SetKudosDesc(id, desc) end
+    ns.DB.kudosCache = nil
     return self:KudosType(id)
 end
 

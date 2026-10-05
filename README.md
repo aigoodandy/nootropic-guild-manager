@@ -46,7 +46,7 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 - **Tabs**: **Profile** (professions: primary first, then secondary; the ones their addon reports stay up to date by themselves), **Notes** (your **private notes** about them; only you ever see these), and **Officer** (officers only: **rating**, the **officer log** and **change history**).
 - **Edit** (your own characters, or anyone for officers): **About me**, **Status**, **Usually online** (folded at first; **Edit hours** shows **Learn my hours from when I play** and, for each day, **Learned**, **Not playing** or **Set hours** with a from-to time in server time), and your **map dot** colors (only your own profile); plus **specialization**, **tags** (all of them, click to turn on or off), **professions** (add, remove, set levels) and, for officers, **main & alt links**. **Done** goes back.
 
-Officers manage the **kudos list** on the Tags tab (**Tags / Kudos** switch at the top): add up to 12, edit their name, icon and color, reorder them, or **Retire** one (nobody can give it any more; ones already given stay until they're 90 days old; retired kudos fold up at the bottom of the list, and **Bring Back** undoes it).
+Officers manage the **kudos list** on the Tags tab (**Tags / Kudos** switch at the top): add up to 12, edit their name, icon, color and a short **description** (up to 255 characters, shown in the tooltip when you hover a kudos on a profile, in the Give Kudos menu and on the Tags tab; the default kudos come with one), reorder them, or **Retire** one (nobody can give it any more; ones already given stay until they're 90 days old; retired kudos fold up at the bottom of the list, and **Bring Back** undoes it).
 
 **Recruitment tab**
 

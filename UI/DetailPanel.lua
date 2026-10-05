@@ -518,6 +518,7 @@ local function KudosBadge(parent)
         if not k then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(("%s  x%d"):format(k.type.name, k.count))
+        ns.Profile.AddKudosDesc(GameTooltip, k.type)
         GameTooltip:AddLine("Given anonymously. Last one " .. ns.FormatAgo(k.last) .. ".", 0.8, 0.8, 0.8, true)
         GameTooltip:AddLine(("Counts the last %d days."):format(ns.Profile.KUDOS_DAYS), 0.6, 0.6, 0.6)
         GameTooltip:Show()
@@ -564,6 +565,7 @@ function DP:KudosMenuItems(e)
         items[#items + 1] = {
             text = icon .. D:TagColorHex(k.color) .. k.name .. "|r" .. (wait > 0 and "  |cff9d9d9d(given this week)|r" or ""),
             disabled = wait > 0,
+            tooltip = k.desc ~= "" and { title = k.name, text = k.desc } or nil,
             func = function()
                 local ok, err = PF:GiveKudos(e.full, k.id)
                 if ok then

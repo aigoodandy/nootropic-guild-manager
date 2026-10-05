@@ -21,6 +21,7 @@ AU.CATEGORIES = {
     { key = "PL", label = "Polls" },
     { key = "AB", label = "About me" },
     { key = "KT", label = "Kudos list" },
+    { key = "KD", label = "Kudos descriptions" },
     { key = "GS", label = "Guild settings" },
     { key = "DN", label = "Do Not Whisper" },
 }
@@ -136,6 +137,11 @@ function AU:Describe(e)
         if o and n and o.name ~= n.name then return ("Kudos renamed from %s to %s"):format(o.name, n.name) end
         if o and n and o.order ~= n.order then return "Kudos moved: " .. n.name end
         return "Kudos changed: " .. (n and n.name or "?")
+    elseif t == "KD" then
+        local k = e.ref and ns.Profile:KudosType(e.ref)
+        local name = k and k.name or (e.ref or "?")
+        if new == "" then return "Kudos description cleared: " .. name end
+        return "Kudos description changed: " .. name .. GRAY .. " (\"" .. new .. "\")|r"
     elseif t == "PL" then
         local o, n = ns.Sync.Codec.ParsePoll(old), ns.Sync.Codec.ParsePoll(new)
         local q = n and n.question or (o and o.question) or "?"

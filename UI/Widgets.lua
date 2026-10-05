@@ -369,7 +369,8 @@ end
 
 ------------------------------------------------------------------------
 -- Context menus
--- items: { text, func, checked = bool|fn, radio, isTitle, divider, disabled, submenu }
+-- items: { text, func, checked = bool|fn, radio, isTitle, divider, disabled, submenu,
+--          tooltip = { title, text } }
 ------------------------------------------------------------------------
 local function Resolve(v)
     if type(v) == "function" then return v() end
@@ -396,6 +397,12 @@ local function BuildModern(desc, items)
         else
             local b = desc:CreateButton(it.text, function() if it.func then it.func() end end)
             if it.disabled and b.SetEnabled then b:SetEnabled(false) end
+            if it.tooltip and b.SetTooltip then
+                b:SetTooltip(function(tooltip)
+                    tooltip:AddLine(it.tooltip.title)
+                    tooltip:AddLine(it.tooltip.text, 1, 1, 1, true)
+                end)
+            end
         end
     end
 end
@@ -418,6 +425,10 @@ local function ShowLegacy(items)
                     info.keepShownOnClick = not it.radio
                 end
                 if it.func then info.func = function() it.func() end end
+                if it.tooltip then
+                    info.tooltipTitle, info.tooltipText = it.tooltip.title, it.tooltip.text
+                    info.tooltipOnButton = true
+                end
                 if it.submenu then
                     info.hasArrow = true
                     info.menuList = it.submenu

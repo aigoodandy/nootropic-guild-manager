@@ -53,6 +53,8 @@
       SC:<member>          usual online hours: 168 bits (Monday 00:00 UTC
                            onward) as 42 hex digits   the member only
       KT:<id>              kudos type (like a tag definition)   officers
+      KD:<id>              kudos description (tooltip text; none = the
+                           default kudos' own text)   officers
       KU:<member>:<type>:<id>  one anonymous kudos for <member>: no author,
                            random id, kept 90 days   anyone in the guild
 
@@ -105,11 +107,12 @@ S.TYPES = {
     ST = { scope = "guild",   selfOnly = true, noAudit = true, label = "Status" },
     SC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Usually online" },
     KT = { scope = "guild",   officer = true, label = "Kudos type" },
+    KD = { scope = "guild",   officer = true, label = "Kudos description" },
     KU = { scope = "guild",   anyone = true, noAudit = true, ttl = 90 * 86400, low = true, immutable = true, anonymous = true, label = "Kudos" },
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
 -- Types whose key is not about one member.
-local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true }
+local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true, KD = true }
 
 -- Orphaned poll votes (their poll is unknown) are kept this long.
 local ORPHAN_VOTE_TTL = 30 * 86400
@@ -529,8 +532,8 @@ function S:Materialize(typ, key, member, rec)
     elseif typ == "GS" then
         ns.Debounce("guildsettings", 0.1, function() ns:Fire("GUILD_SETTINGS_CHANGED") end)
         return
-    elseif typ == "KT" or typ == "KU" then
-        if typ == "KT" then ns.DB.kudosCache = nil end
+    elseif typ == "KT" or typ == "KD" or typ == "KU" then
+        if typ ~= "KU" then ns.DB.kudosCache = nil end
         ns.Debounce("kudoschanged", 0.2, function() ns:Fire("KUDOS_CHANGED") end)
         return
     elseif typ == "GR" or typ == "GC" then

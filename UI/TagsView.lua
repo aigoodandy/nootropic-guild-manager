@@ -215,6 +215,17 @@ local function BuildRow(row)
     row.FoldText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     row.FoldText:SetPoint("LEFT", row.FoldIcon, "RIGHT", 6, 0)
 
+    -- kudos rows show their description
+    row:SetScript("OnEnter", function(self)
+        local it = self.item and self.item.obj
+        if not (it and it.desc and it.desc ~= "") then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(it.name)
+        ns.Profile.AddKudosDesc(GameTooltip, it)
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     row:SetScript("OnClick", function(self, button)
         local item = self.item
         if not item then return end
@@ -339,9 +350,29 @@ function TV:BuildEditor(page, inset)
     name:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     self.nameBox = name
 
-    -- Icon / Color / Order
+    -- Description (kudos only): shown in tooltips
+    local descLabel = Label(ed, "Description")
+    descLabel:SetPoint("TOPLEFT", name, "BOTTOMLEFT", -6, -10)
+    self.descLabel = descLabel
+    self.descCount = ed:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.descCount:SetPoint("RIGHT", ed, "RIGHT", -4, 0)
+    self.descCount:SetPoint("BOTTOM", descLabel, "BOTTOM")
+    local descFrame, desc = W.ScrollEditor(ed, D.MAX_KUDOS_DESC)
+    descFrame:SetPoint("TOPLEFT", descLabel, "BOTTOMLEFT", 4, -6)
+    descFrame:SetPoint("RIGHT", ed, "RIGHT", -8, 0)
+    descFrame:SetHeight(48)
+    desc:SetFontObject("GameFontHighlightSmall")
+    desc:HookScript("OnTextChanged", function(self, userInput)
+        if TV.filling or not userInput or not TV.draft then return end
+        TV.draft.desc = (self:GetText():gsub("[\r\n]+", " "))
+        TV.err = nil
+        TV:UpdateEditor()
+    end)
+    self.descFrame, self.descBox = descFrame, desc
+
+    -- Icon / Color / Order (below the description for kudos, the name for tags)
     local iconLabel = Label(ed, "Icon")
-    iconLabel:SetPoint("TOPLEFT", name, "BOTTOMLEFT", -6, -12)
+    self.iconLabel = iconLabel
     local change = W.Button(ed, "Change...", 90, 22)
     change:SetPoint("TOPLEFT", iconLabel, "BOTTOMLEFT", 0, -4)
     change:SetScript("OnClick", function(self) TV:PickIcon(self) end)
@@ -449,15 +480,17 @@ end
 function TV:ResetDraft()
     local it = self:Selected()
     if it then
-        self.draft = { name = it.name, color = it.color }
+        self.draft = { name = it.name, color = it.color, desc = it.desc or "" }
     else
-        self.draft = { name = "", color = (#AllItems() % #D.TAG_COLORS) + 1 }
+        self.draft = { name = "", color = (#AllItems() % #D.TAG_COLORS) + 1, desc = "" }
     end
     self.err = nil
     self.filling = true
     self.nameBox:SetText(self.draft.name)
+    self.descBox:SetText(self.draft.desc)
     self.filling = false
     self.nameBox:ClearFocus()
+    self.descBox:ClearFocus()
 end
 
 function TV:DisplayIcon()
@@ -470,6 +503,7 @@ function TV:Dirty()
     local d, it = self.draft, self:Selected()
     if not d then return false end
     if not it then return ns.Trim(d.name) ~= "" end
+    if IsKudos() and ns.Trim(d.desc or "") ~= (it.desc or "") then return true end
     return ns.Trim(d.name) ~= it.name or d.color ~= it.color or (d.icon ~= nil and d.icon ~= IconOf(it))
 end
 
@@ -491,8 +525,9 @@ function TV:Save()
         local PF = ns.Profile
         if it then
             result, err = PF:UpdateKudos(it.id, d.name, d.color, d.icon)
+            if not err then result, err = PF:SetKudosDesc(it.id, d.desc) end
         else
-            result, err = PF:CreateKudos(d.name, d.color, d.icon or D.UNKNOWN_ICON)
+            result, err = PF:CreateKudos(d.name, d.color, d.icon or D.UNKNOWN_ICON, d.desc)
         end
     elseif it then
         result, err = ns.DB:UpdateTag(it.id, ns.Trim(d.name), d.color, d.icon)
@@ -662,6 +697,18 @@ function TV:UpdateEditor()
     self.preview:SetTag(fake, not (it and it.retired))
     self.previewIcon:SetTag(fake)
     self.previewIcon:SetShown(not kudos) -- kudos have no roster column
+
+    -- the description box is for kudos only
+    self.descLabel:SetShown(kudos)
+    self.descCount:SetShown(kudos)
+    self.descFrame:SetShown(kudos)
+    self.iconLabel:ClearAllPoints()
+    if kudos then
+        self.iconLabel:SetPoint("TOPLEFT", self.descFrame, "BOTTOMLEFT", -4, -12)
+        self.descCount:SetText(("%d / %d"):format(#(d.desc or ""), D.MAX_KUDOS_DESC))
+    else
+        self.iconLabel:SetPoint("TOPLEFT", self.nameBox, "BOTTOMLEFT", -6, -12)
+    end
     self.colorButton:SetText(D:TagColorHex(d.color) .. (D.TAG_COLORS[d.color] or D.TAG_COLORS[1]).name .. "|r")
 
     local item = SelectedItem()
