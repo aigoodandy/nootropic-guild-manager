@@ -218,6 +218,14 @@ local function CreateSideTab(f, i)
         tab.Icon:SetSize(50, 50)
         tab.Icon:SetPoint("CENTER", -4, 0)
         tab.iconCoords = { 0.031, 0.969, 0.031, 0.969 }
+        -- trims the icon to the tab's beveled shape (the same mask Blizzard uses)
+        if HasAtlas("common-sidetab-mask") and tab.CreateMaskTexture then
+            local mask = tab:CreateMaskTexture()
+            mask:SetAtlas("common-sidetab-mask", false)
+            mask:SetSize(55, 60)
+            mask:SetPoint("CENTER")
+            tab.Icon:AddMaskTexture(mask)
+        end
         tab.Selected = tab:CreateTexture(nil, "OVERLAY")
         tab.Selected:SetAtlas("common-sidetab-selected")
         tab.Selected:SetSize(55, 60)
