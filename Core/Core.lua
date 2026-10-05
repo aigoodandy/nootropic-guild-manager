@@ -438,6 +438,18 @@ function ns.InspectUnderMouse()
             Fmt(child:GetWidth()), Fmt(child:GetHeight())))
         PrintRegions(child, "    ")
     end
+    -- a bar's fill (and the fill of bars inside it)
+    local function BarFill(frame, indent)
+        if frame.GetStatusBarTexture then
+            local t = frame:GetStatusBarTexture()
+            if t then
+                Out(("%sbar fill: %s, color %.2f %.2f %.2f"):format(indent,
+                    tostring(t.GetAtlas and t:GetAtlas() or t:GetTexture()), t:GetVertexColor()))
+            end
+        end
+    end
+    BarFill(f, "  ")
+    for _, child in ipairs({ f:GetChildren() }) do BarFill(child, "    ") end
     local hl = f.GetHighlightTexture and f:GetHighlightTexture()
     if hl then Out("  highlight: " .. tostring(hl.GetAtlas and hl:GetAtlas() or hl:GetTexture())) end
     local ck = f.GetCheckedTexture and f:GetCheckedTexture()
