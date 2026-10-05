@@ -100,25 +100,12 @@ function PV:Build(frame)
     self.sub = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     self.sub:SetPoint("LEFT", self.summary, "RIGHT", 14, 0)
 
-    local new = W.Button(page, "New Poll", 100, 22)
+    -- one New button: a menu of what can be made
+    local new = PV.DropButton(page, 110)
+    new:SetText("New")
     new:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -32)
-    new:SetScript("OnClick", function() PV:ShowCreate() end)
-    W.Tooltip(new, "New poll", "Ask the guild a question with 2 to 6 answers.", "Officers only.")
+    new:SetScript("OnClick", function(btn) PV:NewMenu(btn) end)
     self.newBtn = new
-
-    local newStat = W.Button(page, "New Stat", 100, 22)
-    newStat:SetPoint("RIGHT", new, "LEFT", -6, 0)
-    newStat:SetScript("OnClick", function() PV:ShowStatEditor(nil) end)
-    W.Tooltip(newStat, "New stat", "Count guildmates your way: choose what to count by and add filters.",
-        "Officers can share stats with the guild or with officers; anyone can make one just for themselves.")
-    self.newStatBtn = newStat
-
-    local newGoal = W.Button(page, "New Goal", 100, 22)
-    newGoal:SetPoint("RIGHT", newStat, "LEFT", -6, 0)
-    newGoal:SetScript("OnClick", function() ns.GoalsView:ShowEditor(nil) end)
-    W.Tooltip(newGoal, "New goal", "Set a target for the guild, like \"10 level 60 mains for Molten Core\", with smaller parts such as 2 tanks.",
-        "Officers can share goals with the guild or with officers; anyone can make one just for themselves.")
-    self.newGoalBtn = newGoal
 
     local inset = frame.Inset
     self:BuildList(page, inset)
@@ -516,6 +503,37 @@ function PV:BuildStatRows(d)
         r:SetScript("OnLeave", function() PV:HoverResult(nil, "row") end)
         self.statRows[i] = r
     end
+end
+
+------------------------------------------------------------------------
+-- The New menu: a goal, a stat or a poll
+------------------------------------------------------------------------
+local NEW_TYPES = {
+    { label = "Goal", icon = "Interface\\Icons\\Ability_Hunter_MarkedForDeath",
+      text = "Set a target for the guild, like 10 level 60 mains, with parts such as 2 tanks.",
+      open = function() ns.GoalsView:ShowEditor(nil) end },
+    { label = "Stat", icon = "Interface\\Icons\\INV_Scroll_03",
+      text = "Count guildmates your way: choose what to count by and add filters.",
+      open = function() PV:ShowStatEditor(nil) end },
+    { label = "Poll", icon = "Interface\\Icons\\INV_Misc_Note_01", officer = true,
+      text = "Ask the guild a question with 2 to 6 answers.",
+      open = function() PV:ShowCreate() end },
+}
+
+function PV:NewMenu(owner)
+    local officer = ns.IsOfficer()
+    local items = { { text = "New", isTitle = true } }
+    for _, t in ipairs(NEW_TYPES) do
+        local blocked = t.officer and not officer
+        items[#items + 1] = {
+            text = ("|T%s:16:16:0:0:64:64:5:59:5:59|t  %s%s"):format(t.icon, t.label,
+                blocked and "  |cff9d9d9d(officers only)|r" or ""),
+            disabled = blocked,
+            tooltip = { title = t.label, text = t.text },
+            func = function() if not blocked then t.open() end end,
+        }
+    end
+    W.ShowMenu(owner, items)
 end
 
 ------------------------------------------------------------------------
@@ -1415,10 +1433,15 @@ function PV:Refresh()
     local open = 0
     for _, p in ipairs(list) do if p.open then open = open + 1 end end
     self.summary:SetText("Guild Insights")
-    self.sub:SetText(#list == 0 and "" or (open == 1 and "1 open" or (open .. " open")) .. (#list > open and ("  -  " .. (#list - open) .. " closed") or ""))
-    self.newBtn:SetShown(officer)
-    self.newStatBtn:SetShown(inGuild)
-    self.newGoalBtn:SetShown(inGuild)
+    -- "1 goal  -  9 stats  -  1 poll (0 open)"
+    local function Count(n, one, many) return n == 1 and ("1 " .. one) or (n .. " " .. many) end
+    if inGuild then
+        self.sub:SetText(("%s  -  %s  -  %s (%d open)"):format(Count(#ns.Goals:All(), "goal", "goals"),
+            Count(#ns.Stats:All(), "stat", "stats"), Count(#list, "poll", "polls"), open))
+    else
+        self.sub:SetText("")
+    end
+    self.newBtn:SetShown(inGuild)
     if self.mode == "create" and not officer then self.mode = nil end
     local editing = self.mode == "create" or self.mode == "stat" or self.mode == "goalForm"
 
