@@ -1107,6 +1107,16 @@ function S:SeedDefaults()
             store[key] = { v = v, t = 4, a = "" }
         end
     end
+    -- default goals, the same way (time 1; bump it when a default changes,
+    -- e.g. once the launch date is known, so untouched copies get the update)
+    local GOAL_SEED_TIME = 1
+    for i in ipairs(ns.Goals.DEFAULTS) do
+        local key = "GD:d" .. i
+        local cur = store[key]
+        if not cur or (cur.t < GOAL_SEED_TIME and (cur.a or "") == "") then
+            store[key] = { v = Codec.Goal(ns.Goals.DefaultGoal(i)), t = GOAL_SEED_TIME, a = "" }
+        end
+    end
     -- default kudos, the same way (identical everywhere, so they never conflict)
     for i, def in ipairs(ns.Data.DEFAULT_KUDOS) do
         local key = "KT:d" .. i

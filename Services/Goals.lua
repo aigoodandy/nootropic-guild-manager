@@ -22,6 +22,24 @@ GL.MAX_PARTS = 4
 GL.MAX_TARGET = 999
 GL.ALMOST_LEVELS = 5 -- "almost there" for level goals: this many levels short
 
+-- Launch day of World of Warcraft Forever, as a UTC time (the same number
+-- on every copy, so the built-in goal is identical everywhere). nil until
+-- known: the goal then has no target date.
+GL.LAUNCH_TIME = nil
+
+-- Goals every guild starts with (GD:d1..), like the default stats; officers
+-- can change or delete them. title, filter, target, days after launch it's due
+GL.DEFAULTS = {
+    { "10 level 20s by the end of launch week", "level>=20", 10, 7 },
+}
+
+function GL.DefaultGoal(i)
+    local def = GL.DEFAULTS[i]
+    if not def then return nil end
+    return { title = def[1], filter = def[2], target = def[3], parts = {},
+        due = GL.LAUNCH_TIME and (GL.LAUNCH_TIME + def[4] * 86400) or nil }
+end
+
 local SCOPES = { c = "GD", o = "GO" }
 
 local function MyGoals()
