@@ -17,6 +17,9 @@ AU.CATEGORIES = {
     { key = "P",  label = "Reported by their addon" },
     { key = "L",  label = "Officer log" },
     { key = "T",  label = "Tag list" },
+    { key = "TI", label = "Tag icons" },
+    { key = "PL", label = "Polls" },
+    { key = "GS", label = "Guild settings" },
     { key = "DN", label = "Do Not Whisper" },
 }
 
@@ -108,6 +111,21 @@ function AU:Describe(e)
         if o and n and o.color ~= n.color then return "Tag color changed: " .. n.name end
         if o and n and o.order ~= n.order then return "Tag moved: " .. n.name end
         return "Tag changed: " .. (n and n.name or "?")
+    elseif t == "TI" then
+        local icon = D:ParseIcon(new)
+        return "Tag icon changed: " .. (icon and ("|T" .. icon .. ":14:14:0:0:64:64:5:59:5:59|t ") or "") .. TagName(e.ref or "?")
+    elseif t == "GS" then
+        if e.ref == "reviews" then
+            return new == "0" and (RED .. "Guild reviews turned off|r for guildmates") or (GREEN .. "Guild reviews turned on|r for guildmates")
+        end
+        return "Guild setting changed: " .. (e.ref or "?")
+    elseif t == "PL" then
+        local o, n = ns.Sync.Codec.ParsePoll(old), ns.Sync.Codec.ParsePoll(new)
+        local q = n and n.question or (o and o.question) or "?"
+        if n and not o then return "Poll created: \"" .. q .. "\"" end
+        if n and n.deleted and not (o and o.deleted) then return RED .. "Poll deleted:|r \"" .. q .. "\"" end
+        if o and n and n.closeAt < o.closeAt then return "Poll closed early: \"" .. q .. "\"" end
+        return "Poll changed: \"" .. q .. "\""
     end
     return t .. " changed"
 end

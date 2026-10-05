@@ -393,7 +393,7 @@ function RV:BuildToolbar(page, frame)
     W.Tooltip(search, "Searching the roster",
         "Words match names, classes, specs, professions and tags. Every word must match.",
         "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r limit a word to one field.",
-        "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r",
+        "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r  |cffffd100is:addon|r",
         "|cffffd100rating:4|r  four stars or better   |cffffd100level>=50|r",
         "|cffffd100-raiding|r excludes, |cffffd100tag:\"world pvp\"|r matches a phrase.")
     self.searchBox = search
@@ -467,7 +467,7 @@ function RV:BuildTagBar(page, frame)
         local items = { { text = "Filter by tag", isTitle = true } }
         for _, tag in ipairs(ns.DB:GetTags()) do
             items[#items + 1] = {
-                text = tag.name,
+                text = D:TagLabel(tag, 14),
                 checked = function() return RV.tagFilter[tag.id] end,
                 func = function() RV:ToggleTagFilter(tag.id) end,
             }
@@ -729,8 +729,8 @@ local function BuildRow(row)
     row.NoProfs:SetPoint("LEFT", 6, 0)
     row.NoProfs:SetText("-")
 
-    -- Tags
-    row.Pills = {}
+    -- Tags (icons only; the tooltip lists their names)
+    row.TagIcons = {}
     row.MorePill = W.Pill(cells.tags, 16, 10)
     row.MorePill:EnableMouse(false)
 
@@ -777,14 +777,17 @@ local function LayoutRow(row)
     row.layoutVersion = RV.layoutVersion
 end
 
-local function RowPill(row, i)
-    local p = row.Pills[i]
-    if not p then
-        p = W.Pill(row.cells.tags, 16, 10)
-        p:EnableMouse(false)
-        row.Pills[i] = p
+local TAG_ICON = 18
+local TAG_STEP = TAG_ICON + 3
+
+local function RowTagIcon(row, i)
+    local t = row.TagIcons[i]
+    if not t then
+        t = W.TagIcon(row.cells.tags, TAG_ICON)
+        t:EnableMouse(false)
+        row.TagIcons[i] = t
     end
-    return p
+    return t
 end
 
 local function MainLabel(e)
@@ -869,17 +872,17 @@ function RV:InitRow(row, e)
         local maxW = COL.tags.w - 10
         local x, shown = 0, 0
         for i, tag in ipairs(e.tagList) do
-            local p = RowPill(row, i)
-            p:SetTag(tag)
             local reserve = (i < #e.tagList) and 28 or 0
-            if x + p:GetWidth() + reserve > maxW then break end
-            p:ClearAllPoints()
-            p:SetPoint("LEFT", row.cells.tags, "LEFT", 6 + x, 0)
-            p:Show()
-            x = x + p:GetWidth() + 3
+            if x + TAG_ICON + reserve > maxW then break end
+            local t = RowTagIcon(row, i)
+            t:SetTag(tag)
+            t:ClearAllPoints()
+            t:SetPoint("LEFT", row.cells.tags, "LEFT", 6 + x, 0)
+            t:Show()
+            x = x + TAG_STEP
             shown = i
         end
-        for i = shown + 1, #row.Pills do row.Pills[i]:Hide() end
+        for i = shown + 1, #row.TagIcons do row.TagIcons[i]:Hide() end
         if shown < #e.tagList then
             row.MorePill:SetLabel("+" .. (#e.tagList - shown))
             row.MorePill:ClearAllPoints()
@@ -937,8 +940,13 @@ function RV:ShowRowTooltip(row, e, hint)
     end
     if #e.tagList > 0 then
         local names = {}
-        for i, tag in ipairs(e.tagList) do names[i] = tag.name end
-        GameTooltip:AddLine("Tags: " .. table.concat(names, ", "), 0.6, 0.85, 1, true)
+        for i, tag in ipairs(e.tagList) do names[i] = D:TagLabel(tag, 14) end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Tags", GOLD[1], GOLD[2], GOLD[3])
+        -- two per line so long lists stay readable
+        for i = 1, #names, 2 do
+            GameTooltip:AddLine(names[i] .. (names[i + 1] and ("     " .. names[i + 1]) or ""), 1, 1, 1)
+        end
     end
     if ns.IsOfficer() then Pair("Rating", D:StarText(e.rating)) end
     if e.note then
@@ -958,7 +966,7 @@ function RV:ShowRowMenu(row, e)
     local tagItems = {}
     for _, tag in ipairs(ns.DB:GetTags()) do
         tagItems[#tagItems + 1] = {
-            text = tag.name,
+            text = D:TagLabel(tag, 14),
             checked = function() local m = ns.DB:GetMember(full); return m and m.tags and m.tags[tag.id] end,
             func = function() ns.DB:SetTag(full, tag.id) end,
         }

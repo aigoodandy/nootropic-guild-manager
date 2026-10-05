@@ -29,6 +29,7 @@ local DEFAULTS = {
         iconStyle = "mug",           -- "mug" | "stein" | "emblem"
         communitiesButton = true,    -- shortcut on the Guild & Communities window
         titleUseGuild = false,       -- window title: "<Guild> Guild Manager"
+        showAddonCount = true,       -- "x using ... Guild Manager" at the bottom of the window
         auditDays = 30,              -- audit history kept: 30, 60 or 90 days
         onlineOnly = false,
         sortKey = "rank",
@@ -116,6 +117,7 @@ function DB:GetTags()
             local def = ns.Sync.Codec.ParseTagDef(rec.v)
             if def and not def.deleted then
                 def.id = key:sub(3)
+                def.icon = ns.Data:ParseIcon(ns.Sync:Value("TI:" .. def.id))
                 list[#list + 1] = def
             end
         end
@@ -158,7 +160,7 @@ local function SaveTag(id, color, order, deleted, name)
     return ns.Sync:Set("T:" .. id, ns.Sync.Codec.TagDef(color, order, deleted, name))
 end
 
-function DB:CreateTag(name, color)
+function DB:CreateTag(name, color, icon)
     if not self:Guild() then return nil, "You are not in a guild." end
     if not self:CanManageTags() then return nil, "Only officers can manage tags." end
     local clean, err = ValidateTagName(name)
@@ -172,6 +174,31 @@ function DB:CreateTag(name, color)
     color = color or (#tags % #ns.Data.TAG_COLORS) + 1
     local ok, serr = SaveTag(id, color, order, false, clean)
     if not ok then return nil, serr end
+    if icon then self:SetTagIcon(id, icon) end
+    return self:GetTag(id)
+end
+
+function DB:SetTagIcon(id, icon)
+    if not self:GetTag(id) then return nil, "Tag not found." end
+    return ns.Sync:Set("TI:" .. id, tostring(icon or ""))
+end
+
+-- Saves the tag editor: name, color and icon in one go.
+function DB:UpdateTag(id, name, color, icon)
+    local tag = self:GetTag(id)
+    if not tag then return nil, "Tag not found." end
+    if name ~= tag.name then
+        local ok, err = self:RenameTag(id, name)
+        if not ok then return nil, err end
+    end
+    if color and color ~= tag.color then
+        local ok, err = self:SetTagColor(id, color)
+        if not ok then return nil, err end
+    end
+    if icon and icon ~= tag.icon then
+        local ok, err = self:SetTagIcon(id, icon)
+        if not ok then return nil, err end
+    end
     return self:GetTag(id)
 end
 
@@ -214,6 +241,19 @@ function DB:DeleteTag(id)
     local tag = self:GetTag(id)
     if not tag then return nil, "Tag not found." end
     return SaveTag(id, tag.color, tag.order, true, tag.name)
+end
+
+------------------------------------------------------------------------
+-- Guild-wide settings (shared; officers change them)
+------------------------------------------------------------------------
+-- Guild reviews are on unless an officer turned them off.
+function DB:ReviewsEnabled()
+    return ns.Sync:Value("GS:reviews") ~= "0"
+end
+
+function DB:SetReviewsEnabled(on)
+    if not ns.IsOfficer() then return nil, "Only officers can turn reviews on or off." end
+    return ns.Sync:Set("GS:reviews", on and "1" or "0")
 end
 
 ------------------------------------------------------------------------

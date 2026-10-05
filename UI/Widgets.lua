@@ -142,36 +142,59 @@ end
 -- Tag pill
 ------------------------------------------------------------------------
 function W.Pill(parent, height, padding)
+    height = height or 16
     local p = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    p:SetHeight(height or 16)
+    p:SetHeight(height)
     p.padding = padding or 12
     p:SetBackdrop({ bgFile = W.WHITE, edgeFile = W.WHITE, edgeSize = 1 })
+    p.Icon = p:CreateTexture(nil, "ARTWORK")
+    p.Icon:SetSize(height - 4, height - 4)
+    p.Icon:SetPoint("LEFT", 2, 0)
+    p.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    p.Icon:Hide()
     p.Text = p:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     p.Text:SetPoint("CENTER", 0, 0)
 
     local function Fit(self)
-        self:SetWidth(math.ceil(self.Text:GetStringWidth()) + self.padding)
+        local w = math.ceil(self.Text:GetStringWidth())
+        if self.Icon:IsShown() then
+            -- icon on the left, half the usual padding after the text
+            self.Text:ClearAllPoints()
+            self.Text:SetPoint("LEFT", self.Icon, "RIGHT", 3, 0)
+            self:SetWidth(2 + self.Icon:GetWidth() + 3 + w + math.ceil(self.padding / 2))
+        else
+            self.Text:ClearAllPoints()
+            self.Text:SetPoint("CENTER", 0, 0)
+            self:SetWidth(w + self.padding)
+        end
     end
 
-    -- active == false draws the tag dimmed (used for toggles)
+    -- Tag icon and name in the tag's color. active == false draws it dimmed (toggles).
     function p:SetTag(tag, active)
         self.tag = tag
         self.Text:SetText(tag.name)
+        self.Icon:SetTexture(D:TagIcon(tag))
+        self.Icon:Show()
         local r, g, b = D:TagColor(tag.color)
         if active == false then
             self:SetBackdropColor(0.06, 0.06, 0.06, 0.85)
             self:SetBackdropBorderColor(0.32, 0.32, 0.32, 0.9)
             self.Text:SetTextColor(0.55, 0.55, 0.55)
+            self.Icon:SetDesaturated(true)
+            self.Icon:SetAlpha(0.6)
         else
             self:SetBackdropColor(r * 0.28, g * 0.28, b * 0.28, 0.92)
             self:SetBackdropBorderColor(r, g, b, 0.85)
             self.Text:SetTextColor(math.min(1, r * 0.45 + 0.55), math.min(1, g * 0.45 + 0.55), math.min(1, b * 0.45 + 0.55))
+            self.Icon:SetDesaturated(false)
+            self.Icon:SetAlpha(1)
         end
         Fit(self)
     end
 
     function p:SetLabel(text)
         self.tag = nil
+        self.Icon:Hide()
         self.Text:SetText(text)
         self:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
         self:SetBackdropBorderColor(0.45, 0.45, 0.45, 0.9)
@@ -180,6 +203,24 @@ function W.Pill(parent, height, padding)
     end
 
     return p
+end
+
+-- A tag's icon with a thin border in the tag's color (roster Tags column).
+function W.TagIcon(parent, size)
+    local f = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    f:SetSize(size, size)
+    f:SetBackdrop({ edgeFile = W.WHITE, edgeSize = 1 })
+    f.Icon = f:CreateTexture(nil, "ARTWORK")
+    f.Icon:SetPoint("TOPLEFT", 1, -1)
+    f.Icon:SetPoint("BOTTOMRIGHT", -1, 1)
+    f.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    function f:SetTag(tag)
+        self.tag = tag
+        self.Icon:SetTexture(D:TagIcon(tag))
+        local r, g, b = D:TagColor(tag.color)
+        self:SetBackdropBorderColor(r, g, b, 1)
+    end
+    return f
 end
 
 ------------------------------------------------------------------------

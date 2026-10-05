@@ -42,9 +42,15 @@
       GR:<id>              anonymous guild review  officers (officer scope, kept 1 year,
                                                    no author, can never be changed or deleted)
       GC:<review>:<id>     officer comment on a review   officers (kept 1 year)
+      TI:<tagId>           tag icon (file id or texture path)   officers
+      GS:<name>            guild-wide setting, e.g. GS:reviews = "0" (off)   officers
+      PL:<id>              poll (question, options, close time)   officers
+                           kept until its results expire
+      PV:<poll>:<member>   a member's vote in a poll   the member only
+                           (only counted if cast before the poll closed)
 
-    Types with a ttl expire: older records are deleted, left out of digests
-    and repairs, and refused when they arrive.
+    Types with a ttl (or an expires function) expire: older records are
+    deleted, left out of digests and repairs, and refused when they arrive.
 ]]
 local _, ns = ...
 local S = {}
@@ -84,8 +90,17 @@ S.TYPES = {
     AV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Addon version" },
     GR = { scope = "officer", officer = true, noAudit = true, ttl = 365 * 86400, low = true, immutable = true, anonymous = true, label = "Guild review" },
     GC = { scope = "officer", officer = true, noAudit = true, ttl = 365 * 86400, low = true, label = "Review comment" },
+    TI = { scope = "guild",   officer = true, label = "Tag icon" },
+    GS = { scope = "guild",   officer = true, label = "Guild setting" },
+    PL = { scope = "guild",   officer = true, label = "Poll" },
+    PV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Poll vote" },
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
+-- Types whose key is not about one member.
+local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true }
+
+-- Orphaned poll votes (their poll is unknown) are kept this long.
+local ORPHAN_VOTE_TTL = 30 * 86400
 
 S.officers = {} -- players seen sending on the officer channel this session
 S.officerBeacons = {} -- officers running the addon -> GetTime() they last said so
@@ -132,10 +147,30 @@ function S.ParseKey(key)
     local member
     if typ == "L" then
         member = rest:match("^([^:]+):")
-    elseif typ ~= "T" and typ ~= "A" and typ ~= "GR" and typ ~= "GC" then
+    elseif typ == "PV" then
+        member = rest:match("^[^:]+:(.+)$")
+        if not member then return nil end
+    elseif not NO_MEMBER[typ] then
         member = rest
     end
     return typ, member, rest
+end
+
+-- When a record stops being kept (server time), or nil when it never expires.
+-- Polls are kept until their results expire; votes go with their poll.
+function S:ExpiresAt(key, rec)
+    local typ, _, rest = S.ParseKey(key)
+    if not typ then return nil end
+    if typ == "PL" then
+        local p = S.Codec.ParsePoll(rec.v)
+        return p and p.expireAt or rec.t + ORPHAN_VOTE_TTL
+    elseif typ == "PV" then
+        local poll = self:Get("PL:" .. rest:match("^([^:]+):"))
+        local p = poll and S.Codec.ParsePoll(poll.v)
+        return p and p.expireAt or rec.t + ORPHAN_VOTE_TTL
+    end
+    local def = S.TYPES[typ]
+    return def.ttl and rec.t + def.ttl or nil
 end
 
 local function Newer(a, b)
@@ -191,38 +226,53 @@ function S:Accept(typ, member, def, rec, ctx)
     if def.selfOnly and rec.a ~= member then return false end
     if rec.t > Now() + 300 then return false end -- refuse timestamps from the future
     if typ == "A" and rec.t < Now() - self:RetentionSeconds() then return false end
-    if def.ttl and rec.t < Now() - def.ttl then return false end
+    local expires = self:ExpiresAt(ctx.key, rec)
+    if expires and expires < Now() then return false end
     if def.anonymous and (rec.a or "") ~= "" then return false end -- reviews never carry a name
+    if typ == "PV" and not self:VoteInTime(ctx.key, rec) then return false end
     return true
 end
 
+-- A vote counts only if it was cast before its poll closed (a minute of
+-- slack for clock differences). Votes for polls we don't know yet pass.
+function S:VoteInTime(key, rec)
+    local pollId = key:match("^PV:([^:]+):")
+    local poll = pollId and self:Get("PL:" .. pollId)
+    local p = poll and S.Codec.ParsePoll(poll.v)
+    if not p then return true end
+    return not p.deleted and rec.t <= p.closeAt + 60
+end
+
 -- Records left out of digests and repairs: old audit entries (each officer
--- keeps a different amount) and anything past its type's ttl.
+-- keeps a different amount) and anything past its expiry.
 function S:Excluded(key, rec, now)
     now = now or Now()
     if key:sub(1, 2) == "A:" then return rec.t < now - self.AUDIT_SYNC_WINDOW end
-    local typ = key:match("^(%u+):")
-    local def = typ and S.TYPES[typ]
-    return def and def.ttl and rec.t < now - def.ttl or false
+    local expires = self:ExpiresAt(key, rec)
+    return expires ~= nil and expires < now
 end
 
--- Deletes records past their type's ttl.
+-- Deletes records past their expiry.
 function S:PruneExpired()
-    local now, removed = Now(), 0
+    local now, removed, polls = Now(), 0, false
     for _, scope in ipairs({ "guild", "officer" }) do
         local store = self:Store(scope)
         if store then
+            -- collect first: a vote's expiry depends on its poll record
+            local dead = {}
             for key, rec in pairs(store) do
-                local typ = key:match("^(%u+):")
-                local def = typ and S.TYPES[typ]
-                if def and def.ttl and rec.t < now - def.ttl then
-                    store[key] = nil
-                    removed = removed + 1
-                end
+                local expires = self:ExpiresAt(key, rec)
+                if expires and expires < now then dead[#dead + 1] = key end
+            end
+            for _, key in ipairs(dead) do
+                store[key] = nil
+                removed = removed + 1
+                if key:sub(1, 1) == "P" and key:sub(3, 3) == ":" then polls = true end
             end
         end
     end
     if removed > 0 then ns:Fire("RECRUITS_CHANGED") end
+    if polls then ns:Fire("POLLS_CHANGED") end
     return removed
 end
 
@@ -303,6 +353,7 @@ function S:Apply(key, rec, ctx)
     if not store then return false end
     rec.t = tonumber(rec.t) or 0
     rec.v = rec.v or ""
+    ctx.key = key
     if ctx.origin == "remote" and not self:Accept(typ, member, def, rec, ctx) then return false end
     local cur = store[key]
     if cur and not Newer(rec, cur) then return false end
@@ -393,6 +444,22 @@ function Codec.ParseLog(v)
     return { ts = tonumber(created), author = creator, text = text }
 end
 
+-- Poll: "closeAt;expireAt;deleted;question;option1;option2;..."
+local function PollText(s) return (Clean(s):gsub(";", ",")) end
+function Codec.Poll(p)
+    local parts = { tostring(math.floor(p.closeAt)), tostring(math.floor(p.expireAt)), p.deleted and "1" or "0", PollText(p.question) }
+    for _, o in ipairs(p.options) do parts[#parts + 1] = PollText(o) end
+    return table.concat(parts, ";")
+end
+function Codec.ParsePoll(v)
+    local f = ns.Split(v or "", ";")
+    local closeAt, expireAt = tonumber(f[1]), tonumber(f[2])
+    if not (closeAt and expireAt and f[4]) then return nil end
+    local p = { closeAt = closeAt, expireAt = expireAt, deleted = f[3] == "1", question = f[4], options = {} }
+    for i = 5, #f do p.options[#p.options + 1] = f[i] end
+    return p
+end
+
 local pending = { members = {}, tags = false, links = false, audit = false }
 
 function S:Notify(kind, member)
@@ -427,8 +494,14 @@ end
 
 function S:Materialize(typ, key, member, rec)
     local v = rec.v
-    if typ == "T" then
+    if typ == "T" or typ == "TI" then
         self:Notify("tags")
+        return
+    elseif typ == "PL" or typ == "PV" then
+        ns.Debounce("pollschanged", 0.2, function() ns:Fire("POLLS_CHANGED") end)
+        return
+    elseif typ == "GS" then
+        ns.Debounce("guildsettings", 0.1, function() ns:Fire("GUILD_SETTINGS_CHANGED") end)
         return
     elseif typ == "GR" or typ == "GC" then
         ns.Debounce("reviewschanged", 0.2, function() ns:Fire("REVIEWS_CHANGED") end)

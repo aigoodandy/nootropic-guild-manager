@@ -200,13 +200,19 @@ function O:Build()
         "Adds a tab with the addon icon to the side of the Guild & Communities window.", y - 20,
         function(on) ns.Communities:SetEnabled(on) end)
     self.titleCheck = Check(panel, "Use my guild's name in the window title",
-        "Shows \"<Guild Name> Guild Manager\" instead of \"Nootropic Guild Manager\".", y - 66,
+        "Shows \"<Guild Name> Guild Manager\" instead of \"Nootropic Guild Manager\" (also at the bottom of the window).", y - 66,
         function(on)
             ns.DB:Settings().titleUseGuild = on
             ns:Fire("SETTINGS_CHANGED")
         end)
+    self.addonCountCheck = Check(panel, "Show how many guildmates use the addon",
+        "The \"x using ... Guild Manager\" text at the bottom of the window. Click it to list them.", y - 112,
+        function(on)
+            ns.DB:Settings().showAddonCount = on
+            ns:Fire("SETTINGS_CHANGED")
+        end)
     local open = W.Button(panel, "Open Guild Manager", 170, 24)
-    open:SetPoint("TOPLEFT", 18, y - 116)
+    open:SetPoint("TOPLEFT", 18, y - 162)
     open:SetScript("OnClick", function() ns.UI:OpenTab(ns.UI.TAB_ROSTER) end)
     local reset = W.Button(panel, "Reset Size and Position", 190, 24)
     reset:SetPoint("LEFT", open, "RIGHT", 10, 0)
@@ -224,7 +230,18 @@ function O:Build()
     end)
     W.Tooltip(cols, "Reset roster columns", "Restores the default column order, widths and which columns are shown.")
     self.resetColumns = cols
-    y = y - 190
+    y = y - 236
+
+    -- Guild-wide settings (officers change them for everyone)
+    Header(panel, "Guild Settings  |cff9d9d9d(officers, for the whole guild)|r", y)
+    self.reviewsCheck = Check(panel, "Guildmates can review the guild",
+        "When off, guildmates don't see the Review Guild tab. Officers still see every review.", y - 20,
+        function(on)
+            local ok, err = ns.DB:SetReviewsEnabled(on)
+            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+            O:Refresh()
+        end)
+    y = y - 70
 
     -- Audit history (officers)
     Header(panel, "Audit History  |cff9d9d9d(officers)|r", y)
@@ -265,6 +282,7 @@ function O:Build()
     outer:SetScript("OnShow", function() O:Refresh() end)
     ns:On("SETTINGS_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
     ns:On("BRAND_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
+    ns:On("GUILD_SETTINGS_CHANGED", function() if outer:IsShown() then O:Refresh() end end)
 end
 
 function O:Refresh()
@@ -287,6 +305,11 @@ function O:Refresh()
     self:RefreshDot()
     self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
+    self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
+    local officer = ns.IsOfficer()
+    self.reviewsCheck:SetChecked(ns.DB:ReviewsEnabled())
+    self.reviewsCheck:SetEnabled(officer and ns.DB:Guild() ~= nil)
+    self.reviewsCheck:SetAlpha(officer and 1 or 0.5)
     for _, rb in ipairs(self.auditRadios) do rb:SetChecked((s.auditDays or 30) == rb.days) end
     local st = ns.Sync.stats
     self.syncStatus:SetText(("Sync this session: %d sent, %d received, %d applied, %d waiting to send.  |cffffffff/ngm sync|r runs one now.")

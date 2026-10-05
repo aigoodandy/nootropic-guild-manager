@@ -93,6 +93,7 @@ end
 
 function RV:Submit(stars, text)
     if not IsInGuild() or not ns.DB:Guild() then return false, "Join a guild first." end
+    if not ns.DB:ReviewsEnabled() then return false, "Officers have turned guild reviews off." end
     stars = tonumber(stars)
     if not stars or stars < 1 or stars > 5 or stars ~= math.floor(stars) then
         return false, "Choose 1 to 5 stars."
