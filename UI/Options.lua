@@ -232,6 +232,13 @@ function O:Build()
     self.resetColumns = cols
     y = y - 236
 
+    -- Recruiting
+    Header(panel, "Recruiting", y)
+    self.whoInviteCheck = Check(panel, "Guild invite button on /who results",
+        "Adds an invite button to each player in the game's /who (Looking For Group) search.", y - 20,
+        function(on) ns.WhoInvite:SetEnabled(on) end)
+    y = y - 70
+
     -- Guild-wide settings (officers change them for everyone)
     Header(panel, "Guild Settings  |cff9d9d9d(officers, for the whole guild)|r", y)
     self.reviewsCheck = Check(panel, "Guildmates can review the guild",
@@ -306,6 +313,7 @@ function O:Refresh()
     self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
     self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
+    self.whoInviteCheck:SetChecked(s.whoInviteButton ~= false)
     local officer = ns.IsOfficer()
     self.reviewsCheck:SetChecked(ns.DB:ReviewsEnabled())
     self.reviewsCheck:SetEnabled(officer and ns.DB:Guild() ~= nil)

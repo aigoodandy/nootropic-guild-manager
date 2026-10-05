@@ -46,3 +46,4 @@ UI\MinimapButton.lua
 UI\MapPins.lua
 UI\Options.lua
 UI\Communities.lua
+UI\WhoInvite.lua

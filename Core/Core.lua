@@ -266,6 +266,7 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
     ns.Minimap:Init()
     ns.Options:Init()
     ns.Communities:Init()
+    ns.WhoInvite:Init()
     ns.Brand:Init()
     ns.MapPins:Init()
     ns:Print(("v%s loaded. Type |cffffffff/ngm|r to open."):format(ns.version))
@@ -303,6 +304,7 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns.UI:SetSearch(rest)
     elseif cmd == "diag" then
         ns.Communities:Diagnose()
+        ns.WhoInvite:Diagnose()
     elseif cmd == "options" or cmd == "config" or cmd == "settings" then
         ns.Options:Open()
     elseif cmd == "recruit" then

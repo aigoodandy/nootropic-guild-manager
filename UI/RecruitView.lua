@@ -189,15 +189,8 @@ function RCV:BuildSearchBar(page, frame)
     end)
     self.guildBox = guildBox
 
-    local mini = W.Button(page, "Minimize", 80, 20)
-    mini:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -59)
-    mini:SetScript("OnClick", function() ns.RecruitMini:Minimize() end)
-    W.Tooltip(mini, "Minimize",
-        "Closes this window and shows a small recruiting bar you can move anywhere, so you can keep playing.",
-        "It can search, tick new players and send whispers. Click Expand on it to come back here.")
-
     local clear = W.Button(page, "Clear New", 86, 20)
-    clear:SetPoint("RIGHT", mini, "LEFT", -6, 0)
+    clear:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -59)
     clear:SetScript("OnClick", function()
         W.Confirm("Remove everyone you haven't contacted from the list?", function() ns.Recruit:ClearUncontacted() end)
     end)
@@ -318,7 +311,8 @@ function RCV:OnSendClicked(order)
 end
 
 -- The Send button's text, whether it's clickable, and a status line.
-function RCV:SendState()
+-- short: "Send (3)" instead of "Send Whispers (3)", for the mini recruiter.
+function RCV:SendState(short)
     local RC = ns.Recruit
     local r = RC:Settings()
     local selected = RC:SelectedCount()
@@ -331,7 +325,8 @@ function RCV:SendState()
         end
         return "Stop", true, ("Sending: %d left, next in %ds"):format(left, math.ceil(wait))
     end
-    local text = selected > 0 and ("Send Whispers (%d)"):format(selected) or "Send Whispers"
+    local label = short and "Send" or "Send Whispers"
+    local text = selected > 0 and ("%s (%d)"):format(label, selected) or label
     if wait > 0 and #RC.sentTimes >= RC.WHISPER_MAX then
         return text, selected > 0, ("Hourly limit reached - %d min"):format(math.ceil(wait / 60))
     end

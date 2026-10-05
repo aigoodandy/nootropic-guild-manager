@@ -54,6 +54,28 @@ function W.Button(parent, text, width, height)
     return b
 end
 
+-- Blizzard's red expand / condense arrow button (the same family as the red
+-- close X). kind: "expand" or "condense". Uses the game's atlas when the
+-- client has it, otherwise the older bigger/smaller panel buttons.
+function W.SizeButton(parent, kind, size)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(size or 24, size or 24)
+    local atlas = kind == "expand" and "RedButton-Expand" or "RedButton-Condense"
+    local hasAtlas = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
+    if hasAtlas then
+        b:SetNormalAtlas(atlas)
+        b:SetPushedAtlas(atlas .. "-Pressed")
+        b:SetDisabledAtlas(atlas .. "-Disabled")
+        b:SetHighlightAtlas("RedButton-Highlight", "ADD")
+    else
+        local base = kind == "expand" and "Interface\\Buttons\\UI-Panel-BiggerButton-" or "Interface\\Buttons\\UI-Panel-SmallerButton-"
+        b:SetNormalTexture(base .. "Up")
+        b:SetPushedTexture(base .. "Down")
+        b:SetHighlightTexture(base .. "Highlight", "ADD")
+    end
+    return b
+end
+
 function W.Tooltip(frame, title, ...)
     local lines = { ... }
     frame:HookScript("OnEnter", function(self)

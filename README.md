@@ -48,8 +48,9 @@ A guild roster for **World of Warcraft: Forever** that shows each member's profe
 3. Click **Send Whispers (N)**. Whispers go out one at a time, at least 12 seconds apart and no more than 40 per hour, so the game never sees the addon as a spammer. The button shows the countdown and turns into **Stop** while sending. If the game ever refuses an automatic whisper, the addon switches to click-to-send: the button becomes **Send Next** and each click sends one (same pacing).
 4. The Status column tracks each player: New, Queued, Whispered, Replied, Invited, and Joined! (detected automatically when they appear in your roster). Contacted players stay in the list so you never message anyone twice; **Clear New** removes only the uncontacted ones and **Hide contacted** filters them out.
    - **Statuses are shared with the guild.** When anyone running the addon whispers, hears back from, or invites a player, everyone else sees it ("Whispered 2 hr ago by Mira") and can't tick that player, so nobody is whispered twice by the same guild. Hover the row to read their reply. Shared statuses are kept for 7 days, then forgotten; your own list keeps your own history.
-5. **Keep playing while you recruit:** click **Minimize** (top right of the tab) to close the big window and show a small recruiting bar you can drag anywhere. It shows what's happening (countdown to the next whisper, players found, how many are ready) and has **Search /who**, **Select New** and **Send Whispers / Stop / Send Next**, so you can search, tick and send without opening the window. **Expand** goes back to the full tab; the X hides the bar (queued whispers keep sending). If you close the main window while whispers are still being sent, the bar appears by itself. `/ngm mini` shows or hides it.
-6. **Invites only after a whisper.** Right-click a player to invite them; the option stays unavailable ("whisper them first") until they've been whispered. Right-click also offers a one-off custom whisper and removing them.
+5. **Keep playing while you recruit:** click the **minimize arrow** (top right of the window, next to the options gear, on the Recruitment tab) to close the big window and show a small recruiting bar you can drag anywhere. It shows what's happening (countdown to the next whisper, players found, how many are ready) and has **Search /who**, **Select New** and **Send / Stop / Send Next**, so you can search, tick and send without opening the window. Its **expand arrow** goes back to the full tab; the X hides the bar (queued whispers keep sending). If you close the main window while whispers are still being sent, the bar appears by itself. `/ngm mini` shows or hides it.
+6. **Invite from the game's /who window:** every player in the game's own /who search (the Looking For Group people search) gets a small guild-invite button (a tabard) beside the group-invite button. One click sends a guild invite, no whisper needed, and the player shows as Invited on the Recruitment tab for the whole guild. The button is grayed out (hover it to see why) for players already in a guild, members of yours, people on the Do Not Whisper list, or if your rank can't invite. On by default; **Options > Recruiting** turns it off. If the buttons don't appear, search with the window open and run `/ngm diag`.
+7. **Invites only after a whisper** (on the Recruitment tab). Right-click a player to invite them; the option stays unavailable ("whisper them first") until they've been whispered. Right-click also offers a one-off custom whisper and removing them.
 
 **Default message** (right side): the whisper for anyone no custom message matches. These are filled in for you:
 
@@ -155,6 +156,7 @@ Open from **Options > AddOns > Nootropic Guild Manager**, the gear button at the
 - **Guildmate Locations**: share my location; show guildmates on the world map; custom dot colors (your dot and outline color).
 - **Use my guild's name in the window title**: "Knights of Azeroth Guild Manager" instead of "Nootropic Guild Manager", in the title and in the "x using ... Guild Manager" text at the bottom.
 - **Show how many guildmates use the addon**: the clickable "x using ... Guild Manager" text at the bottom of the window (on by default).
+- **Recruiting**: **Guild invite button on /who results** (on by default).
 - **Guild Settings** (officers, applies to the whole guild): **Guildmates can review the guild**.
 - **Show shortcut on the Guild & Communities window**: a side tab with the addon icon under the window's own tabs.
 - **Open Guild Manager**, **Reset Size and Position** and **Reset Roster Columns** buttons.
@@ -229,7 +231,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm recruit` | open the Recruitment tab |
 | `/ngm mini` | show or hide the small recruiting bar |
 | `/ngm options` | open the options |
-| `/ngm diag` | report what the Guild & Communities shortcut can see |
+| `/ngm diag` | report what the Guild & Communities shortcut and the /who invite buttons can see |
 | `/ngm sync` | sync now and show sync stats |
 | `/ngm polls` | open the Polls tab |
 | `/ngm audit` | open the Audit tab (officers) |
@@ -243,7 +245,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data)  Sync.lua (records, repair, transport)
 Services/  Location.lua (shared positions)  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Recruit.lua (/who, whisper queue, invites)  Messages.lua (custom message rules)  Audit.lua (change descriptions)  Reviews.lua (anonymous guild reviews)  Polls.lua (guild polls)
-UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua
+UI/        Widgets.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  TagEditor.lua  RosterView.lua  RecruitView.lua  RecruitMini.lua  MessagesView.lua  DetailPanel.lua  PollsView.lua  TagsView.lua  AuditView.lua  ReviewsView.lua  MainFrame.lua  MinimapButton.lua  MapPins.lua  Options.lua  Communities.lua  WhoInvite.lua
 ```
 
 ## Names in WoW: Forever

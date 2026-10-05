@@ -323,6 +323,8 @@ local function ReadWho(i)
     end
 end
 
+RC.ReadWho = ReadWho -- also used by the /who window's invite buttons
+
 function RC:OnWhoResults()
     if not self.searching then return end -- someone else's /who
     self.searching = false
@@ -475,6 +477,45 @@ function RC:Invite(full, automatic)
     local p = r and r.people[full]
     if p then
         p.invited = ns.DB:Now()
+        self:ShareStatus(full)
+    end
+    Changed()
+    return true
+end
+
+-- Invite button on the game's /who window: invites straight away (no whisper
+-- needed, the click is the player's choice) and records it like any other
+-- invite, so the Recruitment tab and the guild see "Invited".
+-- info: { level, classFile, className, zone, race } from the /who results.
+function RC:InviteFromWho(name, info)
+    local full = ns.NormalizeName(name)
+    if not full then return false end
+    if not self:CanInvite() then return false, "Your guild rank can't invite new members." end
+    if ns.Roster.byName[full] then return false, ns.ShortName(full) .. " is already in your guild." end
+    if self:IsDNW(full) then
+        return false, ns.ShortName(full) .. " asked not to be contacted (Do Not Whisper list)."
+    end
+    local target = ns.ChatName(full)
+    if C_GuildInfo and C_GuildInfo.Invite then
+        C_GuildInfo.Invite(target)
+    elseif GuildInvite then
+        GuildInvite(target)
+    else
+        return false, "This game client has no guild invite."
+    end
+    local r = self:Settings()
+    if r then
+        local now = ns.DB:Now()
+        local p = r.people[full]
+        if not p then
+            p = { found = now }
+            r.people[full] = p
+        end
+        info = info or {}
+        p.level = info.level or p.level
+        p.classFile, p.className = info.classFile or p.classFile, info.className or p.className
+        p.zone, p.race = info.zone or p.zone, info.race or p.race
+        p.seen, p.invited = now, now
         self:ShareStatus(full)
     end
     Changed()

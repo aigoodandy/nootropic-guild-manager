@@ -30,6 +30,7 @@ local DEFAULTS = {
         communitiesButton = true,    -- shortcut on the Guild & Communities window
         titleUseGuild = false,       -- window title: "<Guild> Guild Manager"
         showAddonCount = true,       -- "x using ... Guild Manager" at the bottom of the window
+        whoInviteButton = true,      -- guild invite button on the game's /who results
         auditDays = 30,              -- audit history kept: 30, 60 or 90 days
         onlineOnly = false,
         sortKey = "rank",

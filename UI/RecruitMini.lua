@@ -11,7 +11,7 @@ local W = ns.Widgets
 local MR = {}
 ns.RecruitMini = MR
 
-local WIDTH, HEIGHT = 300, 82
+local WIDTH, HEIGHT = 320, 82
 
 function MR:Build()
     if self.frame then return self.frame end
@@ -46,12 +46,12 @@ function MR:Build()
     title:SetText("Recruiting")
 
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-    close:SetSize(24, 24)
-    close:SetPoint("TOPRIGHT", -2, -2)
+    close:SetSize(26, 26)
+    close:SetPoint("TOPRIGHT", -4, -4)
     close:SetScript("OnClick", function() MR:Hide() end)
     W.Tooltip(close, "Hide", "Whispers already queued keep sending. /ngm mini brings the bar back.")
 
-    local expand = W.Button(f, "Expand", 64, 18)
+    local expand = W.SizeButton(f, "expand", 26)
     expand:SetPoint("RIGHT", close, "LEFT", -2, 0)
     expand:SetScript("OnClick", function() MR:Expand() end)
     W.Tooltip(expand, "Expand", "Back to the full Recruitment tab.")
@@ -62,7 +62,7 @@ function MR:Build()
     self.status:SetJustifyH("LEFT")
     self.status:SetWordWrap(false)
 
-    local search = W.Button(f, "Search /who", 92, 22)
+    local search = W.Button(f, "Search /who", 100, 22)
     search:SetPoint("BOTTOMLEFT", 10, 10)
     -- /who runs through a secure button, like on the Recruitment tab
     search:SetScript("OnClick", function()
@@ -92,7 +92,7 @@ function MR:Build()
     search:SetScript("OnLeave", function() GameTooltip:Hide() end)
     self.searchBtn = search
 
-    local selNew = W.Button(f, "Select New", 82, 22)
+    local selNew = W.Button(f, "Select New", 92, 22)
     selNew:SetPoint("LEFT", search, "RIGHT", 4, 0)
     selNew:SetScript("OnClick", function()
         ns.Recruit:SelectNew(ns.Recruit:List())
@@ -141,7 +141,7 @@ function MR:StatusText()
     local _, _, info = ns.RecruitView:SendState()
     if RC:IsSending() then return "|cffffd100" .. info .. "|r" end
     local selected = RC:SelectedCount()
-    if selected > 0 then return ("|cff40ff40%d ticked|r - click Send Whispers"):format(selected) end
+    if selected > 0 then return ("|cff40ff40%d ticked|r - click Send"):format(selected) end
     local last = RC.last
     if last and last.timedOut then return "|cffff8080No reply from /who - wait a few seconds.|r" end
     local ready = 0
@@ -159,7 +159,7 @@ function MR:Refresh()
     local searchText, searchOn = ns.RecruitView:SearchState()
     self.searchBtn:SetText(searchText)
     self.searchBtn:SetEnabled(searchOn)
-    local sendText, sendOn = ns.RecruitView:SendState()
+    local sendText, sendOn = ns.RecruitView:SendState(true)
     self.sendBtn:SetText(sendText)
     self.sendBtn:SetEnabled(sendOn)
     self.selNewBtn:SetEnabled(not RC:IsSending() and RC:Settings() ~= nil)

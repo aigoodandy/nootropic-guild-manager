@@ -118,6 +118,17 @@ function UI:BuildOptionsButton(f)
     b:SetScript("OnClick", function() ns.Options:Open() end)
     W.Tooltip(b, "Options", "Icon, minimap button and Guild & Communities shortcut.")
     self.optionsButton = b
+
+    -- Recruitment tab only: shrink to the small recruiting bar
+    local mini = W.SizeButton(f, "condense", 22)
+    mini:SetPoint("RIGHT", b, "LEFT", -4, 0)
+    mini:SetFrameLevel(f:GetFrameLevel() + 10)
+    mini:SetScript("OnClick", function() ns.RecruitMini:Minimize() end)
+    W.Tooltip(mini, "Minimize",
+        "Closes this window and shows a small recruiting bar you can move anywhere, so you can keep playing.",
+        "It can search, tick new players and send whispers. Its expand arrow brings you back here.")
+    mini:Hide()
+    self.miniButton = mini
 end
 
 function UI:BuildResizeGrip(f)
@@ -239,6 +250,7 @@ function UI:SelectTab(id)
 
     ns.RosterView.page:SetShown(id == UI.TAB_ROSTER)
     ns.RecruitView.page:SetShown(id == UI.TAB_RECRUIT)
+    if self.miniButton then self.miniButton:SetShown(id == UI.TAB_RECRUIT) end
     ns.PollsView.page:SetShown(id == UI.TAB_POLLS)
     ns.TagsView.page:SetShown(id == UI.TAB_TAGS)
     ns.AuditView.page:SetShown(id == UI.TAB_AUDIT)
