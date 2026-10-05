@@ -154,7 +154,7 @@ Members can tag **themselves** (on their own profile or by right-clicking their 
 
 ## Guildmates on the map
 
-Every copy of the addon shares its player's map position with the guild (every 15 seconds while moving, once a minute standing still; never inside dungeons). Guildmates appear on the world map as dots in their class color, on zone and continent maps. Hover a dot for the same details as the roster tooltip; click it to open their profile. The roster's **Location** column shows each guildmate's zone with a small map button that opens the map there and highlights them.
+Every copy of the addon shares its player's map position with the guild (every 15 seconds while moving, once a minute standing still; never inside dungeons). Guildmates appear on the world map as dots in their class color, on zone and continent maps. Hover a dot for the same details as the roster tooltip; click it to open their profile. The roster's **Location** column shows each guildmate's zone followed by their map dot (in the same colors as on the world map: class color, or their own colors when custom dots are on in Options); click the dot to open the map there and highlight them.
 
 Both are on by default. Options has separate switches to stop sharing your own location and to hide the dots.
 

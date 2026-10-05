@@ -374,6 +374,12 @@ function RV:Build(frame)
     self:ApplyHeaderLayout()
 
     ns:On("ROSTER_UPDATED", function() ns.Debounce("rosterview", 0.05, function() RV:Refresh() end) end)
+    -- map dot colors (Options and everyone's own dot) show in the Location column
+    -- (not for each position update, which names the member)
+    ns:On("LOCATIONS_CHANGED", function(full)
+        if full then return end
+        ns.Debounce("rosterview", 0.05, function() RV:Refresh() end)
+    end)
     ns:On("TAGS_CHANGED", function()
         for id in pairs(RV.tagFilter) do
             if not ns.DB:GetTag(id) then RV.tagFilter[id] = nil end
@@ -897,14 +903,25 @@ local function BuildRow(row)
     row.Main:SetPoint("LEFT", 6, 0)
     row.Main:SetPoint("RIGHT", -4, 0)
 
-    -- Location: map button + zone
+    -- Location: zone, then their map dot (click it to open the map)
+    local DOT = 12
+    local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
     row.MapBtn = CreateFrame("Button", nil, cells.zone)
-    row.MapBtn:SetSize(16, 16)
-    row.MapBtn:SetPoint("LEFT", 4, 0)
-    row.MapBtn.Icon = row.MapBtn:CreateTexture(nil, "ARTWORK")
-    row.MapBtn.Icon:SetAllPoints()
-    W.SetIcon(row.MapBtn.Icon, "Interface\\Icons\\INV_Misc_Map_01")
-    row.MapBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    row.MapBtn:SetSize(DOT + 6, DOT + 6) -- a little bigger than the dot, easier to click
+    row.MapBtn.Border = row.MapBtn:CreateTexture(nil, "ARTWORK", nil, 1)
+    row.MapBtn.Border:SetTexture(CIRCLE)
+    row.MapBtn.Border:SetSize(DOT, DOT)
+    row.MapBtn.Border:SetPoint("CENTER")
+    row.MapBtn.Dot = row.MapBtn:CreateTexture(nil, "ARTWORK", nil, 2)
+    row.MapBtn.Dot:SetTexture(CIRCLE)
+    row.MapBtn.Dot:SetSize(DOT * 0.72, DOT * 0.72)
+    row.MapBtn.Dot:SetPoint("CENTER")
+    row.MapBtn.Glow = row.MapBtn:CreateTexture(nil, "HIGHLIGHT")
+    row.MapBtn.Glow:SetTexture(CIRCLE)
+    row.MapBtn.Glow:SetSize(DOT + 6, DOT + 6)
+    row.MapBtn.Glow:SetPoint("CENTER")
+    row.MapBtn.Glow:SetVertexColor(1, 1, 1, 0.3)
+    row.MapBtn.Glow:SetBlendMode("ADD")
     row.MapBtn:SetScript("OnClick", function()
         local e = row.entry
         if e then ns.Location:OpenMap(ns.Location:MapFor(e), e.full) end
@@ -922,7 +939,7 @@ local function BuildRow(row)
     end)
     row.MapBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     row.Zone = Text(cells.zone)
-    row.Zone:SetPoint("LEFT", 24, 0)
+    row.Zone:SetPoint("LEFT", 6, 0)
     row.Zone:SetPoint("RIGHT", -4, 0)
 
     -- Professions (up to 3)
@@ -1052,13 +1069,25 @@ function RV:InitRow(row, e)
 
     row.Main:SetText(MainLabel(e))
 
-    -- Location (map button only when we know which map to open)
+    -- Location (the map dot only when we know which map to open), the dot
+    -- right after the zone name, colored like their dot on the world map
     if COL.zone.shown then
         local zone = (e.zone ~= "" and e.zone) or nil
         row.Zone:SetText(zone or "|cff6d6d6d-|r")
         local hasMap = zone and ns.Location:MapFor(e) ~= nil
         row.MapBtn:SetShown(hasMap and true or false)
-        row.Zone:SetPoint("LEFT", hasMap and 24 or 6, 0)
+        if hasMap then
+            local room = math.max(0, (COL.zone.w or 130) - 6 - 4 - 18)
+            local textW = math.min(math.ceil(row.Zone:GetStringWidth()), room)
+            row.Zone:SetPoint("RIGHT", -(4 + 18), 0)
+            row.MapBtn:ClearAllPoints()
+            row.MapBtn:SetPoint("LEFT", row.MapBtn:GetParent(), "LEFT", 6 + textW + 1, 0)
+            local fr, fg, fb, br, bg, bb = ns.Location:DotColors(e.full, e.classFile)
+            row.MapBtn.Dot:SetVertexColor(fr, fg, fb)
+            row.MapBtn.Border:SetVertexColor(br, bg, bb, 0.9)
+        else
+            row.Zone:SetPoint("RIGHT", -4, 0)
+        end
     end
 
     -- Professions
