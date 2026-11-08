@@ -5,10 +5,9 @@
 
       Nootropic Guild Manager   appearance, minimap button, reset, about
         Recruiting              /who whisper button, auto-invite, Do Not Whisper
-        Map                     guildmate locations and dot colors
-        Officers                guild reviews on/off, audit history
+        Officers                guild settings, tabs, audit history
 
-    O:Open(key) opens one: nil (main), "recruiting", "map" or "officers".
+    O:Open(key) opens one: nil (main), "recruiting" or "officers".
 ]]
 local _, ns = ...
 local W, D = ns.Widgets, ns.Data
@@ -160,7 +159,7 @@ local function RecruitChanged() ns:Fire("RECRUITS_CHANGED") end
 ------------------------------------------------------------------------
 function O:BuildMain()
     local outer, L = NewPage("main", PANEL_NAME,
-        ("Version %s  -  /ngm to open  -  more settings on the Recruiting, Map and Officers pages below this one"):format(ns.version))
+        ("Version %s  -  /ngm to open  -  more settings on the Recruiting and Officers pages below this one"):format(ns.version))
     self.panel = outer
 
     L:Header("Appearance")
@@ -362,38 +361,6 @@ function O:BuildRecruiting()
 end
 
 ------------------------------------------------------------------------
--- Map page
-------------------------------------------------------------------------
-function O:BuildMap()
-    local outer, L = NewPage("map", "Map", "Guildmates on your world map, and where they see you.")
-    L:Header("Guildmate Locations")
-    self.shareCheck = L:Check("Share my location with guildmates",
-        "Your map position goes to guildmates using the addon (never inside dungeons).",
-        function(on) ns.Location:SetSharing(on) end)
-    self.mapCheck = L:Check("Show guildmates on the world map",
-        "Hover a dot for their roster details; click it to open their profile.",
-        function(on) ns.Location:SetShowing(on) end)
-    L:Space(4)
-
-    L:Header("Dot Colors")
-    self.customDotsCheck = L:Check("Custom dot colors",
-        "See the dot colors guildmates picked. Off: every dot is its class color.",
-        function(on) ns.Location:SetCustomDots(on) end)
-
-    -- your own dot is set on your profile (Edit), next to how guildmates see you
-    local y = L:Row(30)
-    local myDot = W.Button(L.panel, "Change My Dot...", 150, 22)
-    myDot:SetPoint("TOPLEFT", 18, y)
-    myDot:SetScript("OnClick", function() ns.DetailPanel:EditSelf() end)
-    W.Tooltip(myDot, "Change your dot", "Opens your profile in Edit mode, where you pick your dot's fill and outline colors.")
-    local hint = L.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("LEFT", myDot, "RIGHT", 10, 0)
-    hint:SetText("Your own dot colors are set on your profile.")
-    L:Finish()
-    return outer
-end
-
-------------------------------------------------------------------------
 -- Officers page
 ------------------------------------------------------------------------
 -- Tabs: a title box and a "who sees it" menu of guild ranks for each tab.
@@ -401,7 +368,6 @@ local TAB_NOTES = {
     roster = "Always shown to everyone.",
     tags = "Only ever shown to officers.",
     audit = "Only ever shown to officers.",
-    reviews = "Also follows the reviews switch above.",
 }
 
 local function RanksText(key)
@@ -545,16 +511,6 @@ function O:BuildOfficers()
     local outer, L = NewPage("officers", "Officers", "For ranks that can read officer notes.")
     self.officerNote = L:Text("|cffff8080Only officers can change these.|r")
 
-    L:Header("Guild Reviews  |cff9d9d9d(whole guild)|r")
-    self.reviewsCheck = L:Check("Guildmates can review the guild",
-        "When off, guildmates don't see the Review Guild tab. Officers still see every review.",
-        function(on)
-            local ok, err = ns.DB:SetReviewsEnabled(on)
-            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-            O:Refresh()
-        end)
-    L:Space(4)
-
     L:Header("Profiles  |cff9d9d9d(whole guild)|r")
     self.pronounsCheck = L:Check("Guildmates can add pronouns to their profile",
         "Off by default. When on, each guildmate can add their pronouns (up to 24 characters) on their own profile; they show next to their name on the profile and in the roster tooltip. Officers can clear someone's. Turning it off hides them again without deleting them.",
@@ -600,7 +556,6 @@ function O:Build()
     self:BuildMain()
     self.subPages = {
         { key = "recruiting", frame = self:BuildRecruiting() },
-        { key = "map", frame = self:BuildMap() },
         { key = "officers", frame = self:BuildOfficers() },
     }
     ns:On("SETTINGS_CHANGED", function() if O:AnyShown() then O:Refresh() end end)
@@ -644,18 +599,10 @@ function O:Refresh()
 
     self:RefreshRecruiting()
 
-    -- map
-    self.shareCheck:SetChecked(s.shareLocation ~= false)
-    self.mapCheck:SetChecked(s.showOnMap ~= false)
-    self.customDotsCheck:SetChecked(s.customDots == true)
-
     -- officers
     local officer = ns.IsOfficer()
     self.officerNote:SetShown(not officer)
-    self.reviewsCheck:SetChecked(ns.DB:ReviewsEnabled())
-    SetUsable(self.reviewsCheck, officer and ns.DB:Guild() ~= nil)
     -- texts that name tabs follow their titles
-    self.reviewsCheck.Hint:SetText(("When off, guildmates don't see the %s tab. Officers still see every review."):format(ns.DB:MemberReviewsTabName()))
     if self.pages.recruiting and self.pages.recruiting.Sub then
         self.pages.recruiting.Sub:SetText(("Saved for the guild you're in. Messages and searching are on the %s tab."):format(ns.TabName("recruit")))
     end
@@ -717,7 +664,7 @@ function O:Init()
     end
 end
 
--- key: nil for the main page, or "recruiting", "map", "officers".
+-- key: nil for the main page, or "recruiting", "officers".
 function O:Open(key)
     if not self.panel then return end
     if Settings and Settings.OpenToCategory and self.category then

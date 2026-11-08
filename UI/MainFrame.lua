@@ -10,8 +10,8 @@ ns.UI = UI
 
 local FRAME_W, FRAME_H = 1000, 580
 local MIN_W, MIN_H, MAX_W, MAX_H = 640, 520, 1800, 1100
-local TAB_LABELS = { "Roster", "Recruitment", "Insights", "Tags", "Audit", "Reviews" }
-UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_POLLS, UI.TAB_TAGS, UI.TAB_AUDIT, UI.TAB_REVIEWS = 1, 2, 3, 4, 5, 6
+local TAB_LABELS = { "Roster", "Recruitment", "Insights", "Tags", "Audit" }
+UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_POLLS, UI.TAB_TAGS, UI.TAB_AUDIT = 1, 2, 3, 4, 5
 local OFFICER_TABS = { [4] = true, [5] = true } -- Tags and Audit
 
 ------------------------------------------------------------------------
@@ -57,7 +57,6 @@ function UI:Create()
     ns.PollsView:Build(f)
     ns.TagsView:Build(f)
     ns.AuditView:Build(f)
-    ns.ReviewsView:Build(f)
     ns.DetailPanel:Build(f)
     self:BuildTabs(f)
     self:BuildResizeGrip(f)
@@ -213,7 +212,6 @@ UI.DEFAULT_TAB_ICONS = {
     "Interface\\Icons\\INV_Scroll_03",                -- Insights
     "Interface\\Icons\\INV_Misc_Note_01",             -- Tags
     "Interface\\Icons\\INV_Misc_Spyglass_02",         -- Audit
-    "Interface\\Icons\\INV_Scroll_05",                -- Reviews
 }
 
 -- Flips a texture left to right (keeps an atlas's own coordinates).
@@ -371,17 +369,11 @@ end
 function UI:IsTabAvailable(id)
     -- officers choose which ranks see each tab (Options > Officers)
     if id ~= UI.TAB_ROSTER and not ns.DB:TabAllowedForMe(ns.DB.TAB_KEYS[id]) then return false end
-    if id == UI.TAB_REVIEWS then
-        -- officers can turn reviews off; then only officers see the tab
-        return ns.IsOfficer() or ns.DB:ReviewsEnabled()
-    end
     return not OFFICER_TABS[id] or ns.IsOfficer()
 end
 
--- The tab's usual name (Reviews is "Review Guild" for non-officers, who
--- write reviews rather than read them).
+-- The tab's usual name.
 function UI:DefaultTabTitle(id)
-    if id == UI.TAB_REVIEWS and not ns.IsOfficer() then return "Review Guild" end
     return TAB_LABELS[id]
 end
 
@@ -462,7 +454,6 @@ function UI:SelectTab(id)
     ns.PollsView.page:SetShown(id == UI.TAB_POLLS)
     ns.TagsView.page:SetShown(id == UI.TAB_TAGS)
     ns.AuditView.page:SetShown(id == UI.TAB_AUDIT)
-    ns.ReviewsView.page:SetShown(id == UI.TAB_REVIEWS)
     if id ~= UI.TAB_ROSTER then ns.DetailPanel:Hide() end
 end
 

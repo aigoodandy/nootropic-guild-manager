@@ -72,20 +72,16 @@ function ns.PerfReport()
         end
     end
 
-    local positions = 0
-    for _ in pairs(ns.Location.positions) do positions = positions + 1 end
     ns:Print(("  Roster: rebuilt %s, redrawn %s"):format(Rate(p.rosterBuilds), Rate(p.rosterRedraws)))
-    ns:Print(("  Map: %s positions received, dots redrawn %s, %d guildmates on the map"):format(
-        Rate(p.positionsIn), Rate(p.mapRedraws), positions))
     ns:Print(("  Kudos index built %d times"):format(p.kudosIndexBuilds or 0))
 end
 
 ------------------------------------------------------------------------
 -- Tab names in text ("Vote on the Insights tab"): the title officers gave the
 -- tab in Options > Officers > Tabs, else its usual name. key: "roster",
--- "recruit", "polls", "tags", "audit" or "reviews".
+-- "recruit", "polls", "tags" or "audit".
 ------------------------------------------------------------------------
-local USUAL_TAB_NAMES = { roster = "Roster", recruit = "Recruitment", polls = "Insights", tags = "Tags", audit = "Audit", reviews = "Reviews" }
+local USUAL_TAB_NAMES = { roster = "Roster", recruit = "Recruitment", polls = "Insights", tags = "Tags", audit = "Audit" }
 
 function ns.TabName(key)
     local UI, DB = ns.UI, ns.DB
@@ -335,6 +331,16 @@ function ns.FormatLastSeen(hours)
     return ("%dy"):format(math.floor(months / 12))
 end
 
+-- seconds -> "3 hours", "2 days" (rounded up)
+function ns.FormatWait(sec)
+    if sec >= 86400 then
+        local d = math.ceil(sec / 86400)
+        return d == 1 and "1 day" or (d .. " days")
+    end
+    local h = math.ceil(sec / 3600)
+    return h == 1 and "1 hour" or (h .. " hours")
+end
+
 function ns.FormatAgo(timestamp)
     if not timestamp then return "never" end
     local secs = math.max(0, time() - timestamp)
@@ -360,8 +366,6 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
     ns.Sync:Init()
     ns.Comm:Init()
     ns.Recruit:Init()
-    ns.Location:Init()
-    ns.Reviews:Init()
     ns.Polls:Init()
     ns.Goals:Init()
     ns.Profile:Init()
@@ -370,7 +374,6 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
     ns.Communities:Init()
     ns.WhoWhisper:Init()
     ns.Brand:Init()
-    ns.MapPins:Init()
     ns:Print(("v%s loaded. Type |cffffffff/ngm|r to open."):format(ns.version))
 end)
 
@@ -489,7 +492,6 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm sync|r  - sync with guildmates now and show sync stats")
     ns:Print(("  |cffffffff/ngm audit|r  - open the %s tab (officers)"):format(ns.TabName("audit")))
     ns:Print(("  |cffffffff/ngm insights|r  - open the %s tab (goals, polls and stats)"):format(ns.TabName("polls")))
-    ns:Print(("  |cffffffff/ngm reviews|r  - open the %s tab (review the guild)"):format(ns.TabName("reviews")))
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
     ns:Print(("  |cffffffff/ngm recruit|r  - open the %s tab"):format(ns.TabName("recruit")))
     ns:Print("  |cffffffff/ngm mini|r  - show or hide the small recruiting bar")
@@ -544,12 +546,6 @@ SlashCmdList.NOOTROPICGM = function(msg)
     elseif cmd == "insights" or cmd == "poll" or cmd == "polls" or cmd == "stats" or cmd == "goals" then
         ns.UI:Show()
         ns.UI:SelectTab(ns.UI.TAB_POLLS)
-    elseif cmd == "review" or cmd == "reviews" then
-        ns.UI:Show()
-        if not ns.UI:IsTabAvailable(ns.UI.TAB_REVIEWS) then
-            ns:Print("Guild reviews are turned off by the officers.")
-        end
-        ns.UI:SelectTab(ns.UI.TAB_REVIEWS)
     elseif cmd == "minimap" then
         ns.Minimap:ToggleShown()
     elseif cmd == "reset" then

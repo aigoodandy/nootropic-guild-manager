@@ -9,7 +9,7 @@
     Scopes
       guild    tags, tag assignments, main/alt links, specs and professions.
                Sent on the GUILD addon channel.
-      officer  ratings, officer log, audit trail. Sent only on the OFFICER
+      officer  officer log, officer-only stats and goals, audit trail. Sent only on the OFFICER
                addon channel (the game delivers it only to ranks that can read
                officer chat). Nothing is ever whispered.
 
@@ -33,18 +33,13 @@
       RL:<member>          roles: "tank,healer,damage" (any of them)   officers, or the member
       MP:<member>          manual professions      officers, or the member
       P:<member>           addon-reported spec/professions   the member only
-      RT:<member>          rating 0-5              officers (officer scope)
       L:<member>:<id>      officer log entry       officers (officer scope)
       A:<id>               audit entry             officers (officer scope)
       DN:<player>          Do Not Whisper entry    anyone in the guild ("" = removed)
       RS:<player>          recruitment status      anyone in the guild (kept 7 days)
-      DC:<member>          map dot colors          the member only
       AV:<member>          addon version in use    the member only
-      GR:<id>              anonymous guild review  officers (officer scope, kept 1 year,
-                                                   no author, can never be changed or deleted)
-      GC:<review>:<id>     officer comment on a review   officers (kept 1 year)
       TI:<tagId>           tag icon (file id or texture path)   officers
-      GS:<name>            guild-wide setting, e.g. GS:reviews = "0" (off)   officers
+      GS:<name>            guild-wide setting, e.g. GS:pronouns = "1" (on)   officers
       PL:<id>              poll (question, options, close time)   officers
                            kept until its results expire
       PV:<poll>:<member>   a member's vote in a poll   the member only
@@ -79,7 +74,7 @@ local S = {}
 ns.Sync = S
 
 local PREFIX = "NootropicGM"
-local PROTO = "3" -- 3: batches, channel-only repair
+local PROTO = "4" -- 4: 2.0 (reviews, ratings and map positions removed); 3: batches, channel-only repair
 S.PROTO = PROTO
 S.FS = "\t"
 local FS = "\t"
@@ -104,15 +99,11 @@ S.TYPES = {
     RL = { scope = "guild",   officer = true, self = true, label = "Role" },
     MP = { scope = "guild",   officer = true, self = true, label = "Professions" },
     P  = { scope = "guild",   selfOnly = true, label = "Reported spec / professions" },
-    RT = { scope = "officer", officer = true, label = "Rating" },
     L  = { scope = "officer", officer = true, label = "Officer log" },
     A  = { scope = "officer", officer = true, noAudit = true, label = "Audit" },
     DN = { scope = "guild",   anyone = true, label = "Do Not Whisper" },
     RS = { scope = "guild",   anyone = true, noAudit = true, ttl = 7 * 86400, label = "Recruitment status" },
-    DC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Map dot colors" },
     AV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Addon version" },
-    GR = { scope = "officer", officer = true, noAudit = true, ttl = 365 * 86400, low = true, immutable = true, anonymous = true, label = "Guild review" },
-    GC = { scope = "officer", officer = true, noAudit = true, ttl = 365 * 86400, low = true, label = "Review comment" },
     TI = { scope = "guild",   officer = true, label = "Tag icon" },
     GS = { scope = "guild",   officer = true, label = "Guild setting" },
     PL = { scope = "guild",   officer = true, label = "Poll" },
@@ -132,13 +123,12 @@ S.TYPES = {
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
 -- Types whose key is not about one member.
-local NO_MEMBER = { T = true, A = true, GR = true, GC = true, TI = true, GS = true, PL = true, KT = true, KD = true, SD = true, SO = true, PI = true, GD = true, GO = true }
+local NO_MEMBER = { T = true, A = true, TI = true, GS = true, PL = true, KT = true, KD = true, SD = true, SO = true, PI = true, GD = true, GO = true }
 
 -- Orphaned poll votes (their poll is unknown) are kept this long.
 local ORPHAN_VOTE_TTL = 30 * 86400
 
 S.officers = {} -- players seen sending on the officer channel this session
-S.officerBeacons = {} -- officers running the addon -> GetTime() they last said so
 S.stats = { sent = 0, received = 0, applied = 0, retries = 0, dropped = 0 }
 
 ------------------------------------------------------------------------
@@ -263,7 +253,7 @@ function S:Accept(typ, member, def, rec, ctx)
     if typ == "A" and rec.t < Now() - self:RetentionSeconds() then return false end
     local expires = self:ExpiresAt(ctx.key, rec)
     if expires and expires < Now() then return false end
-    if def.anonymous and (rec.a or "") ~= "" then return false end -- reviews never carry a name
+    if def.anonymous and (rec.a or "") ~= "" then return false end -- anonymous records (kudos) never carry a name
     if typ == "PV" and not self:VoteInTime(ctx.key, rec) then return false end
     -- someone else's About me or pronouns can only be cleared (officers), never rewritten
     if (typ == "AB" or typ == "PN") and rec.a ~= member and rec.v ~= "" then return false end
@@ -394,9 +384,7 @@ function S:Apply(key, rec, ctx)
     if ctx.origin == "remote" and not self:Accept(typ, member, def, rec, ctx) then return false end
     local cur = store[key]
     if cur and not Newer(rec, cur) then return false end
-    if cur and def.immutable then return false end -- reviews can't be changed or deleted
-    -- a comment can only be changed (or deleted) by the officer who wrote it
-    if cur and typ == "GC" and ctx.origin == "remote" and (cur.a or "") ~= (rec.a or "") then return false end
+    if cur and def.immutable then return false end -- kudos can't be changed or deleted
     store[key] = rec
     self:Materialize(typ, key, member, rec)
     if not def.noAudit and not ctx.migration and ns.IsOfficer() then
@@ -679,12 +667,6 @@ function S:Materialize(typ, key, member, rec)
         if typ == "KU" then ns.Profile:InvalidateKudosIndex() else ns.DB.kudosCache = nil end
         ns.Debounce("kudoschanged", 0.2, function() ns:Fire("KUDOS_CHANGED") end)
         return
-    elseif typ == "GR" or typ == "GC" then
-        ns.Debounce("reviewschanged", 0.2, function() ns:Fire("REVIEWS_CHANGED") end)
-        return
-    elseif typ == "DC" then
-        ns.Debounce("dotcolors", 0.2, function() ns:Fire("LOCATIONS_CHANGED") end)
-        return
     elseif typ == "DN" or typ == "RS" then
         -- Do Not Whisper entries are about people outside the guild: no member record
         ns.Debounce("dnwchanged", 0.1, function() ns:Fire("RECRUITS_CHANGED") end)
@@ -725,8 +707,6 @@ function S:Materialize(typ, key, member, rec)
     elseif typ == "AV" then
         m.version = v ~= "" and v or nil
         ns.Debounce("versioncheck", 1, function() if ns.Roster.CheckVersion then ns.Roster:CheckVersion() end end)
-    elseif typ == "RT" then
-        m.rating = math.max(0, math.min(5, tonumber(v) or 0))
     elseif typ == "L" then
         local id = key:match("^L:[^:]+:(.+)$")
         m.log = m.log or {}
@@ -746,7 +726,8 @@ function S:RebuildAll()
     local g = ns.DB:Guild()
     if not g then return end
     for _, m in pairs(g.members) do
-        m.tags, m.main, m.spec, m.profs, m.auto, m.rating, m.log, m.version = {}, nil, nil, nil, nil, 0, nil, nil
+        m.tags, m.main, m.spec, m.profs, m.auto, m.log, m.version = {}, nil, nil, nil, nil, nil, nil
+        m.rating = nil
         m.about, m.status, m.statusAt, m.schedule = nil, nil, nil, nil
     end
     for _, scope in ipairs({ "guild", "officer" }) do
@@ -884,7 +865,6 @@ function S:Exchange(force)
     self.lastExchange = now
     self:Send(table.concat({ PROTO, "D", "guild", EncodeDigest(self:Digest("guild")) }, FS), "GUILD", nil, "high")
     if ns.IsOfficer() then
-        self:Send(table.concat({ PROTO, "O" }, FS), "GUILD", nil, "bulk")
         self:Send(table.concat({ PROTO, "D", "officer", EncodeDigest(self:Digest("officer")) }, FS), "OFFICER", nil, "high")
     end
     return true
@@ -986,15 +966,6 @@ function S:OnMessage(msg, channel, sender)
         self:Notify("member") -- schedule a flush
     elseif kind == "D" then
         self:OnDigest(f[3], f[4], who, channel)
-    elseif kind == "P" then
-        -- live position for the world map (not stored, not audited)
-        if channel == "GUILD" and ns.Location then ns.Location:OnPosition(who, f[3], f[4], f[5]) end
-    elseif kind == "O" then
-        -- an officer running the addon is online (reviews are handed to one)
-        if channel == "GUILD" then self.officerBeacons[who] = GetTime() end
-    elseif kind == "V" or kind == "K" then
-        -- a review handed to an officer, or an officer confirming it arrived
-        if channel == "WHISPER" and ns.Reviews then ns.Reviews:OnMessage(kind, f, who) end
     elseif kind == "B" then
         local scope, b = f[3], tonumber(f[4])
         if b and self.dumped[scope] then self.dumped[scope][b] = GetTime() end
@@ -1181,7 +1152,6 @@ function S:Migrate()
             if m.spec then store["MS:" .. full] = { v = Clean(m.spec), t = 1, a = me } end
             if m.profs and #m.profs > 0 then store["MP:" .. full] = { v = Codec.Profs(m.profs), t = 1, a = me } end
             if m.auto then store["P:" .. full] = { v = Codec.Report(m.auto), t = m.auto.ts or 1, a = full } end
-            if m.rating and m.rating > 0 then officerStore["RT:" .. full] = { v = tostring(m.rating), t = 1, a = me } end
             for id, e in pairs(m.log or {}) do
                 local key = "L:" .. full .. ":" .. id
                 if e.del then
@@ -1195,6 +1165,32 @@ function S:Migrate()
     g.tags, g.nextTagId, g.logUpd = nil, nil, nil
     g.syncVersion = 2
     self.migrated = true
+end
+
+-- Deletes stored records of types this version no longer has (reviews,
+-- ratings and map dot colors from 1.x), so they don't linger in the saved
+-- data or upset digests.
+function S:PurgeUnknown()
+    local removed = 0
+    for _, scope in ipairs({ "guild", "officer" }) do
+        local store = self:Store(scope)
+        if store then
+            local dead = {}
+            for key, rec in pairs(store) do
+                if not S.ParseKey(key) then
+                    dead[#dead + 1] = key
+                elseif key:sub(1, 2) == "A:" then
+                    -- audit entries about removed types
+                    local typ = ns.Split(rec.v or "", US)[2]
+                    if typ and typ ~= "" and not S.TYPES[typ] then dead[#dead + 1] = key end
+                end
+            end
+            for _, key in ipairs(dead) do store[key] = nil end
+            removed = removed + #dead
+        end
+    end
+    if removed > 0 then self.auditCache = nil end
+    return removed
 end
 
 ------------------------------------------------------------------------
@@ -1216,6 +1212,7 @@ function S:Init()
         if not key or S.readyFor == key or not ns.DB:Guild() then return end
         S.readyFor = key
         S:Migrate()
+        S:PurgeUnknown()
         S:SeedDefaults()
         S:PruneAudit()
         S:PruneExpired()

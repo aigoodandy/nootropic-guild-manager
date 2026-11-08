@@ -12,7 +12,7 @@
       is:addon               only members running Nootropic Guild Manager
       is:online              only members online now
       role:tank              tank / healer / damage, as set on their profile
-      rating:4  rating<3     numeric filters (rating:N means N stars or more)
+      level>=50              numeric filter
       level:60  level>=50
       -raiding               a leading minus excludes matches
 ]]
@@ -216,7 +216,6 @@ function R:Decorate(e)
         end
     end
     e.tagList, e.tagSet = tagList, set
-    e.rating = (ns.IsOfficer() and m and m.rating) or 0 -- ratings are officer-only
     e.note = m and m.note
 
     -- Roles they play (set on their profile)
@@ -278,12 +277,11 @@ local FIELDS = {
     rank = "rank",
     zone = "zone", z = "zone",
     note = "note", notes = "note",
-    rating = "rating", r = "rating", skill = "rating",
     level = "level", lvl = "level", l = "level",
     main = "main", m = "main",
     is = "is", type = "is",
 }
-local NUMERIC = { rating = true, level = true }
+local NUMERIC = { level = true }
 local DEFAULT_FIELDS = { "name", "class", "spec", "tags", "profs" }
 
 local function Tokenize(text)
@@ -327,7 +325,7 @@ function R:ParseQuery(text)
                 op = op:gsub(":", "")
                 if rest:sub(-1) == "+" then op = ">=" end
                 if op ~= ">" and op ~= "<" and op ~= ">=" and op ~= "<=" and op ~= "=" then
-                    op = (field == "rating") and ">=" or "="
+                    op = "="
                 end
                 t.op, t.num = op, tonumber(rest:match("%d+"))
             else
@@ -354,9 +352,7 @@ local function MatchToken(e, t)
     local hit
     if t.field and NUMERIC[t.field] then
         if not t.num then return true end -- incomplete filter, ignore
-        if t.field == "rating" and not ns.IsOfficer() then return true end
-        local v = (t.field == "rating") and e.rating or e.level
-        hit = Compare(v, t.op, t.num)
+        hit = Compare(e.level, t.op, t.num)
     elseif t.field then
         hit = t.value == "" or e.search[t.field]:find(t.value, 1, true) ~= nil
     else
@@ -453,9 +449,6 @@ local SORTERS = {
     tags = function(a, b)
         if #a.tagList ~= #b.tagList then return #a.tagList < #b.tagList end
     end,
-    rating = function(a, b)
-        if a.rating ~= b.rating then return a.rating < b.rating end
-    end,
     rank = function(a, b)
         if a.rankIndex ~= b.rankIndex then return a.rankIndex < b.rankIndex end
     end,
@@ -464,7 +457,7 @@ local SORTERS = {
         if c ~= 0 then return c < 0 end
     end,
 }
-R.DEFAULT_DESC = { level = true, rating = true, tags = true }
+R.DEFAULT_DESC = { level = true, tags = true }
 
 function R:Sort(list, key, asc)
     local cmp = SORTERS[key]

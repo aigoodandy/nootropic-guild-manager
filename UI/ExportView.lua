@@ -11,7 +11,7 @@
                   column headings are only on part 1, so pasting the parts one
                   after another makes one table. Only the shown part is built.
 
-    Officer-only fields (rating, officer note) are only exported for officers;
+    Officer-only fields (officer note) are only exported for officers;
     your private notes only when you tick the box.
 
     Saved in settings.export = { members, columns, sep, partSize, notes }
@@ -67,7 +67,6 @@ local FIELDS = {
         return e.online and "Online" or (ns.FormatLastSeen(e.lastOnline) .. " ago") end },
     { key = "profs",   label = "Professions", column = "profs",   get = Profs },
     { key = "tags",    label = "Tags",        column = "tags",    get = Tags },
-    { key = "rating",  label = "Rating",      column = "rating",  officer = true, get = function(e) return e.rating > 0 and tostring(e.rating) or "" end },
     { key = "rank",    label = "Rank",        column = "rank",    get = function(e) return e.rank end },
     { key = "version", label = "Addon Version", column = "version", get = function(e)
         if not e.hasAddon then return "" end

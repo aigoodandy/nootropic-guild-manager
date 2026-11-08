@@ -84,7 +84,6 @@ function M:Run(action)
     elseif action == "polls" then UI:OpenTab(UI.TAB_POLLS, true)
     elseif action == "tags" then UI:OpenTab(ns.IsOfficer() and UI.TAB_TAGS or UI.TAB_ROSTER, true)
     elseif action == "audit" then UI:OpenTab(ns.IsOfficer() and UI.TAB_AUDIT or UI.TAB_ROSTER, true)
-    elseif action == "reviews" then UI:OpenTab(UI:IsTabAvailable(UI.TAB_REVIEWS) and UI.TAB_REVIEWS or UI.TAB_ROSTER, true)
     elseif action == "options" then ns.Options:Open()
     elseif action == "toggle" then UI:Toggle()
     end

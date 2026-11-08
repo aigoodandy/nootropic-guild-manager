@@ -12,7 +12,7 @@
           recruit = { ... },                                           -- see Services/Recruit.lua
       }
 
-    Shared data (tags, links, specs, professions, ratings, officer log) is
+    Shared data (tags, links, specs, professions, officer log) is
     written through ns.Sync, which checks permissions, versions, broadcasts
     and audits each change. Setters return true, or nil plus an error.
 ]]
@@ -24,8 +24,6 @@ local DEFAULTS = {
     version = 1,
     settings = {
         minimap = { angle = 200, hide = false, left = "roster", right = "options", shift = "recruit" },
-        shareLocation = true,        -- send my position to guildmates
-        showOnMap = true,            -- draw guildmates on the world map
         iconStyle = "mug",           -- "mug" | "stein" | "emblem"
         communitiesButton = true,    -- shortcut on the Guild & Communities window
         titleUseGuild = false,       -- window title: "<Guild> Guild Manager"
@@ -35,7 +33,7 @@ local DEFAULTS = {
         onlineOnly = false,
         sortKey = "rank",
         sortAsc = true,
-        hiddenColumns = { rating = true, version = true }, -- false = shown on purpose
+        hiddenColumns = { version = true }, -- false = shown on purpose
         columnWidths = {},
         frameSize = { w = 1000, h = 580 },
     },
@@ -58,11 +56,8 @@ function DB:Init()
     local sv = NootropicGuildManagerDB
     local fresh = sv.settings == nil
     ApplyDefaults(DEFAULTS, sv)
-    -- 1.5: the rating column starts hidden (it's officer-only now)
-    if not fresh and not sv.settings.ratingHiddenOnce then
-        sv.settings.hiddenColumns.rating = true
-    end
-    sv.settings.ratingHiddenOnce = true
+    sv.settings.ratingHiddenOnce = nil -- 2.0: ratings removed
+    sv.settings.hiddenColumns.rating = nil
     self.sv = sv
 end
 
@@ -247,21 +242,11 @@ end
 ------------------------------------------------------------------------
 -- Guild-wide settings (shared; officers change them)
 ------------------------------------------------------------------------
--- Guild reviews are on unless an officer turned them off.
-function DB:ReviewsEnabled()
-    return ns.Sync:Value("GS:reviews") ~= "0"
-end
-
-function DB:SetReviewsEnabled(on)
-    if not ns.IsOfficer() then return nil, "Only officers can turn reviews on or off." end
-    return ns.Sync:Set("GS:reviews", on and "1" or "0")
-end
-
 -- Tabs: which ranks see each one, and its title. GS:tab_<key> =
 -- "<ranks>;<title>": ranks "*" (everyone) or rank numbers "1,2,4" (0 is
 -- the Guild Master, who always sees every tab); an empty title keeps the
 -- usual name. The Roster tab can be renamed but never hidden.
-DB.TAB_KEYS = { "roster", "recruit", "polls", "tags", "audit", "reviews" }
+DB.TAB_KEYS = { "roster", "recruit", "polls", "tags", "audit" }
 DB.TAB_TITLE_MAX = 16
 
 -- allowed ranks ({ [rankIndex] = true }, or nil for everyone), title (or
@@ -313,12 +298,6 @@ function DB:SetTabIcon(key, icon)
     return SaveTab(key, set, title, icon)
 end
 
--- What guildmates (not officers) call the Reviews tab.
-function DB:MemberReviewsTabName()
-    local _, title = self:TabSetting("reviews")
-    return title or "Review Guild"
-end
-
 -- Your rank number in the guild (0 = Guild Master), or nil.
 function DB:MyRankIndex()
     if not IsInGuild() then return nil end
@@ -359,7 +338,7 @@ function DB:EnsureMember(full)
     if not g or not full then return nil end
     local m = g.members[full]
     if not m then
-        m = { tags = {}, rating = 0 }
+        m = { tags = {} }
         g.members[full] = m
     end
     m.tags = m.tags or {}
@@ -370,7 +349,6 @@ end
 function DB:CanEditTags(full) return ns.Sync:CanWrite("MT:" .. full) end
 function DB:CanEditProfile(full) return ns.Sync:CanWrite("MS:" .. full) end
 function DB:CanEditLinks() return ns.IsOfficer() end
-function DB:CanRate() return ns.IsOfficer() end
 
 function DB:SetTag(full, id, state)
     local m = self:EnsureMember(full)
@@ -380,11 +358,6 @@ function DB:SetTag(full, id, state)
     if state == nil then state = not set[id] end
     set[id] = state and true or nil
     return ns.Sync:Set("MT:" .. full, ns.Sync.Codec.Set(set))
-end
-
-function DB:SetRating(full, value)
-    local v = math.max(0, math.min(5, math.floor(tonumber(value) or 0)))
-    return ns.Sync:Set("RT:" .. full, tostring(v))
 end
 
 -- Private notes never leave this computer.

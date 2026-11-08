@@ -7,7 +7,7 @@
                       kudos, usual online hours, then tabs:
                         Profile   professions
                         Notes     your private notes about them
-                        Officer   rating, officer log, change history (officers)
+                        Officer   officer log, change history (officers)
       Edit            your own profile: About me, status, usual online hours,
                       map dot; and (yours, or anyone's for officers) spec, tags,
                       professions, and main/alt links (officers)
@@ -24,7 +24,6 @@ local WIDTH = 352
 local INNER = WIDTH - 52 -- scroll child width (room for the scroll bar)
 local MAX_PROFS = 6
 local SECTION_GAP = 14
-local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
 DP.tab = "profile"
 DP.schedOpen = false     -- the week grid starts folded (summary line only)
@@ -208,7 +207,6 @@ function DP:Build(parent)
     -- tab contents (and edit mode)
     self:BuildProfSection(content)
     self:BuildNoteSection(content)
-    self:BuildRatingSection(content)
     self:BuildLogSection(content)
     self:BuildHistorySection(content)
     -- edit mode
@@ -217,7 +215,6 @@ function DP:Build(parent)
     self.editPronouns = self:BuildEditPronouns(content)
     self.clearPronouns = self:BuildClearPronouns(content)
     self.editSchedule = self:BuildEditSchedule(content)
-    self.editDot = self:BuildEditDot(content)
     self:BuildAltSection(content)
     self:BuildSpecSection(content)
     self:BuildRoleSection(content)
@@ -225,8 +222,8 @@ function DP:Build(parent)
 
     self.allSections = {
         self.linkLine, self.statusBox, self.aboutBox, self.tagsRead, self.kudos, self.schedule, self.tabs,
-        self.prof, self.note, self.rating, self.log, self.history,
-        self.editAbout, self.editStatus, self.editPronouns, self.clearPronouns, self.editSchedule, self.editDot,
+        self.prof, self.note, self.log, self.history,
+        self.editAbout, self.editStatus, self.editPronouns, self.clearPronouns, self.editSchedule,
         self.alt, self.spec, self.role, self.tagsEdit,
     }
 
@@ -241,7 +238,6 @@ function DP:Build(parent)
     end
     ns:On("ROSTER_UPDATED", refresh)
     ns:On("KUDOS_CHANGED", refresh)
-    ns:On("LOCATIONS_CHANGED", refresh)
     ns:On("GUILD_SETTINGS_CHANGED", refresh) -- pronouns turned on or off
     ns:On("AUDIT_CHANGED", function()
         if f:IsShown() and DP.tab == "officer" then ns.Debounce("detailhistory", 0.2, function() DP:Refresh() end) end
@@ -283,44 +279,7 @@ function DP:BuildHeader(parent)
     h.Status:SetJustifyH("LEFT")
     h.Status:SetWordWrap(false)
 
-    -- their map dot (click: map at their position)
-    local dot = CreateFrame("Button", nil, h)
-    dot:SetSize(14, 14)
-    dot:SetPoint("LEFT", h.Status, "RIGHT", 6, 0)
-    dot.Border = dot:CreateTexture(nil, "ARTWORK", nil, 1)
-    dot.Border:SetTexture(CIRCLE)
-    dot.Border:SetAllPoints()
-    dot.Dot = dot:CreateTexture(nil, "ARTWORK", nil, 2)
-    dot.Dot:SetTexture(CIRCLE)
-    dot.Dot:SetSize(10, 10)
-    dot.Dot:SetPoint("CENTER")
-    dot:SetScript("OnClick", function()
-        local e = DP.entry
-        if e then ns.Location:OpenMap(ns.Location:MapFor(e), e.full) end
-    end)
-    dot:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Their map dot")
-        GameTooltip:AddLine("Click to open the map where they are.", 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    dot:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    h.Dot = dot
-
     self.header = h
-end
-
--- Fill and outline colors of someone's map dot, as you'd see it on the map.
-local function DotColors(e)
-    local L = ns.Location
-    local fr, fg, fb = ns.ClassColor(e.classFile)
-    local br, bg, bb = 0, 0, 0
-    if L:CustomDots() then
-        local fill, outline = L:ChosenColors(e.full)
-        if fill then fr, fg, fb = L.RGB(fill) end
-        if outline then br, bg, bb = L.RGB(outline) end
-    end
-    return fr, fg, fb, br, bg, bb
 end
 
 function DP:RefreshHeader(e)
@@ -338,10 +297,6 @@ function DP:RefreshHeader(e)
     else
         h.Status:SetText("|cff9d9d9dOffline - last seen " .. ns.FormatLastSeen(e.lastOnline) .. " ago|r")
     end
-    local fr, fg, fb, br, bg, bb = DotColors(e)
-    h.Dot.Dot:SetVertexColor(fr, fg, fb)
-    h.Dot.Border:SetVertexColor(br, bg, bb, 0.9)
-    h.Dot:SetShown(e.online and ns.Location:MapFor(e) ~= nil)
 end
 
 ------------------------------------------------------------------------
@@ -976,19 +931,8 @@ function DP:FlushNote()
 end
 
 ------------------------------------------------------------------------
--- Officer tab: rating, officer log, change history
+-- Officer tab: officer log, change history
 ------------------------------------------------------------------------
-function DP:BuildRatingSection(parent)
-    local s = NewSection(parent, "Rating")
-    s:SetHeight(48)
-    s.Stars = W.Stars(s, 20, true, function(v)
-        if DP.entry then ns.DB:SetRating(DP.entry.full, v) end
-    end)
-    s.Stars:SetPoint("TOPLEFT", 0, -22)
-    W.Tooltip(s.Stars, "How well do they play their class?", "Click a star to rate. Right-click to clear.")
-    self.rating = s
-end
-
 function DP:BuildLogSection(parent)
     local s = NewSection(parent, "Officer Log")
 
@@ -1431,64 +1375,6 @@ function DP:RefreshEditSchedule()
     s:SetHeight(-y)
 end
 
-function DP:BuildEditDot(parent)
-    local s = NewSection(parent, "Map Dot")
-    local L = ns.Location
-    local function myColors()
-        local me = ns.PlayerFullName()
-        local _, cls = UnitClass and UnitClass("player")
-        local fr, fg, fb = ns.ClassColor(cls)
-        local fill, outline = L:ChosenColors(me)
-        if fill then fr, fg, fb = L.RGB(fill) end
-        local br, bg, bb = 0, 0, 0
-        if outline then br, bg, bb = L.RGB(outline) end
-        return fr, fg, fb, br, bg, bb
-    end
-    local fillLabel = s:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    fillLabel:SetPoint("TOPLEFT", 0, -26)
-    fillLabel:SetText("Fill")
-    s.Fill = W.Swatch(s, 16, function() local r, g, b = myColors() return r, g, b end,
-        function(r, g, b) L:SetMyColor("fill", r, g, b) DP:RefreshDotEditor() end)
-    s.Fill:SetPoint("LEFT", fillLabel, "RIGHT", 6, 0)
-    local outLabel = s:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    outLabel:SetPoint("LEFT", s.Fill, "RIGHT", 12, 0)
-    outLabel:SetText("Outline")
-    s.Outline = W.Swatch(s, 16, function() return select(4, myColors()) end,
-        function(r, g, b) L:SetMyColor("outline", r, g, b) DP:RefreshDotEditor() end)
-    s.Outline:SetPoint("LEFT", outLabel, "RIGHT", 6, 0)
-    local pv = CreateFrame("Frame", nil, s)
-    pv:SetSize(18, 18)
-    pv:SetPoint("LEFT", s.Outline, "RIGHT", 14, 0)
-    pv.Border = pv:CreateTexture(nil, "ARTWORK", nil, 1)
-    pv.Border:SetTexture(CIRCLE)
-    pv.Border:SetAllPoints()
-    pv.Dot = pv:CreateTexture(nil, "ARTWORK", nil, 2)
-    pv.Dot:SetTexture(CIRCLE)
-    pv.Dot:SetSize(12, 12)
-    pv.Dot:SetPoint("CENTER")
-    s.Preview = pv
-    s.Reset = SmallButton(s, "Use Class Color", 112)
-    s.Reset:SetPoint("LEFT", pv, "RIGHT", 10, 0)
-    s.Reset:SetScript("OnClick", function() L:ResetMyColors() DP:RefreshDotEditor() end)
-    s.Hint = Para(s, "GameFontDisableSmall", INNER)
-    s.Hint:SetPoint("TOPLEFT", 0, -48)
-    s:SetHeight(48 + 28)
-    s.myColors = myColors
-    return s
-end
-
-function DP:RefreshDotEditor()
-    local s = self.editDot
-    local fr, fg, fb, br, bg, bb = s.myColors()
-    s.Fill:Update()
-    s.Outline:Update()
-    s.Preview.Dot:SetVertexColor(fr, fg, fb)
-    s.Preview.Border:SetVertexColor(br, bg, bb, 0.9)
-    s.Hint:SetText(ns.Location:CustomDots()
-        and "Guildmates who turned on custom dot colors see these colors."
-        or "Guildmates who turned on custom dot colors see these colors. You see class colors: turn custom dot colors on in Options > Map.")
-end
-
 ------------------------------------------------------------------------
 -- Edit mode: main & alts (officers) and specialization
 ------------------------------------------------------------------------
@@ -1746,7 +1632,7 @@ function DP:Hide()
     if self.frame then self.frame:Hide() end
 end
 
--- Opens your own profile in Edit mode (e.g. from Options > Map).
+-- Opens your own profile in Edit mode.
 function DP:EditSelf()
     local me = ns.PlayerFullName()
     if not ns.Roster.byName[me] then
@@ -1783,7 +1669,7 @@ function DP:VisibleSections(e)
         local pronouns = ns.Profile:PronounsEnabled()
         if mine then
             add(self.editAbout); add(self.editStatus); add(self.editPronouns, pronouns)
-            add(self.editSchedule); add(self.editDot)
+            add(self.editSchedule)
         else
             -- officers can clear what someone entered
             add(self.clearPronouns, pronouns and ns.IsOfficer() and ns.Profile:OwnPronouns(e.full) ~= "")
@@ -1805,7 +1691,7 @@ function DP:VisibleSections(e)
     if self.tab == "notes" then
         add(self.note)
     elseif self.tab == "officer" then
-        add(self.rating); add(self.log); add(self.history)
+        add(self.log); add(self.history)
     else
         add(self.prof)
     end
@@ -1861,7 +1747,6 @@ function DP:Refresh(forceText)
             ea.Hint:SetText(e.isAlt and "Only this character. Leave it empty to show your main's About me."
                 or "Your alts show this too, unless they have their own.")
             self:RefreshEditSchedule()
-            self:RefreshDotEditor()
         else
             self.clearPronouns.Text:SetText(ns.Profile:OwnPronouns(e.full))
         end
@@ -1876,7 +1761,6 @@ function DP:Refresh(forceText)
             if forceText or not box:HasFocus() then box:SetText(e.note or "") end
             self:SizeNote()
         elseif self.tab == "officer" then
-            self.rating.Stars:SetValue(e.rating)
             self:RefreshLog(e)
             self:RefreshHistory(e)
         end

@@ -10,7 +10,6 @@ ns.Audit = AU
 
 AU.CATEGORIES = {
     { key = "MT", label = "Tags" },
-    { key = "RT", label = "Rating" },
     { key = "M",  label = "Main / Alt" },
     { key = "MS", label = "Spec" },
     { key = "RL", label = "Role" },
@@ -65,9 +64,6 @@ function AU:Describe(e)
     if t == "MT" then
         local diff = SetDiff(old, new, TagName)
         return "Tags: " .. (diff ~= "" and diff or GRAY .. "unchanged|r")
-    elseif t == "RT" then
-        local o, n = tonumber(old) or 0, tonumber(new) or 0
-        return ("Rating changed from %s to %s"):format(D:StarText(o), D:StarText(n))
     elseif t == "M" then
         if new ~= "" and old == "" then return "Marked as an alt of " .. ShortChar(new) end
         if new == "" then return "Unlinked from main " .. ShortChar(old) .. " (now a main)" end
@@ -124,9 +120,7 @@ function AU:Describe(e)
         local icon = D:ParseIcon(new)
         return "Tag icon changed: " .. (icon and ("|T" .. icon .. ":14:14:0:0:64:64:5:59:5:59|t ") or "") .. TagName(e.ref or "?")
     elseif t == "GS" then
-        if e.ref == "reviews" then
-            return new == "0" and (RED .. "Guild reviews turned off|r for guildmates") or (GREEN .. "Guild reviews turned on|r for guildmates")
-        elseif e.ref == "pronouns" then
+        if e.ref == "pronouns" then
             return new == "1" and (GREEN .. "Pronouns on profiles turned on|r") or (RED .. "Pronouns on profiles turned off|r")
         end
         return "Guild setting changed: " .. (e.ref or "?")

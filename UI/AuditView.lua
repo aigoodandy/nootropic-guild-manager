@@ -250,7 +250,7 @@ function AV:Refresh()
     if not ns.IsOfficer() then
         self.empty:SetText("Only officers can view the audit.")
     elseif #list == 0 then
-        self.empty:SetText("No changes recorded yet. Changes to tags, ratings, mains and alts, specs, professions and the officer log appear here.")
+        self.empty:SetText("No changes recorded yet. Changes to tags, mains and alts, specs, professions and the officer log appear here.")
     else
         self.empty:SetText("")
     end

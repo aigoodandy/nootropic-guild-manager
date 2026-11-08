@@ -670,7 +670,7 @@ function PF:GiveKudos(full, typeId)
     if not k or k.retired then return nil, "That kudos isn't available." end
     local wait = self:KudosWait(full, typeId)
     if wait > 0 then
-        return nil, ("You can give %s \"%s\" again in %s."):format(ns.ShortName(full), k.name, ns.Reviews.FormatWait(wait))
+        return nil, ("You can give %s \"%s\" again in %s."):format(ns.ShortName(full), k.name, ns.FormatWait(wait))
     end
     local now = Now()
     GivenTable()[full] = GivenTable()[full] or {}

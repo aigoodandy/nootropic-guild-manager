@@ -84,7 +84,6 @@ D.MINIMAP_ACTIONS = {
     { key = "polls",   tab = true },
     { key = "tags",    tab = true, suffix = " (officers)" },
     { key = "audit",   tab = true, suffix = " (officers)" },
-    { key = "reviews", tab = true },
     { key = "options", label = "Open Options" },
     { key = "toggle",  label = "Show / hide window" },
     { key = "none",    label = "Do nothing" },
@@ -284,22 +283,3 @@ D.MAX_KEYWORDS = 5
 D.DEFAULT_DNW_WORDS = { "dnw", "leave me alone", "do not whisper", "stop whispering", "not interested" }
 D.WHISPER_MAX = 255
 
-------------------------------------------------------------------------
--- Rating (how well they play their class)
-------------------------------------------------------------------------
--- Star icons for a rating: |T|t textures render in any font.
-D.STAR = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1"
-function D:StarText(n, size)
-    n = tonumber(n) or 0
-    if n <= 0 then return "|cff9d9d9dnone|r" end
-    return string.rep(("|T%s:%d|t"):format(self.STAR, size or 12), n)
-end
-
-D.RATING_LABELS = { -- no longer shown; kept for older saved references
-    [0] = "Unrated",
-    [1] = "Needs work",
-    [2] = "Learning",
-    [3] = "Capable",
-    [4] = "Strong",
-    [5] = "Exceptional",
-}
