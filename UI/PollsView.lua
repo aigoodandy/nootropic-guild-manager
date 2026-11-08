@@ -530,7 +530,7 @@ local NEW_TYPES = {
     { label = "Stat", icon = "Interface\\Icons\\INV_Scroll_03",
       text = "Count guildmates your way: choose what to count by and add filters.",
       open = function() PV:ShowStatEditor(nil) end },
-    { label = "Poll", icon = "Interface\\Icons\\INV_Misc_Note_01", officer = true,
+    { label = "Poll", icon = "Interface\\Icons\\INV_Misc_Note_01", perm = "polls",
       text = "Ask the guild a question with 2 to 6 answers.",
       open = function() PV:ShowCreate() end },
 }
@@ -539,10 +539,10 @@ function PV:NewMenu(owner)
     local officer = ns.IsOfficer()
     local items = { { text = "New", isTitle = true } }
     for _, t in ipairs(NEW_TYPES) do
-        local blocked = t.officer and not officer
+        local blocked = (t.officer and not officer) or (t.perm and not ns.DB:HasPerm(t.perm))
         items[#items + 1] = {
             text = ("|T%s:16:16:0:0:64:64:5:59:5:59|t  %s%s"):format(t.icon, t.label,
-                blocked and "  |cff9d9d9d(officers only)|r" or ""),
+                blocked and "  |cff9d9d9d(your rank can't)|r" or ""),
             disabled = blocked,
             tooltip = { title = t.label, text = t.text },
             func = function() if not blocked then t.open() end end,
@@ -1528,11 +1528,11 @@ function PV:RefreshDetail(p)
         self.dFooter:SetText("Voting has closed. Only votes cast before it closed are counted.")
     end
     FinishLayout(self, layout)
-    self:RefreshLayoutButton(ns.IsOfficer(), layout)
+    local canPoll = ns.Polls:CanCreate()
+    self:RefreshLayoutButton(canPoll, layout)
 
-    local officer = ns.IsOfficer()
-    self.closeBtn:SetShown(officer and p.open)
-    self.deleteBtn:SetShown(officer)
+    self.closeBtn:SetShown(canPoll and p.open)
+    self.deleteBtn:SetShown(canPoll)
     self.deleteBtn:ClearAllPoints()
     if self.closeBtn:IsShown() then
         self.deleteBtn:SetPoint("LEFT", self.closeBtn, "RIGHT", 8, 0)
@@ -1673,7 +1673,7 @@ function PV:Refresh()
         self.sub:SetText("")
     end
     self.newBtn:SetShown(inGuild)
-    if self.mode == "create" and not officer then self.mode = nil end
+    if self.mode == "create" and not ns.Polls:CanCreate() then self.mode = nil end
     local editing = self.mode == "create" or self.mode == "stat" or self.mode == "goalForm"
 
     -- keep the selection; else an open poll you haven't voted on, any open

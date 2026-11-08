@@ -140,7 +140,7 @@ function DB:FindTagByName(name)
 end
 
 function DB:CanManageTags()
-    return ns.IsOfficer()
+    return self:HasPerm("tags")
 end
 
 local function ValidateTagName(name)
@@ -158,7 +158,7 @@ end
 
 function DB:CreateTag(name, color, icon)
     if not self:Guild() then return nil, "You are not in a guild." end
-    if not self:CanManageTags() then return nil, "Only officers can manage tags." end
+    if not self:CanManageTags() then return nil, "Your rank can't manage tags." end
     local clean, err = ValidateTagName(name)
     if not clean then return nil, err end
     if self:FindTagByName(clean) then
@@ -298,6 +298,70 @@ function DB:SetTabIcon(key, icon)
     return SaveTab(key, set, title, icon)
 end
 
+------------------------------------------------------------------------
+-- Permissions: the Guild Master picks which ranks may do each of these
+-- (Options > Officers > Permissions). GS:perm_<key> = "" (the default:
+-- officers, i.e. ranks that can read officer notes) or rank numbers
+-- "1,3,4". The Guild Master (rank 0) always may, and only they change
+-- these. Officer-only data (officer log, audit, officer stats) can't be
+-- handed out: the game only delivers it to officer ranks.
+------------------------------------------------------------------------
+DB.PERMS = {
+    { key = "tags",      label = "Manage the tag list",               hint = "Create, rename, recolor, reorder and delete tags (Tags tab)." },
+    { key = "tagothers", label = "Tag other guildmates",              hint = "Everyone can always tag themselves." },
+    { key = "links",     label = "Link mains and alts",               hint = "Mark alts, change mains, unlink." },
+    { key = "profiles",  label = "Edit other guildmates' profiles",   hint = "Spec, roles, professions and contact info. Everyone can always edit their own." },
+    { key = "polls",     label = "Create and close polls",            hint = "Insights tab." },
+}
+DB.PERM_BY_TYPE = { T = "tags", TI = "tags", MT = "tagothers", M = "links",
+    MS = "profiles", RL = "profiles", MP = "profiles", CN = "profiles", PL = "polls", PI = "polls" }
+
+-- { [rankIndex] = true }, or nil for the default (officers).
+function DB:PermRanks(key)
+    local v = ns.Sync:Value("GS:perm_" .. key)
+    if not v or v == "" then return nil end
+    local set = {}
+    for n in v:gmatch("%d+") do set[tonumber(n)] = true end
+    return set
+end
+
+function DB:IsGuildMaster()
+    return IsInGuild() and self:MyRankIndex() == 0
+end
+
+-- May you do `key`? (the Guild Master always may)
+function DB:HasPerm(key)
+    if not IsInGuild() then return false end
+    local rank = self:MyRankIndex()
+    if rank == 0 then return true end
+    local set = self:PermRanks(key)
+    if not set then return ns.IsOfficer() end
+    return rank ~= nil and set[rank] == true
+end
+
+-- set = { [rankIndex] = true } or nil for the default (officers).
+function DB:SetPermRanks(key, set)
+    if not self:IsGuildMaster() then return nil, "Only the Guild Master can change permissions." end
+    local list = {}
+    for n in pairs(set or {}) do if n ~= 0 then list[#list + 1] = n end end
+    table.sort(list)
+    local v = set and table.concat(list, ",") or ""
+    if set and v == "" then v = "-" end -- nobody but the Guild Master
+    return ns.Sync:Set("GS:perm_" .. key, v)
+end
+
+-- "Officers (default)", "Guild Master only" or "Veteran, Officer".
+function DB:PermText(key)
+    local set = self:PermRanks(key)
+    if not set then return "Officers (default)" end
+    local names = {}
+    for _, r in ipairs(self:GuildRanks()) do
+        if r.index ~= 0 and set[r.index] then names[#names + 1] = r.name end
+    end
+    if #names == 0 then return "Guild Master only" end
+    return table.concat(names, ", ")
+end
+
 -- Your rank number in the guild (0 = Guild Master), or nil.
 function DB:MyRankIndex()
     if not IsInGuild() then return nil end
@@ -348,7 +412,7 @@ end
 -- Who may edit what on a character's profile.
 function DB:CanEditTags(full) return ns.Sync:CanWrite("MT:" .. full) end
 function DB:CanEditProfile(full) return ns.Sync:CanWrite("MS:" .. full) end
-function DB:CanEditLinks() return ns.IsOfficer() end
+function DB:CanEditLinks() return self:HasPerm("links") end
 
 function DB:SetTag(full, id, state)
     local m = self:EnsureMember(full)
@@ -471,7 +535,7 @@ function DB:SetMain(alt, main)
     if not alt or not main then return nil, "Pick a character." end
     if alt == main then return nil, "A character can't be its own alt." end
     if not self:Guild() then return nil, "You are not in a guild." end
-    if not self:CanEditLinks() then return nil, "Only officers can link mains and alts." end
+    if not self:CanEditLinks() then return nil, "Your rank can't link mains and alts." end
     local root = self:RootOf(main)
     if root == alt then return self:MakeMain(main) end
     local family = self:GetAltsOf(alt)
@@ -482,14 +546,14 @@ function DB:SetMain(alt, main)
 end
 
 function DB:ClearMain(alt)
-    if not self:CanEditLinks() then return nil, "Only officers can link mains and alts." end
+    if not self:CanEditLinks() then return nil, "Your rank can't link mains and alts." end
     if self:GetMainOf(alt) then return Link(alt, nil) end
     return true
 end
 
 -- Makes `full` the main of its family (its old main becomes an alt).
 function DB:MakeMain(full)
-    if not self:CanEditLinks() then return nil, "Only officers can link mains and alts." end
+    if not self:CanEditLinks() then return nil, "Your rank can't link mains and alts." end
     local root = self:RootOf(full)
     if not root or root == full then return true end
     local family = self:GetAltsOf(root)

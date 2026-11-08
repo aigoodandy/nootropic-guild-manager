@@ -540,7 +540,13 @@ RC.sentTimes = {}           -- GetTime() of recent whispers from the queue
 
 -- Players anyone in the guild whispered in the last RECONTACT_DAYS, or a
 -- guildmate invited, can't be ticked: one whisper from the guild is enough.
+-- Ranks the officers allowed the Recruitment tab may recruit.
+function RC:MayRecruit()
+    return ns.DB:TabAllowedForMe("recruit")
+end
+
 function RC:CanSelect(p)
+    if not self:MayRecruit() then return false end
     if not p or p.joined or p.guild or self:IsDNW(p.full) then return false end
     if self:LockedUntil(p) then return false end
     local c = self:Contact(p)
@@ -617,6 +623,7 @@ end
 -- guild /who shows them in, if any.
 function RC:WhisperBlocked(full, p, guild)
     if not self:Settings() then return "Join a guild to recruit." end
+    if not self:MayRecruit() then return ("Your rank can't use the %s tab."):format(ns.TabName("recruit")) end
     if ns.Roster.byName[full] then return "Already in your guild." end
     if (guild and guild ~= "") or (p and p.guild) then return "Already in a guild. Only players without one are recruited." end
     if self:IsDNW(full) then return "On the Do Not Whisper list." end

@@ -234,13 +234,18 @@ end
 -- Permissions
 ------------------------------------------------------------------------
 function S:CanWrite(key)
-    local typ, member = S.ParseKey(key)
+    local typ, member, rest = S.ParseKey(key)
     if not typ then return false end
     local def = S.TYPES[typ]
     if def.selfOnly then return member == Me() end
     if def.anyone then return IsInGuild() end
-    if def.officer and ns.IsOfficer() then return true end
     if def.self and member == Me() then return true end
+    -- permissions only the Guild Master changes
+    if typ == "GS" and rest:sub(1, 5) == "perm_" then return ns.DB:IsGuildMaster() end
+    -- what the Guild Master hands out per rank (Options > Officers > Permissions)
+    local perm = def.scope == "guild" and ns.DB.PERM_BY_TYPE[typ]
+    if perm then return ns.DB:HasPerm(perm) end
+    if def.officer and ns.IsOfficer() then return true end
     return false
 end
 

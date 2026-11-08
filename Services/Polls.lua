@@ -131,7 +131,7 @@ end
 ------------------------------------------------------------------------
 -- Officers: create, close, delete
 ------------------------------------------------------------------------
-function P:CanCreate() return ns.IsOfficer() end
+function P:CanCreate() return ns.DB:HasPerm("polls") end
 
 local function CleanText(s, max)
     return ns.Trim(ns.Sync.Clean(s or ""):gsub(";", ",")):sub(1, max)
@@ -148,7 +148,7 @@ end
 -- skipped, and their looks with them). desc: a short description (optional).
 function P:Create(question, options, closeIn, keepDays, looks, layout, desc)
     if not ns.DB:Guild() then return nil, "You are not in a guild." end
-    if not self:CanCreate() then return nil, "Only officers can create polls." end
+    if not self:CanCreate() then return nil, "Your rank can't create polls." end
     question = CleanText(question, self.QUESTION_MAX)
     if question == "" then return nil, "Write a question." end
     local answers, answerLooks, seen = {}, {}, {}
@@ -187,7 +187,7 @@ function P:Create(question, options, closeIn, keepDays, looks, layout, desc)
 end
 
 local function Rewrite(id, change)
-    if not ns.IsOfficer() then return nil, "Only officers can change polls." end
+    if not P:CanCreate() then return nil, "Your rank can't change polls." end
     local rec = ns.Sync:Get("PL:" .. id)
     local p = rec and Codec().ParsePoll(rec.v)
     if not p then return nil, "Poll not found." end
@@ -197,7 +197,7 @@ end
 
 -- Officers: how a poll's results are drawn (barspie, bars, pie, columns, number).
 function P:SetLayout(id, layout)
-    if not ns.IsOfficer() then return nil, "Only officers can change polls." end
+    if not P:CanCreate() then return nil, "Your rank can't change polls." end
     local p = self:Get(id)
     if not p then return nil, "Poll not found." end
     return ns.Sync:Set("PI:" .. id, Codec().PollLooks(p.looks or {}, layout, p.desc))

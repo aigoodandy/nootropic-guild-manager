@@ -366,7 +366,7 @@ end
 -- Tabs: a title box and a "who sees it" menu of guild ranks for each tab.
 local TAB_NOTES = {
     roster = "Always shown to everyone.",
-    tags = "Only ever shown to officers.",
+    tags = "Officers, and ranks allowed to manage tags.",
     audit = "Only ever shown to officers.",
 }
 
@@ -456,7 +456,7 @@ function O:BuildTabControls(L)
         W.Tooltip(icon, "Tab icon", "Click to choose another icon. Right-click for the usual one.")
         local name = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         name:SetPoint("TOPLEFT", 42, y - 4)
-        name:SetText(ns.UI:DefaultTabTitle(i) == "Review Guild" and "Reviews" or ns.UI:DefaultTabTitle(i))
+        name:SetText(ns.UI:DefaultTabTitle(i))
         local box = CreateFrame("EditBox", nil, L.panel, "InputBoxTemplate")
         box:SetSize(130, 20)
         box:SetPoint("TOPLEFT", 130, y - 1)
@@ -507,6 +507,76 @@ function O:RefreshTabControls(officer)
         row.icon:SetAlpha(usable and 1 or 0.45)
     end
 end
+------------------------------------------------------------------------
+-- Permissions (the Guild Master): which ranks may do what
+------------------------------------------------------------------------
+function O:PermMenu(owner, key)
+    local DB = ns.DB
+    local items = { { text = "Who may do this", isTitle = true } }
+    items[#items + 1] = { text = "Officers (default)", radio = true,
+        tooltip = { title = "Officers", text = "Ranks that can read officer notes." },
+        checked = function() return DB:PermRanks(key) == nil end,
+        func = function()
+            local ok, err = DB:SetPermRanks(key, nil)
+            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+            O:Refresh()
+        end }
+    items[#items + 1] = { divider = true }
+    for _, r in ipairs(DB:GuildRanks()) do
+        local gm = r.index == 0
+        items[#items + 1] = {
+            text = r.name .. (gm and "  |cff9d9d9d(always)|r" or ""),
+            checked = function()
+                if gm then return true end
+                local set = DB:PermRanks(key)
+                return set ~= nil and set[r.index] == true
+            end,
+            func = function()
+                if gm then return end
+                local set = DB:PermRanks(key) or {}
+                set[r.index] = not set[r.index] or nil
+                local ok, err = DB:SetPermRanks(key, set)
+                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+                O:Refresh()
+            end,
+        }
+    end
+    W.ShowMenu(owner, items)
+end
+
+function O:BuildPermControls(L)
+    L:Header("Permissions  |cff9d9d9d(Guild Master, whole guild)|r")
+    L:Text("Choose which ranks may do each of these. By default it's officers (ranks that can read officer notes). Pick ranks to give it to them instead; the Guild Master always can. Officer Log, Audit and officer-only stats always stay with officers: the game only sends that data to officer ranks.")
+    self.permRows = {}
+    for _, perm in ipairs(ns.DB.PERMS) do
+        local y = L:Row(28)
+        local label = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        label:SetPoint("TOPLEFT", 20, y - 4)
+        label:SetWidth(240)
+        label:SetJustifyH("LEFT")
+        label:SetText(perm.label)
+        local btn = W.Button(L.panel, "", 200, 22)
+        btn:SetPoint("TOPLEFT", 270, y)
+        btn:SetScript("OnClick", function(self) O:PermMenu(self, perm.key) end)
+        W.Tooltip(btn, perm.label, perm.hint)
+        self.permRows[#self.permRows + 1] = { key = perm.key, btn = btn }
+    end
+    self.permNote = L:Text("")
+    L:Space(10)
+end
+
+function O:RefreshPermControls()
+    local gm = ns.DB:IsGuildMaster()
+    for _, row in ipairs(self.permRows or {}) do
+        row.btn:SetText(ns.DB:PermText(row.key))
+        row.btn:SetEnabled(gm)
+        row.btn:SetAlpha(gm and 1 or 0.6)
+    end
+    if self.permNote then
+        self.permNote:SetText(gm and "" or "|cffff8080Only the Guild Master can change permissions.|r")
+    end
+end
+
 function O:BuildOfficers()
     local outer, L = NewPage("officers", "Officers", "For ranks that can read officer notes.")
     self.officerNote = L:Text("|cffff8080Only officers can change these.|r")
@@ -522,6 +592,7 @@ function O:BuildOfficers()
     L:Space(4)
 
     self:BuildTabControls(L)
+    self:BuildPermControls(L)
 
     L:Header("Audit History  |cff9d9d9d(your copy)|r")
     L:Text("How long to keep the record of who changed what. Older entries are deleted.")
@@ -609,6 +680,7 @@ function O:Refresh()
     self.pronounsCheck:SetChecked(ns.Profile:PronounsEnabled())
     SetUsable(self.pronounsCheck, officer and ns.DB:Guild() ~= nil)
     self:RefreshTabControls(officer)
+    self:RefreshPermControls()
     for _, rb in ipairs(self.auditRadios) do
         rb:SetChecked((s.auditDays or 30) == rb.days)
         SetUsable(rb, officer)

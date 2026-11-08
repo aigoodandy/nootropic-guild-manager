@@ -369,6 +369,7 @@ end
 function UI:IsTabAvailable(id)
     -- officers choose which ranks see each tab (Options > Officers)
     if id ~= UI.TAB_ROSTER and not ns.DB:TabAllowedForMe(ns.DB.TAB_KEYS[id]) then return false end
+    if id == UI.TAB_TAGS and ns.DB:HasPerm("tags") then return true end
     return not OFFICER_TABS[id] or ns.IsOfficer()
 end
 

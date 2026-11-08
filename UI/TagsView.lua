@@ -580,7 +580,7 @@ function TV:OnResize(width)
 end
 
 function TV:Refresh()
-    if self.page and not ns.IsOfficer() then
+    if self.page and not ns.UI:IsTabAvailable(ns.UI.TAB_TAGS) then
         self.page:Hide() -- officers only; the tab is hidden for everyone else
         return
     end
