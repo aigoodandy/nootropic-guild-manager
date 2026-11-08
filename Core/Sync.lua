@@ -47,6 +47,8 @@
                            (only counted if cast before the poll closed)
       AB:<member>          About me text            the member; officers may only clear it ("")
       ST:<member>          status line              the member only
+      CN:<member>          contact: "discord;note" (Discord name, then
+                           anything else: BattleTag, timezone...)   officers, or the member
       PN:<member>          pronouns (shown only while GS:pronouns = "1")
                            the member; officers may only clear it ("")
       SC:<member>          usual online hours: 168 bits (Monday 00:00 UTC
@@ -111,6 +113,7 @@ S.TYPES = {
     PV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Poll vote" },
     AB = { scope = "guild",   officer = true, self = true, label = "About me" },
     ST = { scope = "guild",   selfOnly = true, noAudit = true, label = "Status" },
+    CN = { scope = "guild",   officer = true, self = true, label = "Contact" },
     PN = { scope = "guild",   officer = true, self = true, label = "Pronouns" },
     SC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Usually online" },
     KT = { scope = "guild",   officer = true, label = "Kudos type" },
@@ -701,6 +704,8 @@ function S:Materialize(typ, key, member, rec)
         m.about = v ~= "" and v or nil
     elseif typ == "ST" then
         m.status, m.statusAt = (v ~= "" and v or nil), rec.t
+    elseif typ == "CN" then
+        m.contact = v ~= "" and v or nil
     elseif typ == "PN" then
         m.pronouns = v ~= "" and v or nil
     elseif typ == "SC" then
@@ -729,7 +734,7 @@ function S:RebuildAll()
     for _, m in pairs(g.members) do
         m.tags, m.main, m.spec, m.profs, m.auto, m.log, m.version = {}, nil, nil, nil, nil, nil, nil
         m.rating = nil
-        m.about, m.status, m.statusAt, m.schedule = nil, nil, nil, nil
+        m.about, m.status, m.statusAt, m.schedule, m.contact = nil, nil, nil, nil, nil
     end
     for _, scope in ipairs({ "guild", "officer" }) do
         for key, rec in pairs(self:Store(scope)) do

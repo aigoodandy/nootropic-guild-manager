@@ -68,6 +68,7 @@ local FIELDS = {
     { key = "profs",   label = "Professions", column = "profs",   get = Profs },
     { key = "tags",    label = "Tags",        column = "tags",    get = Tags },
     { key = "rank",    label = "Rank",        column = "rank",    get = function(e) return e.rank end },
+    { key = "discord", label = "Discord",                         get = function(e) return e.discord or "" end },
     { key = "version", label = "Addon Version", column = "version", get = function(e)
         if not e.hasAddon then return "" end
         return e.version or "1.10 or older" end },

@@ -24,6 +24,7 @@ AU.CATEGORIES = {
     { key = "GD", label = "Guild goals" },
     { key = "GO", label = "Officer goals" },
     { key = "AB", label = "About me" },
+    { key = "CN", label = "Contact" },
     { key = "PN", label = "Pronouns" },
     { key = "KT", label = "Kudos list" },
     { key = "KD", label = "Kudos descriptions" },
@@ -124,6 +125,13 @@ function AU:Describe(e)
             return new == "1" and (GREEN .. "Pronouns on profiles turned on|r") or (RED .. "Pronouns on profiles turned off|r")
         end
         return "Guild setting changed: " .. (e.ref or "?")
+    elseif t == "CN" then
+        local function D2(v) return (v or ""):match("^([^;]*)") or "" end
+        local od, nd = D2(old), D2(new)
+        local who = e.author and e.member and e.author ~= e.member and (" by " .. ShortChar(e.author)) or ""
+        if new == "" then return RED .. "Contact info cleared|r" .. who end
+        if od ~= nd then return ("Discord changed%s: %s"):format(who, nd ~= "" and nd or (GRAY .. "none|r")) end
+        return "Contact note changed" .. who
     elseif t == "AB" then
         if new == "" then
             local who = e.author and e.member and e.author ~= e.member and (" by " .. ShortChar(e.author)) or ""

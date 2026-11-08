@@ -5,7 +5,7 @@
 
     Search syntax (case-insensitive, all words must match):
       mage fire              free words match name, class, spec, tags, professions
-      tag:raiding            field filter (name, tag, prof, spec, class, race, rank, zone, note)
+      tag:raiding            field filter (name, tag, prof, spec, class, race, rank, zone, note, discord)
       tag:"world pvp"        quotes keep phrases together
       main:markpri           a main and all of their alts
       is:alt  is:main        only alts / only mains
@@ -260,6 +260,9 @@ function R:Decorate(e)
     s.zone  = e.zone:lower()
     s.note  = ((e.note or "") .. "\n" .. e.publicNote .. "\n" .. e.officerNote .. "\n" .. logText):lower()
     s.main  = (e.mainShort or e.short):lower()
+    local discord, contactNote = ns.Profile:Contact(e.full)
+    e.discord = (discord and discord ~= "") and discord or nil
+    s.contact = ((discord or "") .. "\n" .. (contactNote or "")):lower()
     s.is    = (e.isAlt and "alt" or "main") .. (e.hasAddon and "\naddon" or "") .. (e.online and "\nonline" or "")
 end
 
@@ -277,6 +280,7 @@ local FIELDS = {
     rank = "rank",
     zone = "zone", z = "zone",
     note = "note", notes = "note",
+    discord = "contact", contact = "contact", dc = "contact",
     level = "level", lvl = "level", l = "level",
     main = "main", m = "main",
     is = "is", type = "is",

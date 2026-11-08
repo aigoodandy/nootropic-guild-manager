@@ -199,6 +199,7 @@ function DP:Build(parent)
     -- read mode
     self.linkLine = self:BuildLinkLine(content)
     self.statusBox = self:BuildStatusBox(content)
+    self.contactBox = self:BuildContactBox(content)
     self.aboutBox = self:BuildAboutBox(content)
     self.tagsRead = self:BuildTagSection(content, "read")
     self.kudos = self:BuildKudosSection(content)
@@ -212,6 +213,7 @@ function DP:Build(parent)
     -- edit mode
     self.editAbout = self:BuildEditAbout(content)
     self.editStatus = self:BuildEditStatus(content)
+    self.editContact = self:BuildEditContact(content)
     self.editPronouns = self:BuildEditPronouns(content)
     self.clearPronouns = self:BuildClearPronouns(content)
     self.editSchedule = self:BuildEditSchedule(content)
@@ -221,9 +223,9 @@ function DP:Build(parent)
     self.tagsEdit = self:BuildTagSection(content, "edit")
 
     self.allSections = {
-        self.linkLine, self.statusBox, self.aboutBox, self.tagsRead, self.kudos, self.schedule, self.tabs,
+        self.linkLine, self.statusBox, self.contactBox, self.aboutBox, self.tagsRead, self.kudos, self.schedule, self.tabs,
         self.prof, self.note, self.log, self.history,
-        self.editAbout, self.editStatus, self.editPronouns, self.clearPronouns, self.editSchedule,
+        self.editAbout, self.editStatus, self.editContact, self.editPronouns, self.clearPronouns, self.editSchedule,
         self.alt, self.spec, self.role, self.tagsEdit,
     }
 
@@ -361,6 +363,70 @@ function DP:RefreshStatusBox(e)
     local h = math.ceil(s.Text:GetStringHeight()) + 10
     s.Box:SetHeight(h)
     s:SetHeight(h)
+    return true
+end
+
+-- A box with the text selected, to copy with Ctrl+C.
+StaticPopupDialogs.NOOTROPICGM_COPY = {
+    text = "Press Ctrl+C to copy, then Escape.",
+    button1 = CLOSE or "Close",
+    hasEditBox = true,
+    editBoxWidth = 240,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+    OnShow = function(self, data)
+        local box = self.editBox or self.EditBox
+        if box and data then
+            box:SetText(data.text or "")
+            box:HighlightText()
+            box:SetFocus()
+        end
+    end,
+    EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
+    EditBoxOnEnterPressed = function(self) self:GetParent():Hide() end,
+}
+
+-- Contact: Discord name (click to copy) and the contact note.
+function DP:BuildContactBox(parent)
+    local s = NewSection(parent)
+    s.Label = s:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    s.Label:SetPoint("TOPLEFT", 0, -2)
+    s.Label:SetText("Discord:")
+    s.Discord = TextLink(s, function()
+        local e = DP.entry
+        local discord = e and ns.Profile:Contact(e.full)
+        if discord and discord ~= "" then StaticPopup_Show("NOOTROPICGM_COPY", nil, nil, { text = discord }) end
+    end)
+    s.Discord:SetPoint("LEFT", s.Label, "RIGHT", 6, 0)
+    W.Tooltip(s.Discord, "Discord", "Click to copy.")
+    s.Note = Para(s, "GameFontHighlightSmall", INNER)
+    s.From = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    return s
+end
+
+function DP:RefreshContactBox(e)
+    local s = self.contactBox
+    local discord, note, fromMain = ns.Profile:Contact(e.full)
+    if not discord then return false end
+    local y = 0
+    local hasDiscord = discord ~= ""
+    s.Label:SetShown(hasDiscord)
+    s.Discord:SetShown(hasDiscord)
+    if hasDiscord then
+        s.Discord:SetLabel(discord)
+        y = -16
+    end
+    s.Note:ClearAllPoints()
+    s.Note:SetPoint("TOPLEFT", 0, y - 2)
+    s.Note:SetText(note ~= "" and ("|cffffd100Contact:|r " .. note) or "")
+    if note ~= "" then y = y - 2 - math.ceil(s.Note:GetStringHeight()) end
+    s.From:ClearAllPoints()
+    s.From:SetPoint("TOPLEFT", 0, y - 3)
+    s.From:SetText(fromMain and ("From their main, " .. ns.ShortName(fromMain)) or "")
+    if fromMain then y = y - 15 end
+    s:SetHeight(-y + 2)
     return true
 end
 
@@ -1158,6 +1224,42 @@ function DP:BuildEditStatus(parent)
     return s
 end
 
+-- Contact: Discord name and a note. Yours, or anyone's for officers (for
+-- guildmates without the addon).
+function DP:BuildEditContact(parent)
+    local s = NewSection(parent, "Contact")
+    local PF = ns.Profile
+    EditText(s, PF.DISCORD_MAX, 26, false, function(text)
+        local e = DP.entry
+        if not e then return true end
+        return PF:SetContact(e.full, text, nil)
+    end)
+    s.Line:SetPoint("RIGHT", s.Count, "LEFT", -6, 0)
+    s.DiscordBox, s.DiscordBg, s.DiscordCount = s.Box, s.Bg, s.Count
+    local dl = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    dl:SetPoint("TOPLEFT", s.Bg, "BOTTOMLEFT", 0, -3)
+    dl:SetText("Discord name")
+    -- second box: the note, under the first
+    local holder = CreateFrame("Frame", nil, s)
+    holder:SetPoint("TOPLEFT", 0, -22 - 26 - 18)
+    holder:SetSize(INNER, 22 + 26)
+    EditText(holder, PF.CONTACT_NOTE_MAX, 26, false, function(text)
+        local e = DP.entry
+        if not e then return true end
+        return PF:SetContact(e.full, nil, text)
+    end)
+    holder.Bg:ClearAllPoints()
+    holder.Bg:SetPoint("TOPLEFT", 0, -2)
+    holder.Count:ClearAllPoints()
+    holder.Count:SetPoint("TOPRIGHT", s.DiscordCount, "TOPRIGHT", 0, -(26 + 18))
+    s.NoteBox = holder.Box
+    s.Hint = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    s.Hint:SetPoint("TOPLEFT", holder.Bg, "BOTTOMLEFT", 0, -3)
+    s.Hint:SetText("Contact note: BattleTag, timezone, best way to reach you. Seen by the guild.")
+    s:SetHeight(22 + 26 + 18 + 2 + 26 + 18)
+    return s
+end
+
 -- Pronouns (only while officers have them turned on). Your own profile: a
 -- box plus suggestions. An officer on someone else's: theirs and Clear.
 function DP:BuildEditPronouns(parent)
@@ -1668,11 +1770,12 @@ function DP:VisibleSections(e)
         local mine = e.full == ns.PlayerFullName()
         local pronouns = ns.Profile:PronounsEnabled()
         if mine then
-            add(self.editAbout); add(self.editStatus); add(self.editPronouns, pronouns)
+            add(self.editAbout); add(self.editStatus); add(self.editContact); add(self.editPronouns, pronouns)
             add(self.editSchedule)
         else
             -- officers can clear what someone entered
             add(self.clearPronouns, pronouns and ns.IsOfficer() and ns.Profile:OwnPronouns(e.full) ~= "")
+            add(self.editContact, ns.Profile:CanEditContact(e.full))
         end
         add(self.alt, ns.DB:CanEditLinks())
         add(self.spec)
@@ -1683,6 +1786,7 @@ function DP:VisibleSections(e)
     end
     add(self.linkLine)
     add(self.statusBox, self:RefreshStatusBox(e))
+    add(self.contactBox, self:RefreshContactBox(e))
     add(self.aboutBox, self:RefreshAboutBox(e))
     add(self.tagsRead, self:LayoutTags(self.tagsRead, e))
     add(self.kudos, self:RefreshKudos(e))
@@ -1708,7 +1812,7 @@ function DP:Layout(visible)
     for _, s in ipairs(visible) do
         s:ClearAllPoints()
         local gap = (s == self.tabs) and (SECTION_GAP + 4) or SECTION_GAP
-        if s == self.linkLine or s == self.statusBox or s == self.aboutBox or s == self.tagsRead then gap = 8 end
+        if s == self.linkLine or s == self.statusBox or s == self.contactBox or s == self.aboutBox or s == self.tagsRead then gap = 8 end
         s:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -gap)
         total = total + gap + s:GetHeight()
         prev = s
@@ -1749,6 +1853,12 @@ function DP:Refresh(forceText)
             self:RefreshEditSchedule()
         else
             self.clearPronouns.Text:SetText(ns.Profile:OwnPronouns(e.full))
+        end
+        local ec = self.editContact
+        if ns.Profile:CanEditContact(e.full) then
+            local d, n = ns.Profile:OwnContact(e.full)
+            if forceText or not ec.DiscordBox:HasFocus() then ec.DiscordBox:SetText(d) end
+            if forceText or not ec.NoteBox:HasFocus() then ec.NoteBox:SetText(n) end
         end
         if ns.DB:CanEditLinks() then self:RefreshAlts(e) end
         self:RefreshSpec(e)

@@ -9,6 +9,12 @@
     Status (ST:<member>)
       Up to 80 characters; the record's time says when it was set.
 
+    Contact (CN:<member>)
+      Discord name (up to 32 characters) and a contact note (up to 80:
+      BattleTag, timezone, "DM me before raids"...). Set by the member or
+      any officer (for guildmates without the addon). An alt without one
+      shows its main's.
+
     Pronouns (PN:<member>)
       Up to 24 characters, only while officers have them turned on.
 
@@ -32,6 +38,8 @@ ns.Profile = PF
 
 PF.ABOUT_MAX, PF.ABOUT_LINES = 300, 3
 PF.STATUS_MAX = 80
+PF.DISCORD_MAX = 32
+PF.CONTACT_NOTE_MAX = 80
 PF.KUDOS_DAYS = 90
 PF.KUDOS_COOLDOWN = 7 * 86400
 PF.KUDOS_DELAY_MIN, PF.KUDOS_DELAY_MAX = 60, 300
@@ -101,6 +109,51 @@ function PF:SetStatus(text)
     if not (me and ns.DB:Guild()) then return nil, "You are not in a guild." end
     text = ns.Trim((text or ""):gsub("[\r\n]+", " ")):sub(1, self.STATUS_MAX)
     return ns.Sync:Set("ST:" .. me, text)
+end
+
+------------------------------------------------------------------------
+-- Contact (CN:<member> = "discord;note")
+------------------------------------------------------------------------
+local function ParseContact(v)
+    if not v or v == "" then return "", "" end
+    local discord, note = v:match("^([^;]*);(.*)$")
+    if not discord then return v, "" end
+    return discord, note
+end
+
+-- discord, note (each "" when empty) a member set, without their main's.
+function PF:OwnContact(full)
+    local m = ns.DB:GetMember(full)
+    return ParseContact(m and m.contact)
+end
+
+-- discord, note, fromMain: an alt without its own shows its main's.
+-- Returns nil when neither has one.
+function PF:Contact(full)
+    local d, n = self:OwnContact(full)
+    if d ~= "" or n ~= "" then return d, n end
+    local m = ns.DB:GetMember(full)
+    local main = m and m.main
+    if main then
+        d, n = self:OwnContact(main)
+        if d ~= "" or n ~= "" then return d, n, main end
+    end
+    return nil
+end
+
+function PF:CanEditContact(full)
+    return full ~= nil and ns.Sync:CanWrite("CN:" .. full)
+end
+
+-- Either value may be nil to keep what's there.
+function PF:SetContact(full, discord, note)
+    if not (full and ns.DB:Guild()) then return nil, "You are not in a guild." end
+    if not self:CanEditContact(full) then return nil, "Only officers can change someone else's contact info." end
+    local curD, curN = self:OwnContact(full)
+    discord = discord == nil and curD or ns.Trim((discord:gsub("[;\r\n]", ""))):sub(1, self.DISCORD_MAX)
+    note = note == nil and curN or ns.Trim((note:gsub("[\r\n]+", " "))):sub(1, self.CONTACT_NOTE_MAX)
+    local v = (discord == "" and note == "") and "" or (discord .. ";" .. note)
+    return ns.Sync:Set("CN:" .. full, v)
 end
 
 ------------------------------------------------------------------------

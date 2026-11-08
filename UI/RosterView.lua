@@ -424,7 +424,7 @@ function RV:BuildToolbar(page, frame)
     end)
     W.Tooltip(search, "Searching the roster",
         "Words match names, classes, specs, professions and tags. Every word must match.",
-        "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100race:|r |cffffd100role:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r limit a word to one field.",
+        "|cffffd100tag:|r |cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100race:|r |cffffd100role:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r |cffffd100discord:|r limit a word to one field.",
         "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r  |cffffd100is:addon|r  |cffffd100is:online|r",
         "|cffffd100level>=50|r  level filter",
         "|cffffd100-raiding|r excludes, |cffffd100tag:\"world pvp\"|r matches a phrase.",
@@ -1140,6 +1140,7 @@ function RV:ShowRowTooltip(row, e, hint)
             GameTooltip:AddLine(names[i] .. (names[i + 1] and ("     " .. names[i + 1]) or ""), 1, 1, 1)
         end
     end
+    if e.discord then Pair("Discord", e.discord) end
     if e.hasAddon then
         Pair("Addon version", e.version or "|cffff40401.10 or older|r (never reported a version)")
     end
