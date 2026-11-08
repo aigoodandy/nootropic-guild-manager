@@ -581,10 +581,17 @@ end
 
 function TV:Refresh()
     if self.page and not ns.UI:IsTabAvailable(ns.UI.TAB_TAGS) then
-        self.page:Hide() -- officers only; the tab is hidden for everyone else
+        self.page:Hide() -- officers and ranks allowed to manage tags; hidden for everyone else
         return
     end
     if not self.page then return end
+    -- the kudos list stays with officers
+    local officer = ns.IsOfficer()
+    if not officer and self.mode == "kudos" then self.mode, self.sel, self.draft = "tags", nil, nil end
+    if self.switch.kudos then
+        self.switch.kudos:SetEnabled(officer)
+        self.switch.kudos:SetAlpha(officer and 1 or 0.4)
+    end
     local kudos = IsKudos()
     for mode, b in pairs(self.switch) do
         local on = mode == self.mode
