@@ -36,7 +36,8 @@
       L:<member>:<id>      officer log entry       officers (officer scope)
       A:<id>               audit entry             officers (officer scope)
       DN:<player>          Do Not Whisper entry    anyone in the guild ("" = removed)
-      RS:<player>          recruitment status      anyone in the guild (kept 7 days)
+      RS:<player>          recruitment status      anyone in the guild (kept 14 days;
+                                                   blocks new whispers to them meanwhile)
       AV:<member>          addon version in use    the member only
       TI:<tagId>           tag icon (file id or texture path)   officers
       GS:<name>            guild-wide setting, e.g. GS:pronouns = "1" (on)   officers
@@ -102,7 +103,7 @@ S.TYPES = {
     L  = { scope = "officer", officer = true, label = "Officer log" },
     A  = { scope = "officer", officer = true, noAudit = true, label = "Audit" },
     DN = { scope = "guild",   anyone = true, label = "Do Not Whisper" },
-    RS = { scope = "guild",   anyone = true, noAudit = true, ttl = 7 * 86400, label = "Recruitment status" },
+    RS = { scope = "guild",   anyone = true, noAudit = true, ttl = 14 * 86400, label = "Recruitment status" },
     AV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Addon version" },
     TI = { scope = "guild",   officer = true, label = "Tag icon" },
     GS = { scope = "guild",   officer = true, label = "Guild setting" },
@@ -1103,7 +1104,7 @@ function S:SeedDefaults()
     end
     -- default goals, the same way (time 1; bump it when a default changes,
     -- e.g. once the launch date is known, so untouched copies get the update)
-    local GOAL_SEED_TIME = 2 -- 2: the launch date added
+    local GOAL_SEED_TIME = 3 -- 2: the launch date added; 3: 2.0's evergreen goal
     for i in ipairs(ns.Goals.DEFAULTS) do
         local key = "GD:d" .. i
         local cur = store[key]

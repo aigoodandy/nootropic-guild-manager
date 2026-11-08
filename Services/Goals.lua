@@ -29,16 +29,17 @@ GL.ALMOST_LEVELS = 5 -- "almost there" for level goals: this many levels short
 GL.LAUNCH_TIME = 1793836800
 
 -- Goals every guild starts with (GD:d1..), like the default stats; officers
--- can change or delete them. title, filter, target, days after launch it's due
+-- can change or delete them. title, filter, target, days after launch it's
+-- due (nil = no due date)
 GL.DEFAULTS = {
-    { "10 level 20s by the end of launch week", "level>=20", 10, 7 },
+    { "10 members at level 60", "level>=60", 10, nil },
 }
 
 function GL.DefaultGoal(i)
     local def = GL.DEFAULTS[i]
     if not def then return nil end
     return { title = def[1], filter = def[2], target = def[3], parts = {},
-        due = GL.LAUNCH_TIME and (GL.LAUNCH_TIME + def[4] * 86400) or nil }
+        due = (def[4] and GL.LAUNCH_TIME) and (GL.LAUNCH_TIME + def[4] * 86400) or nil }
 end
 
 local SCOPES = { c = "GD", o = "GO" }

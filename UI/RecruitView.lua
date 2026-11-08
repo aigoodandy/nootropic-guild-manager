@@ -1,7 +1,7 @@
 --[[
     Nootropic Guild Manager - Recruitment tab
-    Left: /who search controls and the list of players found (unguilded, or
-    members of a guild you name).
+    Left: /who search controls and the list of players found (players
+    without a guild only).
     Right: default message, custom messages switch, auto-invite, Do Not Whisper.
     Flow: search, tick the players to message, Send Whispers (paced queue).
 ]]
@@ -194,7 +194,7 @@ function RCV:BuildSearchBar(page, frame)
     filter.Arrow:SetPoint("RIGHT", -4, 0)
     filter.Arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
     filter:SetScript("OnClick", function() RCV.filterPanel:SetShown(not RCV.filterPanel:IsShown()) end)
-    W.Tooltip(filter, "Filter", "Class, Step levels, Hide contacted, and searching a guild instead.")
+    W.Tooltip(filter, "Filter", "Class, Step levels and Hide contacted.")
     self.filterBtn = filter
 
     -- Summary line: players, last search, and which filters are on
@@ -216,7 +216,7 @@ end
 -- The Filter menu: a small panel under the Filter button.
 function RCV:BuildFilterPanel(page, anchor)
     local p = CreateFrame("Frame", nil, page, "BackdropTemplate")
-    p:SetSize(260, 168)
+    p:SetSize(260, 116)
     p:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -4)
     p:SetFrameStrata("DIALOG")
     p:EnableMouse(true)
@@ -256,35 +256,13 @@ function RCV:BuildFilterPanel(page, anchor)
     end)
     self.hideCheck = hide
 
-    local guildCheck = Check(p, "Search a guild instead")
-    guildCheck:SetPoint("TOPLEFT", hide, "BOTTOMLEFT", 0, -2)
-    guildCheck:SetScript("OnClick", function(self)
-        local r = ns.Recruit:Settings()
-        if r then r.query.guildOn = self:GetChecked() and true or false end
-        RCV:LoadSettings()
-    end)
-    W.Tooltip(guildCheck, "Search a guild",
-        "When ticked, Search finds members of the guild named here instead of players without a guild.",
-        "Your own guild is never included.")
-    self.guildCheck = guildCheck
-    local guildBox = InputBox(p, 190, 24)
-    guildBox:SetPoint("TOPLEFT", guildCheck, "BOTTOMLEFT", 30, -2)
-    guildBox:HookScript("OnTextChanged", function(self, user)
-        local r = ns.Recruit:Settings()
-        if user and r then
-            r.query.guild = self:GetText()
-            RCV:RefreshFilterInfo()
-        end
-    end)
-    self.guildBox = guildBox
-
     local reset = W.Button(p, "Reset filters", 110, 20)
     reset:SetPoint("BOTTOMLEFT", 12, 10)
     reset:SetScript("OnClick", function()
         local r = ns.Recruit:Settings()
         if not r then return end
         local q = r.query
-        q.class, q.step, q.hideContacted, q.guildOn, q.guild = nil, false, false, false, ""
+        q.class, q.step, q.hideContacted = nil, false, false
         RCV:LoadSettings()
         RCV:Refresh()
     end)
@@ -293,7 +271,7 @@ function RCV:BuildFilterPanel(page, anchor)
     close:SetScript("OnClick", function() p:Hide() end)
 end
 
--- "Mage, step levels, guild <Name>" for the summary line and the Filter button.
+-- "Mage, step levels" for the summary line and the Filter button.
 function RCV:ActiveFilters()
     local r = ns.Recruit:Settings()
     local out = {}
@@ -302,10 +280,6 @@ function RCV:ActiveFilters()
     if q.class then out[#out + 1] = ("|c%s%s|r"):format(ns.ClassHex(q.class), D:ClassName(q.class)) end
     if q.step then out[#out + 1] = "step levels" end
     if q.hideContacted then out[#out + 1] = "hide contacted" end
-    if q.guildOn then
-        local g = ns.Trim(q.guild)
-        out[#out + 1] = g ~= "" and ("guild <" .. g .. ">") or "guild (type a name)"
-    end
     return out
 end
 
@@ -605,8 +579,12 @@ function RCV:ShowRowTooltip(row, p)
         GameTooltip:AddLine("\"" .. c.reply .. "\"", 0.4, 1, 0.4, true)
     end
     if c.invited then GameTooltip:AddDoubleLine("Invited", ns.FormatAgo(c.invited), 1, 0.82, 0, 1, 1, 1) end
-    if c.by then
-        GameTooltip:AddLine(("Already contacted by %s, so they can't be whispered again for now."):format(ns.ShortName(c.by)), 1, 0.5, 0.5, true)
+    local locked = ns.Recruit:LockedUntil(p)
+    if locked then
+        GameTooltip:AddLine(("%s whispered them, so nobody in the guild can whisper them again for %s."):format(
+            c.by and ns.ShortName(c.by) or "You", ns.FormatWait(locked - ns.DB:Now())), 1, 0.5, 0.5, true)
+    elseif c.by and c.invited then
+        GameTooltip:AddLine(("Already invited by %s."):format(ns.ShortName(c.by)), 1, 0.5, 0.5, true)
     end
     if p.joined then GameTooltip:AddDoubleLine("Joined", ns.FormatAgo(p.joined), 1, 0.82, 0, 0.4, 1, 0.4) end
     GameTooltip:AddLine(" ")
@@ -696,7 +674,7 @@ function RCV:BuildPanel(page, inset)
     use:SetPoint("TOPLEFT", self.preview, "BOTTOMLEFT", -4, -8)
     use:SetScript("OnClick", function(self) ns.Messages:SetUseRules(self:GetChecked()) end)
     W.Tooltip(use, "Custom messages",
-        "Pick a message by class, race, level, zone or guild. The first matching message (top of the list wins) is used; everyone else gets the Default message.")
+        "Pick a message by class, race, level or zone. The first matching message (top of the list wins) is used; everyone else gets the Default message.")
     self.useRulesCheck = use
 
     local edit = W.Button(panel, "Custom Messages...", 150, 22)
@@ -815,11 +793,7 @@ function RCV:LoadSettings()
     self.classBtn:SetText(q.class and ("|c%s%s|r"):format(ns.ClassHex(q.class), D:ClassName(q.class)) or "Any class")
     self.stepCheck:SetChecked(q.step)
     self.hideCheck:SetChecked(q.hideContacted)
-    self.guildCheck:SetChecked(q.guildOn)
-    if not self.guildBox:HasFocus() then self.guildBox:SetText(q.guild or "") end
     if not self.nameBox:HasFocus() then self.nameBox:SetText(q.name or "") end
-    -- the guild name box only matters (and only shows) while guild search is on
-    self.guildBox:SetShown(q.guildOn and true or false)
     self:RefreshFilterInfo()
     if not self.editor:HasFocus() then self.editor:SetText(r.default or "") end
     self:RefreshPreview()
@@ -909,8 +883,7 @@ function RCV:SummaryText()
     local SEP = "  |cff6d6d6d-|r  "
     local parts = { total == 1 and "1 player" or (total .. " players") }
     if last then
-        parts[#parts + 1] = ("|cff40ff40%d new|r from last search%s"):format(last.new or 0,
-            last.guild and (" in <" .. last.guild .. ">") or "")
+        parts[#parts + 1] = ("|cff40ff40%d new|r from last search"):format(last.new or 0)
     end
     parts[#parts + 1] = ("|cffb0b0ff%d whispered|r"):format(whispered)
     parts[#parts + 1] = ("|cff40ff40%d replied|r"):format(replied)

@@ -13,7 +13,6 @@
           races   = { ["night elf"] = true },        -- lowercase; empty = any race
           minLevel, maxLevel,                         -- nil = no limit
           zones   = "Elwynn, Westfall",               -- any part of the zone name; empty = anywhere
-          guild   = "any" | "none" | "guilded",
           text    = "message with $name, $class ...",
           preset  = CLASSFILE,                       -- one of the built-in class messages
       }, ... }
@@ -117,7 +116,7 @@ function MS:AddClassDefaults(r, silent, only)
         -- a message of your own for just one class counts too
         local only, n = nil, 0
         for cls in pairs(rule.classes or {}) do only, n = cls, n + 1 end
-        if n == 1 and not next(rule.races or {}) and ns.Trim(rule.zones or "") == "" and (rule.guild or "any") == "any"
+        if n == 1 and not next(rule.races or {}) and ns.Trim(rule.zones or "") == ""
             and (rule.minLevel or 1) <= 1 and (rule.maxLevel or 999) >= ns.Recruit:MaxLevel() then
             have[only] = true
         end
@@ -252,8 +251,6 @@ function MS:Matches(rule, p)
         end
         if not hit then return false end
     end
-    if rule.guild == "none" and p.guild then return false end
-    if rule.guild == "guilded" and not p.guild then return false end
     return true
 end
 
@@ -283,7 +280,6 @@ function MS:Summary(rule)
         parts[#parts + 1] = ("Lvl %s-%s"):format(rule.minLevel or 1, rule.maxLevel or ns.Recruit:MaxLevel())
     end
     if ns.Trim(rule.zones or "") ~= "" then parts[#parts + 1] = ns.Trim(rule.zones) end
-    if rule.guild == "none" then parts[#parts + 1] = "No guild" elseif rule.guild == "guilded" then parts[#parts + 1] = "In a guild" end
     if #parts == 0 then return "Everyone" end
     return table.concat(parts, " - ")
 end
@@ -297,14 +293,11 @@ end
 --   races: Night Elf
 --   levels: 10-60
 --   zones: Teldrassil, Darkshore
---   guild: any            (any, none, guilded)
 --   text: Hi $name! ...
 --
 -- Blocks start with "message:". Missing lines mean "any". Lines starting
 -- with # are ignored.
 ------------------------------------------------------------------------
-local GUILD_WORDS = { any = "any", none = "none", ["no guild"] = "none", unguilded = "none",
-    guilded = "guilded", ["in a guild"] = "guilded", guild = "guilded" }
 
 function MS:Export(rules)
     rules = rules or self:Rules()
@@ -325,7 +318,6 @@ function MS:Export(rules)
         out[#out + 1] = "races: " .. (#races > 0 and table.concat(races, ", ") or "any")
         out[#out + 1] = ("levels: %d-%d"):format(rule.minLevel or 1, rule.maxLevel or maxL)
         out[#out + 1] = "zones: " .. (ns.Trim(rule.zones or "") ~= "" and ns.Trim(rule.zones) or "any")
-        out[#out + 1] = "guild: " .. (rule.guild or "any")
         out[#out + 1] = "text: " .. (rule.text or ""):gsub("[\r\n]+", " ")
     end
     return table.concat(out, "\n")
@@ -401,7 +393,7 @@ function MS:Parse(text)
             elseif key == "zones" or key == "zone" then
                 cur.zones = IsAny(value) and "" or value:sub(1, 120)
             elseif key == "guild" then
-                cur.guild = GUILD_WORDS[value:lower()] or "any"
+                -- older exports: only players without a guild are recruited now
             elseif key == "text" or key == "message text" then
                 cur.text = value:sub(1, D.WHISPER_MAX)
             else

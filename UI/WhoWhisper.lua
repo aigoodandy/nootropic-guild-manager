@@ -246,7 +246,7 @@ function WI:UpdateButton(row)
     elseif p and p.whispered then
         state = "sent"
     end
-    local reason = not state and full and RC:WhisperBlocked(full, p) or nil
+    local reason = not state and full and RC:WhisperBlocked(full, p, info.guild) or nil
     b.state, b.reason = state, reason
     b.Wait:SetShown(state == "queued")
     b:SetEnabled(state == nil and reason == nil)

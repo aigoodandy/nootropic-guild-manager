@@ -2,7 +2,7 @@
     Nootropic Guild Manager - Custom Messages window
     Left: the messages in priority order (top wins), with on/off switches,
     New / Copy / Delete and up/down to change priority.
-    Right: the selected message's filters (class, race, level, zone, guild)
+    Right: the selected message's filters (class, race, level, zone)
     and text, with a live preview and how many players in the Recruitment
     list it applies to.
     Import / Export trade messages as plain text; Class Defaults adds back
@@ -335,23 +335,6 @@ function MV:BuildEditor(f)
     end
     y = y - 38
 
-    -- Guild
-    local guildLabel = Label(e, "Guild")
-    guildLabel:SetPoint("TOPLEFT", 0, y - 3)
-    self.guildToggles = {}
-    local x = 50
-    for _, opt in ipairs({ { "any", "Any" }, { "none", "No guild" }, { "guilded", "In a guild" } }) do
-        local t = Toggle(e, opt[2], function() if MV.selected then ns.Messages:Update(MV.selected, "guild", opt[1]) end end)
-        t:SetPoint("TOPLEFT", x, y)
-        x = x + t:GetWidth() + 4
-        t.key = opt[1]
-        self.guildToggles[#self.guildToggles + 1] = t
-    end
-    W.Tooltip(self.guildToggles[3], "In a guild", function()
-        return ("For players found with the %s tab's Guild search."):format(ns.TabName("recruit"))
-    end)
-    y = y - 30
-
     -- Level and zone
     local lvlLabel = Label(e, "Level")
     lvlLabel:SetPoint("TOPLEFT", 0, y - 4)
@@ -422,11 +405,10 @@ function MV:BuildEditor(f)
     self.matchInfo:SetWidth(EW - 4)
     self.matchInfo:SetJustifyH("LEFT")
 
-    self.editorWidgets = { nameLabel, self.nameBox, classLabel, raceLabel, guildLabel, lvlLabel,
+    self.editorWidgets = { nameLabel, self.nameBox, classLabel, raceLabel, lvlLabel,
         self.minLevel, to, self.maxLevel, zoneLabel, self.zoneBox, msgLabel, self.count, ef, tokens, self.preview, self.matchInfo }
     for _, b in ipairs(self.classButtons) do self.editorWidgets[#self.editorWidgets + 1] = b end
     for _, b in ipairs(self.raceButtons) do self.editorWidgets[#self.editorWidgets + 1] = b end
-    for _, t in ipairs(self.guildToggles) do self.editorWidgets[#self.editorWidgets + 1] = t end
 end
 
 function MV:ToggleSet(field, key)
@@ -491,7 +473,6 @@ function MV:Refresh(loadTexts)
         end
         if on then b:SetBackdropBorderColor(1, 0.82, 0, 1) else b:SetBackdropBorderColor(0.25, 0.25, 0.25, 1) end
     end
-    for _, t in ipairs(self.guildToggles) do t:SetOn((rule.guild or "any") == t.key) end
     self:RefreshEditorInfo()
 end
 
@@ -621,7 +602,7 @@ function MV:ShowTransfer(mode)
         t.Result:SetText(("%d message%s."):format(#ns.Messages:Rules(), #ns.Messages:Rules() == 1 and "" or "s"))
     else
         t.Title:SetText("Import Custom Messages")
-        t.Help:SetText("Paste exported messages here (Ctrl+V). Each one starts with \"message:\" followed by lines like classes:, races:, levels:, zones:, guild: and text:.")
+        t.Help:SetText("Paste exported messages here (Ctrl+V). Each one starts with \"message:\" followed by lines like classes:, races:, levels:, zones: and text:.")
         t.Box:SetText("")
     end
     self.frame:Show()

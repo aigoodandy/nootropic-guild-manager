@@ -1,6 +1,6 @@
 --[[
     Nootropic Guild Manager - Recruitment service
-    Runs /who searches for unguilded players, remembers who you've contacted,
+    Runs /who searches for players without a guild (never anyone in one), remembers who you've contacted,
     fills in per-class whisper templates, sends guild invites, and invites
     automatically when a whispered player replies with one of your keywords.
 
@@ -10,14 +10,15 @@
       keywords   = { "invite", ... }          -- up to 5
       autoInvite = true                       -- invite on a keyword reply
       inviteMode = "auto" | "confirm"         -- confirm = one-click popup
-      query      = { min, max, class, zone, step, guildOn, guild, name, hideContacted,
+      query      = { min, max, class, zone, step, name, hideContacted,
                      zoneAuto, levelAuto }       -- *Auto: follow the player (see ApplyAutoQuery)
       people     = { ["Name-Realm"] = { level, classFile, className, zone, guild,
                      found, seen, whispered, replied, reply, invited, joined } }
       dnwEnabled = true                       -- watch replies for Do Not Whisper words
       dnwWords   = { "dnw", "leave me alone", ... }   -- up to 5
       (the Do Not Whisper list itself is shared: sync records DN:<player>)
-      (statuses are shared for 7 days: sync records RS:<player>, see Contact)
+      (statuses are shared for 14 days: sync records RS:<player>, see Contact;
+       while one is, nobody in the guild can queue another whisper to that player)
 ]]
 local _, ns = ...
 local D = ns.Data
@@ -30,6 +31,9 @@ RC.WHO_COOLDOWN = 15           -- seconds between searches
 RC.WHO_WINDOW = 300            -- rolling window (seconds)...
 RC.WHO_MAX_PER_WINDOW = 12     -- ...and how many searches it allows
 local PRUNE_AFTER = 30 * 86400 -- forget uncontacted players after 30 days
+-- After anyone in the guild whispers a player, nobody can queue another
+-- recruitment whisper to them for this long (the shared status lasts as long).
+RC.RECONTACT_DAYS = 14
 
 RC.searching = false
 RC.history = {} -- GetTime() of recent searches
@@ -56,8 +60,7 @@ function RC:Settings()
     r.inviteMode = r.inviteMode or "confirm" -- WoW: Forever only allows guild invites from a click
     r.people = r.people or {}
     r.query = r.query or { min = 1, max = 60, step = false }
-    if r.query.guildOn == nil then r.query.guildOn = false end
-    r.query.guild = r.query.guild or ""
+    r.query.guildOn, r.query.guild = nil, nil -- 2.0: guild search removed
     r.query.name = r.query.name or ""
     if r.dnwEnabled == nil then r.dnwEnabled = true end
     r.whisperMode = r.whisperMode or "auto" -- "click" if this client blocks timed whispers
@@ -70,7 +73,8 @@ function RC:Settings()
         self.pruned = true
         local cutoff = ns.DB:Now() - PRUNE_AFTER
         for full, p in pairs(r.people) do
-            if not p.whispered and not p.invited and (p.seen or 0) < cutoff then r.people[full] = nil end
+            -- 1.x guild searches could list players in other guilds: drop the ones never contacted
+            if not p.whispered and not p.invited and ((p.seen or 0) < cutoff or p.guild) then r.people[full] = nil end
         end
     end
     return r
@@ -95,7 +99,7 @@ end
 ------------------------------------------------------------------------
 -- Shared status: whoever whispers, hears back from, or invites a player
 -- shares it with the guild (sync record RS:<player> = "whispered;replied;
--- invited;reply", times or empty). Records expire after 7 days.
+-- invited;reply", times or empty). Records expire after 14 days.
 ------------------------------------------------------------------------
 local function RSKey(full) return "RS:" .. full end
 
@@ -162,6 +166,15 @@ function RC:Status(p)
     return "new"
 end
 
+-- Server time until which nobody may queue another whisper to `p` (someone
+-- in the guild whispered them less than RECONTACT_DAYS ago), or nil.
+function RC:LockedUntil(p)
+    local c = self:Contact(p)
+    if not c.whispered then return nil end
+    local untilT = c.whispered + self.RECONTACT_DAYS * 86400
+    if untilT > ns.DB:Now() then return untilT end
+end
+
 function RC:IsContacted(p)
     local c = self:Contact(p)
     return (c.whispered or c.invited or p.joined or self:IsDNW(p.full)) and true or false
@@ -224,8 +237,6 @@ function RC:BuildQuery(q)
     if q.class then parts[#parts + 1] = ('c-"%s"'):format(D:ClassName(q.class)) end
     local zone = ns.Trim(q.zone)
     if zone ~= "" then parts[#parts + 1] = ('z-"%s"'):format((zone:gsub('"', ""))) end
-    local guild = ns.Trim(q.guild)
-    if q.guildOn and guild ~= "" then parts[#parts + 1] = ('g-"%s"'):format((guild:gsub('"', ""))) end
     return table.concat(parts, " ")
 end
 
@@ -270,9 +281,6 @@ function RC:BeginSearch()
     local r = self:Settings()
     if not r then return nil, "You are not in a guild." end
     if self.searching then return nil, "Still waiting for the last search." end
-    if r.query.guildOn and ns.Trim(r.query.guild) == "" then
-        return nil, "Type the guild name to search for, or untick Guild."
-    end
     local wait = self:CooldownRemaining()
     if wait > 0 then
         return nil, ("Searching too often could get you flagged for spam. Try again in %d seconds."):format(math.ceil(wait))
@@ -363,23 +371,10 @@ function RC:OnWhoResults()
     shown = shown or 0
     local matched, new, skipped = 0, 0, 0
     local now = ns.DB:Now()
-    -- Normal searches keep players without a guild; a guild search keeps
-    -- members of the guild typed in (never our own).
-    local want = r.query.guildOn and ns.Trim(r.query.guild):lower() or nil
-    if want == "" then want = nil end
-    local mine = (GetGuildInfo("player") or ""):lower()
+    -- only players without a guild are ever kept
     for i = 1, shown do
         local name, guild, level, className, classFile, zone, race, sex = ReadWho(i)
-        guild = guild or ""
-        local keep
-        if want then
-            -- the guild name as typed, or the start of it ("Night" finds "Night Watch")
-            local g = guild:lower()
-            keep = g ~= "" and g ~= mine and g:sub(1, #want) == want
-        else
-            keep = guild == ""
-        end
-        if name and keep then
+        if name and (guild or "") == "" then
             local full = ns.NormalizeName(name)
             if full ~= ns.PlayerFullName() and not ns.Roster.byName[full] then
                 if self:IsDNW(full) and not r.people[full] then
@@ -393,14 +388,14 @@ function RC:OnWhoResults()
                         new = new + 1
                     end
                     p.level, p.classFile, p.className, p.zone, p.seen = level, classFile, className, zone, now
-                    p.guild = guild ~= "" and guild or nil
+                    p.guild = nil
                     p.race, p.sex = race, sex
                 end
             end
         end
     end
     self.last = { query = self.pendingQuery, shown = shown, total = total or shown, unguilded = matched,
-        matched = matched, new = new, skipped = skipped, guild = want and ns.Trim(r.query.guild) or nil }
+        matched = matched, new = new, skipped = skipped }
 
     -- Step to the next level bracket for the next click
     local q = r.query
@@ -543,12 +538,13 @@ RC.selected = {}            -- full -> true (this session)
 RC.queue = {}               -- fulls waiting to be whispered
 RC.sentTimes = {}           -- GetTime() of recent whispers from the queue
 
--- Players a guildmate already contacted (shared status) can't be ticked:
--- one whisper from the guild is enough.
+-- Players anyone in the guild whispered in the last RECONTACT_DAYS, or a
+-- guildmate invited, can't be ticked: one whisper from the guild is enough.
 function RC:CanSelect(p)
-    if not p or p.joined or self:IsDNW(p.full) then return false end
+    if not p or p.joined or p.guild or self:IsDNW(p.full) then return false end
+    if self:LockedUntil(p) then return false end
     local c = self:Contact(p)
-    if c.by and (c.whispered or c.invited) then return false end
+    if c.by and c.invited then return false end
     return true
 end
 
@@ -617,19 +613,24 @@ function RC:IsQueued(full)
 end
 
 -- Why `full` can't get a recruitment whisper right now, or nil if they can.
--- Same rules as ticking a player on the Recruitment tab.
-function RC:WhisperBlocked(full, p)
+-- Same rules as ticking a player on the Recruitment tab. `guild` is the
+-- guild /who shows them in, if any.
+function RC:WhisperBlocked(full, p, guild)
     if not self:Settings() then return "Join a guild to recruit." end
     if ns.Roster.byName[full] then return "Already in your guild." end
+    if (guild and guild ~= "") or (p and p.guild) then return "Already in a guild. Only players without one are recruited." end
     if self:IsDNW(full) then return "On the Do Not Whisper list." end
-    if p then
-        p.full = full
+    p = p or { }
+    p.full = full
+    local locked = self:LockedUntil(p)
+    if locked then
         local c = self:Contact(p)
-        if c.by and (c.whispered or c.invited) then
-            return ("Already contacted by %s."):format(ns.ShortName(c.by))
-        end
-        if c.whispered then return "You already whispered them." end
+        local who = c.by and ns.ShortName(c.by) or "You"
+        return ("%s whispered them %s. They can be whispered again in %s."):format(who,
+            ns.FormatAgo(c.whispered), ns.FormatWait(locked - ns.DB:Now()))
     end
+    local c = self:Contact(p)
+    if c.by and c.invited then return ("Already invited by %s."):format(ns.ShortName(c.by)) end
 end
 
 -- Recruitment whisper from the game's /who window. Adds the player to the
@@ -641,7 +642,7 @@ function RC:WhisperFromWho(info)
     if not r then return false, "Join a guild to recruit." end
     local full = ns.NormalizeName(info.name)
     if not full then return false end
-    local reason = self:WhisperBlocked(full, r.people[full])
+    local reason = self:WhisperBlocked(full, r.people[full], info.guild)
     if reason then return false, ns.ShortName(full) .. ": " .. reason end
     if self:IsQueued(full) then return true end
     local now = ns.DB:Now()
@@ -653,7 +654,7 @@ function RC:WhisperFromWho(info)
     p.level = info.level or p.level
     p.classFile, p.className = info.classFile or p.classFile, info.className or p.className
     p.zone, p.race = info.zone or p.zone, info.race or p.race
-    p.guild = (info.guild and info.guild ~= "") and info.guild or nil
+    p.guild = nil
     p.seen, p.full, p.short = now, full, ns.ShortName(full)
     if self:Format(self:TemplateFor(p), p) == "" then
         return false, ("Write a whisper message first (%s tab)."):format(ns.TabName("recruit"))
