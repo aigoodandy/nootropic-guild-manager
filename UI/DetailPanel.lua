@@ -2,18 +2,17 @@
     Nootropic Guild Manager - Character profile flyout
     Opens beside the roster. Two modes:
 
-      Read (default)  header (name, level, spec, class, rank, location and map
-                      dot), main/alt line, status, About me, tags they have,
-                      kudos, usual online hours, then tabs:
+      Read (default)  header (name, level, spec, class, rank, location),
+                      main/alt line, contact, tags they have, usual online
+                      hours (learned from play time), then tabs:
                         Profile   professions
                         Notes     your private notes about them
                         Officer   officer log, change history (officers)
-      Edit            your own profile: About me, status, usual online hours,
-                      map dot; and (yours, or anyone's for officers) spec, tags,
-                      professions, and main/alt links (officers)
+      Edit            contact, spec, roles, tags, professions and main/alt
+                      links, each as far as your rank may
 
-    The Edit button shows when you may edit: your own characters, or anyone
-    for officers. Officers can clear someone's About me but not edit it.
+    The Edit button shows when you may edit something: always your own
+    characters, others when the Guild Master's permissions allow.
 ]]
 local _, ns = ...
 local W, D = ns.Widgets, ns.Data
@@ -27,9 +26,8 @@ local SECTION_GAP = 14
 
 DP.tab = "profile"
 DP.schedOpen = false     -- the week grid starts folded (summary line only)
-DP.schedEditOpen = false
 
--- A small gold text link ("Show week", "Edit hours").
+-- A small gold text link ("Show week").
 local function TextLink(parent, onClick)
     local b = CreateFrame("Button", nil, parent)
     b:SetHeight(16)
@@ -56,15 +54,6 @@ local function NewSection(parent, title)
         s.Title:SetPoint("TOPLEFT", 0, 0)
     end
     return s
-end
-
--- A dark box with a thin border (status, About me).
-local function Box(parent)
-    local b = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    b:SetBackdrop({ bgFile = W.WHITE, edgeFile = W.WHITE, edgeSize = 1 })
-    b:SetBackdropColor(0.04, 0.03, 0.02, 0.85)
-    b:SetBackdropBorderColor(0.3, 0.26, 0.2, 1)
-    return b
 end
 
 local function Para(parent, font, width)
@@ -198,11 +187,8 @@ function DP:Build(parent)
     self:BuildHeader(content)
     -- read mode
     self.linkLine = self:BuildLinkLine(content)
-    self.statusBox = self:BuildStatusBox(content)
     self.contactBox = self:BuildContactBox(content)
-    self.aboutBox = self:BuildAboutBox(content)
     self.tagsRead = self:BuildTagSection(content, "read")
-    self.kudos = self:BuildKudosSection(content)
     self.schedule = self:BuildScheduleSection(content)
     self.tabs = self:BuildTabs(content)
     -- tab contents (and edit mode)
@@ -211,21 +197,16 @@ function DP:Build(parent)
     self:BuildLogSection(content)
     self:BuildHistorySection(content)
     -- edit mode
-    self.editAbout = self:BuildEditAbout(content)
-    self.editStatus = self:BuildEditStatus(content)
     self.editContact = self:BuildEditContact(content)
-    self.editPronouns = self:BuildEditPronouns(content)
-    self.clearPronouns = self:BuildClearPronouns(content)
-    self.editSchedule = self:BuildEditSchedule(content)
     self:BuildAltSection(content)
     self:BuildSpecSection(content)
     self:BuildRoleSection(content)
     self.tagsEdit = self:BuildTagSection(content, "edit")
 
     self.allSections = {
-        self.linkLine, self.statusBox, self.contactBox, self.aboutBox, self.tagsRead, self.kudos, self.schedule, self.tabs,
+        self.linkLine, self.contactBox, self.tagsRead, self.schedule, self.tabs,
         self.prof, self.note, self.log, self.history,
-        self.editAbout, self.editStatus, self.editContact, self.editPronouns, self.clearPronouns, self.editSchedule,
+        self.editContact,
         self.alt, self.spec, self.role, self.tagsEdit,
     }
 
@@ -239,8 +220,7 @@ function DP:Build(parent)
         if f:IsShown() then ns.Debounce("detail", 0.05, function() DP:Refresh() end) end
     end
     ns:On("ROSTER_UPDATED", refresh)
-    ns:On("KUDOS_CHANGED", refresh)
-    ns:On("GUILD_SETTINGS_CHANGED", refresh) -- pronouns turned on or off
+    ns:On("GUILD_SETTINGS_CHANGED", refresh) -- permissions changed
     ns:On("AUDIT_CHANGED", function()
         if f:IsShown() and DP.tab == "officer" then ns.Debounce("detailhistory", 0.2, function() DP:Refresh() end) end
     end)
@@ -287,8 +267,7 @@ end
 function DP:RefreshHeader(e)
     local h = self.header
     W.SetClassIcon(h.Icon, e.classFile)
-    local pronouns = ns.Profile:Pronouns(e.full)
-    h.Name:SetText(e.short .. (pronouns and ("  |cffb0b0b0(" .. pronouns .. ")|r") or ""))
+    h.Name:SetText(e.short)
     h.Name:SetTextColor(ns.ClassColor(e.classFile))
     local specIcon = e.spec and D:SpecIcon(e.classFile, e.spec)
     local spec = e.spec and ((specIcon and ("|T" .. specIcon .. ":12:12:0:0:64:64:5:59:5:59|t ") or "") .. e.spec .. " ") or ""
@@ -343,29 +322,8 @@ function DP:RefreshLinkLine(e)
 end
 
 ------------------------------------------------------------------------
--- Read mode: status and About me
+-- Read mode: contact
 ------------------------------------------------------------------------
-function DP:BuildStatusBox(parent)
-    local s = NewSection(parent)
-    s.Box = Box(s)
-    s.Box:SetPoint("TOPLEFT")
-    s.Box:SetPoint("RIGHT")
-    s.Text = Para(s.Box, "GameFontHighlightSmall", INNER - 14)
-    s.Text:SetPoint("TOPLEFT", 7, -5)
-    return s
-end
-
-function DP:RefreshStatusBox(e)
-    local s = self.statusBox
-    local text, at = ns.Profile:Status(e.full)
-    if not text then return false end
-    s.Text:SetText(("|cffffd100Status:|r %s  |cff9d9d9d- %s|r"):format(text, ns.FormatAgo(at)))
-    local h = math.ceil(s.Text:GetStringHeight()) + 10
-    s.Box:SetHeight(h)
-    s:SetHeight(h)
-    return true
-end
-
 -- A box with the text selected, to copy with Ctrl+C.
 StaticPopupDialogs.NOOTROPICGM_COPY = {
     text = "Press Ctrl+C to copy, then Escape.",
@@ -430,52 +388,6 @@ function DP:RefreshContactBox(e)
     return true
 end
 
-function DP:BuildAboutBox(parent)
-    local s = NewSection(parent)
-    s.Bar = s:CreateTexture(nil, "ARTWORK")
-    s.Bar:SetWidth(2)
-    s.Bar:SetPoint("TOPLEFT", 0, 0)
-    s.Bar:SetPoint("BOTTOMLEFT", 0, 0)
-    s.Bar:SetColorTexture(0.63, 0.54, 0.35, 0.9)
-    s.Text = Para(s, "GameFontHighlightSmall", INNER - 12)
-    s.Text:SetPoint("TOPLEFT", 9, -2)
-    s.Text:SetTextColor(0.85, 0.82, 0.75)
-    s.From = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    s.From:SetPoint("TOPLEFT", s.Text, "BOTTOMLEFT", 0, -3)
-    -- officers: clear (never edit) someone's About me
-    s.Clear = SmallButton(s, "Clear", 56)
-    s.Clear:SetScript("OnClick", function()
-        local e = DP.entry
-        if not e then return end
-        W.Confirm(("Clear %s's About me for everyone?\nOnly they can write a new one."):format(e.short), function()
-            local ok, err = ns.Profile:ClearAbout(e.full)
-            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-        end)
-    end)
-    W.Tooltip(s.Clear, "Clear About me", function()
-        return ("For anything inappropriate. Officers can clear it but not edit it; the %s tab records who did."):format(ns.TabName("audit"))
-    end)
-    return s
-end
-
-function DP:RefreshAboutBox(e)
-    local s = self.aboutBox
-    local text, fromMain = ns.Profile:About(e.full)
-    if not text or text == "" then return false end
-    s.Text:SetText("\"" .. text .. "\"")
-    s.From:SetText(fromMain and ("From their main, " .. ns.ShortName(fromMain)) or "")
-    local h = math.ceil(s.Text:GetStringHeight()) + 6 + (fromMain and 14 or 0)
-    local canClear = ns.IsOfficer() and e.full ~= ns.PlayerFullName() and not fromMain
-    s.Clear:SetShown(canClear)
-    if canClear then
-        s.Clear:ClearAllPoints()
-        s.Clear:SetPoint("TOPRIGHT", 0, -h - 2)
-        h = h + 22
-    end
-    s:SetHeight(h)
-    return true
-end
-
 ------------------------------------------------------------------------
 -- Tags: read mode shows theirs, edit mode shows all to toggle
 ------------------------------------------------------------------------
@@ -527,123 +439,6 @@ function DP:LayoutTags(s, e)
     if #items == 0 then return false end
     local top = s.mode == "edit" and -22 or 0
     s:SetHeight(Flow(items, top, 4, 4, 18))
-    return true
-end
-
-------------------------------------------------------------------------
--- Kudos
-------------------------------------------------------------------------
-local function KudosBadge(parent)
-    local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    b:SetHeight(20)
-    b:SetBackdrop({ bgFile = W.WHITE, edgeFile = W.WHITE, edgeSize = 1 })
-    b.Icon = b:CreateTexture(nil, "ARTWORK")
-    b.Icon:SetSize(14, 14)
-    b.Icon:SetPoint("LEFT", 4, 0)
-    b.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    b.Text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    b.Text:SetPoint("LEFT", b.Icon, "RIGHT", 4, 0)
-    b:SetScript("OnEnter", function(self)
-        local k = self.kudos
-        if not k then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine(("%s  x%d"):format(k.type.name, k.count))
-        ns.Profile.AddKudosDesc(GameTooltip, k.type)
-        GameTooltip:AddLine("Given anonymously. Last one " .. ns.FormatAgo(k.last) .. ".", 0.8, 0.8, 0.8, true)
-        GameTooltip:AddLine(("Counts the last %d days."):format(ns.Profile.KUDOS_DAYS), 0.6, 0.6, 0.6)
-        GameTooltip:Show()
-    end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    function b:SetKudos(k)
-        self.kudos = k
-        if self.Icon:SetTexture(ns.Profile.KudosIcon(k.type)) == false then
-            self.Icon:SetTexture("Interface\\Icons\\Spell_Shadow_Charm")
-        end
-        self.Text:SetText(("%s |cffffd100x%d|r"):format(k.type.name, k.count))
-        local r, g, bl = D:TagColor(k.type.color)
-        self:SetBackdropColor(r * 0.22, g * 0.22, bl * 0.22, 0.95)
-        self:SetBackdropBorderColor(r, g, bl, 0.8)
-        self:SetWidth(4 + 14 + 4 + math.ceil(self.Text:GetStringWidth()) + 8)
-    end
-    return b
-end
-
-function DP:BuildKudosSection(parent)
-    local s = NewSection(parent, "Kudos")
-    s.Give = SmallButton(s, "+ Give Kudos", 100)
-    s.Give:SetPoint("TOPRIGHT", 0, 2)
-    s.Give:SetScript("OnClick", function(btn) DP:ShowGiveKudos(btn) end)
-    s.Line:SetPoint("RIGHT", s.Give, "LEFT", -6, 0)
-    s.Empty = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    s.Empty:SetText("No kudos yet.")
-    s.Note = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    s.badges = {}
-    return s
-end
-
-function DP:ShowGiveKudos(owner)
-    if self.entry then W.ShowMenu(owner, self:KudosMenuItems(self.entry)) end
-end
-
--- The Give Kudos menu for a member (also the roster's right-click submenu).
-function DP:KudosMenuItems(e)
-    local PF = ns.Profile
-    local items = { { text = ("Give %s kudos"):format(e.short), isTitle = true } }
-    for _, k in ipairs(PF:KudosTypes()) do
-        local wait = PF:KudosWait(e.full, k.id)
-        local icon = ("|T%s:14:14:0:0:64:64:5:59:5:59|t "):format(tostring(PF.KudosIcon(k)))
-        items[#items + 1] = {
-            text = icon .. D:TagColorHex(k.color) .. k.name .. "|r" .. (wait > 0 and "  |cff9d9d9d(given this week)|r" or ""),
-            disabled = wait > 0,
-            tooltip = k.desc ~= "" and { title = k.name, text = k.desc } or nil,
-            func = function()
-                local ok, err = PF:GiveKudos(e.full, k.id)
-                if ok then
-                    ns:Print(("Your \"%s\" kudos for %s is on its way. It's anonymous: your name isn't saved or shown."):format(k.name, e.short))
-                    ns.PlaySound("U_CHAT_SCROLL_BUTTON")
-                elseif err then
-                    ns:Print("|cffff5555" .. err .. "|r")
-                end
-            end,
-        }
-    end
-    if #items == 1 then items[2] = { text = ("No kudos set up yet (officers add them on the %s tab)."):format(ns.TabName("tags")), disabled = true } end
-    items[#items + 1] = { divider = true }
-    items[#items + 1] = { text = "|cff9d9d9dAnonymous. Each kudos once a week per person.|r", disabled = true }
-    return items
-end
-
-function DP:RefreshKudos(e)
-    local s = self.kudos
-    local list = ns.Profile:KudosList(e.full)
-    local canGive = ns.Profile:CanGiveKudos(e.full)
-    if #list == 0 and not canGive then return false end
-    s.Give:SetShown(canGive)
-    s.Line:ClearAllPoints()
-    s.Line:SetPoint("LEFT", s.Title, "RIGHT", 6, 0)
-    s.Line:SetPoint("RIGHT", canGive and s.Give or s, canGive and "LEFT" or "RIGHT", canGive and -6 or 0, 0)
-    for _, b in ipairs(s.badges) do b:Hide() end
-    local items = {}
-    for i, k in ipairs(list) do
-        local b = s.badges[i]
-        if not b then
-            b = KudosBadge(s)
-            s.badges[i] = b
-        end
-        b:SetKudos(k)
-        items[i] = b
-    end
-    local h
-    if #items == 0 then
-        s.Empty:ClearAllPoints()
-        s.Empty:SetPoint("TOPLEFT", 0, -22)
-        s.Empty:Show()
-        h = 40
-    else
-        s.Empty:Hide()
-        h = Flow(items, -22, 4, 4, 20)
-    end
-    s:SetHeight(h)
     return true
 end
 
@@ -1157,7 +952,7 @@ function DP:RefreshHistory(e)
 end
 
 ------------------------------------------------------------------------
--- Edit mode: About me, status, usually online, map dot (your own profile)
+-- Edit mode: contact
 ------------------------------------------------------------------------
 -- A text box with a counter; saved a moment after you stop typing.
 local function EditText(s, maxLetters, height, multi, onSave)
@@ -1203,27 +998,6 @@ function DP:FlushText()
     end
 end
 
-function DP:BuildEditAbout(parent)
-    local s = NewSection(parent, "About Me")
-    EditText(s, ns.Profile.ABOUT_MAX, 78, true, function(text) return ns.Profile:SetAbout(text) end)
-    s.Line:SetPoint("RIGHT", s.Count, "LEFT", -6, 0)
-    s.Hint = Para(s, "GameFontDisableSmall", INNER)
-    s.Hint:SetPoint("TOPLEFT", s.Bg, "BOTTOMLEFT", 0, -3)
-    s:SetHeight(22 + 78 + 30)
-    return s
-end
-
-function DP:BuildEditStatus(parent)
-    local s = NewSection(parent, "Status")
-    EditText(s, ns.Profile.STATUS_MAX, 26, false, function(text) return ns.Profile:SetStatus(text) end)
-    s.Line:SetPoint("RIGHT", s.Count, "LEFT", -6, 0)
-    local hint = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("TOPLEFT", s.Bg, "BOTTOMLEFT", 0, -3)
-    hint:SetText("Shows how long ago you set it. Leave empty to hide it.")
-    s:SetHeight(22 + 26 + 18)
-    return s
-end
-
 -- Contact: Discord name and a note. Yours, or anyone's for officers (for
 -- guildmates without the addon).
 function DP:BuildEditContact(parent)
@@ -1258,223 +1032,6 @@ function DP:BuildEditContact(parent)
     s.Hint:SetText("Contact note: BattleTag, timezone, best way to reach you. Seen by the guild.")
     s:SetHeight(22 + 26 + 18 + 2 + 26 + 18)
     return s
-end
-
--- Pronouns (only while officers have them turned on). Your own profile: a
--- box plus suggestions. An officer on someone else's: theirs and Clear.
-function DP:BuildEditPronouns(parent)
-    local s = NewSection(parent, "Pronouns")
-    EditText(s, ns.Profile.PRONOUNS_MAX, 26, false, function(text) return ns.Profile:SetPronouns(text) end)
-    s.Line:SetPoint("RIGHT", s.Count, "LEFT", -6, 0)
-    s.Bg:SetWidth(INNER - 110)
-    local pick = SmallButton(s, "Suggestions", 100)
-    pick:SetPoint("LEFT", s.Bg, "RIGHT", 10, 0)
-    pick:SetScript("OnClick", function(btn)
-        local items = { { text = "Pronouns", isTitle = true } }
-        for _, p in ipairs(ns.Profile.PRONOUN_SUGGESTIONS) do
-            items[#items + 1] = { text = p, func = function()
-                s.Box:SetText(p)
-                local ok, err = ns.Profile:SetPronouns(p)
-                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-            end }
-        end
-        items[#items + 1] = { divider = true }
-        items[#items + 1] = { text = "None (clear)", func = function()
-            s.Box:SetText("")
-            ns.Profile:SetPronouns("")
-        end }
-        W.ShowMenu(btn, items)
-    end)
-    s.Hint = s:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    s.Hint:SetPoint("TOPLEFT", s.Bg, "BOTTOMLEFT", 0, -3)
-    s.Hint:SetText("Shown next to your name. Optional; leave empty to show none.")
-    s:SetHeight(22 + 26 + 18)
-    return s
-end
-
-function DP:BuildClearPronouns(parent)
-    local s = NewSection(parent, "Pronouns")
-    s.Text = s:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    s.Text:SetPoint("TOPLEFT", 0, -24)
-    s.Clear = SmallButton(s, "Clear", 70)
-    s.Clear:SetPoint("LEFT", s.Text, "RIGHT", 10, 0)
-    s.Clear:SetScript("OnClick", function()
-        local e = DP.entry
-        if not e then return end
-        W.Confirm(("Clear %s's pronouns?\nThey can set them again."):format(e.short), function()
-            local ok, err = ns.Profile:ClearPronouns(e.full)
-            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-            DP:Refresh()
-        end)
-    end)
-    W.Tooltip(s.Clear, "Clear pronouns", "Officers can clear someone's pronouns but not change them.")
-    s:SetHeight(46)
-    return s
-end
-
--- Folded: your summary and "Edit hours". Open: learning on/off and, per day,
--- learned / not playing / from-to (server time, the same for the whole guild).
-local MODE_LABELS = { learned = "Learned", off = "Not playing", hours = "Set hours" }
-
-function DP:BuildEditSchedule(parent)
-    local s = NewSection(parent, "Usually Online")
-    s.Summary = Para(s, "GameFontHighlightSmall", INNER)
-    s.Summary:SetPoint("TOPLEFT", 0, -22)
-    s.Source = Para(s, "GameFontDisableSmall", INNER)
-    s.Toggle = TextLink(s, function()
-        DP.schedEditOpen = not DP.schedEditOpen
-        DP:Refresh()
-    end)
-
-    local learn = CreateFrame("CheckButton", nil, s, "UICheckButtonTemplate")
-    learn:SetSize(22, 22)
-    local ll = learn.Text or learn.text
-    if not ll then
-        ll = learn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        ll:SetPoint("LEFT", learn, "RIGHT", 2, 1)
-    end
-    ll:SetFontObject("GameFontHighlightSmall")
-    ll:SetText("Learn my hours from when I play")
-    learn:SetScript("OnClick", function(self)
-        ns.Profile:SetLearn(self:GetChecked())
-        DP:Refresh()
-    end)
-    W.Tooltip(learn, "Learn my hours", "While you're logged in, your own copy of the addon notes the server hour every 10 minutes and keeps the last 4 weeks.",
-        "An hour counts once you've played it in two different weeks. Nothing about this is shared except the result.")
-    s.Learn = learn
-
-    s.Note = Para(s, "GameFontDisableSmall", INNER)
-    s.rows = {}
-    for d = 0, 6 do
-        local r = CreateFrame("Frame", nil, s)
-        r:SetSize(INNER, 22)
-        r.Day = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        r.Day:SetPoint("LEFT", 0, 0)
-        r.Day:SetText(ns.Profile.DAYS[d + 1])
-        r.Mode = SmallButton(r, "", 86)
-        r.Mode:SetPoint("LEFT", 32, 0)
-        r.Mode:SetScript("OnClick", function(btn) DP:ShowDayModeMenu(btn, d) end)
-        r.From = SmallButton(r, "", 62)
-        r.From:SetPoint("LEFT", r.Mode, "RIGHT", 4, 0)
-        r.From:SetScript("OnClick", function(btn) DP:ShowDayHourMenu(btn, d, "from") end)
-        r.Dash = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        r.Dash:SetPoint("LEFT", r.From, "RIGHT", 3, 0)
-        r.Dash:SetText("-")
-        r.To = SmallButton(r, "", 62)
-        r.To:SetPoint("LEFT", r.Dash, "RIGHT", 3, 0)
-        r.To:SetScript("OnClick", function(btn) DP:ShowDayHourMenu(btn, d, "to") end)
-        r.Info = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        r.Info:SetPoint("LEFT", r.Mode, "RIGHT", 6, 0)
-        r.Info:SetPoint("RIGHT", 0, 0)
-        r.Info:SetJustifyH("LEFT")
-        r.Info:SetWordWrap(false)
-        s.rows[d] = r
-    end
-    return s
-end
-
-function DP:ShowDayModeMenu(owner, d)
-    local PF = ns.Profile
-    local cur = PF:DayChoice(d)
-    local kind = cur == "off" and "off" or (type(cur) == "table" and "hours" or "learned")
-    local function pick(choice) PF:SetDayChoice(d, choice); DP:Refresh() end
-    W.ShowMenu(owner, {
-        { text = PF.DAYS[d + 1], isTitle = true },
-        { text = "Learned from when I play", radio = true, checked = function() return kind == "learned" end, func = function() pick(nil) end },
-        { text = "Not playing", radio = true, checked = function() return kind == "off" end, func = function() pick("off") end },
-        { text = "Set hours", radio = true, checked = function() return kind == "hours" end,
-          func = function() if kind ~= "hours" then pick({ from = 19, to = 23 }) end end },
-    })
-end
-
--- from: 0-23, to: 1-24 (24 = midnight). Server time.
-function DP:ShowDayHourMenu(owner, d, which)
-    local PF = ns.Profile
-    local cur = PF:DayChoice(d)
-    if type(cur) ~= "table" then return end
-    local items = { { text = (which == "from" and "From" or "To") .. "  |cff9d9d9d(server time)|r", isTitle = true } }
-    local first, last = which == "from" and 0 or 1, which == "from" and 23 or 24
-    for h = first, last do
-        items[#items + 1] = {
-            text = PF.HourText(h) .. (h == 24 and " (midnight)" or ""), radio = true,
-            checked = function() return cur[which] == h end,
-            func = function()
-                PF:SetDayChoice(d, { from = which == "from" and h or cur.from, to = which == "to" and h or cur.to })
-                DP:Refresh()
-            end,
-        }
-    end
-    W.ShowMenu(owner, items)
-end
-
-function DP:RefreshEditSchedule()
-    local s = self.editSchedule
-    local PF = ns.Profile
-    local open = self.schedEditOpen
-    local mode = PF.ClockMode()
-    local me = ns.PlayerFullName()
-    local bits = PF:Hours(me, mode) or {}
-    local summary = PF.Summary(bits)
-    s.Summary:SetText(summary and (summary .. ("  |cff9d9d9d(%s)|r"):format(PF.ClockLabel(mode)))
-        or "|cff9d9d9dNothing yet. Guildmates won't see this section until there is.|r")
-    local y = -22 - math.ceil(s.Summary:GetStringHeight()) - 2
-    local _, days = PF:LearnedHours()
-    s.Source:SetText(PF:LearnEnabled()
-        and (days > 0 and ("Learned from %d day%s of play, plus your changes."):format(days, days == 1 and "" or "s")
-            or "Learning from when you play: it fills in over the next days.")
-        or "Learning is off: only the hours you set are shown.")
-    s.Source:ClearAllPoints()
-    s.Source:SetPoint("TOPLEFT", 0, y)
-    y = y - math.ceil(s.Source:GetStringHeight()) - 4
-    s.Toggle:SetLabel(open and "Done editing hours" or "Edit hours")
-    s.Toggle:ClearAllPoints()
-    s.Toggle:SetPoint("TOPLEFT", 0, y)
-    y = y - 20
-
-    s.Learn:SetShown(open)
-    s.Note:SetShown(open)
-    for d = 0, 6 do s.rows[d]:SetShown(open) end
-    if open then
-        s.Learn:ClearAllPoints()
-        s.Learn:SetPoint("TOPLEFT", -4, y)
-        s.Learn:SetChecked(PF:LearnEnabled())
-        y = y - 26
-        local off = PF.LocalMinusServer()
-        s.Note:SetText("Hours you set are in |cffffffffserver time|r, the same for the whole guild"
-            .. ((off and off ~= 0) and (" (server time is " .. (off < 0 and (-off .. " h ahead of") or (off .. " h behind")) .. " your clock).") or ".")
-            .. " Profiles show them the way your game clock is set.")
-        s.Note:ClearAllPoints()
-        s.Note:SetPoint("TOPLEFT", 0, y)
-        y = y - math.ceil(s.Note:GetStringHeight()) - 6
-        local learned = PF:LearnedHours()
-        for d = 0, 6 do
-            local r = s.rows[d]
-            r:ClearAllPoints()
-            r:SetPoint("TOPLEFT", 0, y)
-            local cur = PF:DayChoice(d)
-            local kind = cur == "off" and "off" or (type(cur) == "table" and "hours" or "learned")
-            r.Mode:SetText(MODE_LABELS[kind])
-            local hours = kind == "hours"
-            r.From:SetShown(hours)
-            r.To:SetShown(hours)
-            r.Dash:SetShown(hours)
-            r.Info:SetShown(not hours)
-            if hours then
-                r.From:SetText(PF.HourText(cur.from or 0))
-                r.To:SetText(PF.HourText(cur.to or 24))
-            elseif kind == "learned" then
-                local dayBits = {}
-                for h = 0, 23 do if learned[d * 24 + h] then dayBits[h] = true end end
-                local text = PF.Summary(dayBits)
-                r.Info:SetText(text and (text:gsub("^Mon ", "")) .. "  (server)" or (PF:LearnEnabled() and "nothing learned yet" or "learning is off"))
-            else
-                r.Info:SetText("")
-            end
-            y = y - 23
-        end
-        y = y - 2
-    end
-    s:SetHeight(-y)
 end
 
 ------------------------------------------------------------------------
@@ -1767,16 +1324,7 @@ function DP:VisibleSections(e)
     local list = {}
     local function add(s, show) if show ~= false then list[#list + 1] = s end end
     if self.editing then
-        local mine = e.full == ns.PlayerFullName()
-        local pronouns = ns.Profile:PronounsEnabled()
-        if mine then
-            add(self.editAbout); add(self.editStatus); add(self.editContact); add(self.editPronouns, pronouns)
-            add(self.editSchedule)
-        else
-            -- officers can clear what someone entered
-            add(self.clearPronouns, pronouns and ns.IsOfficer() and ns.Profile:OwnPronouns(e.full) ~= "")
-            add(self.editContact, ns.Profile:CanEditContact(e.full))
-        end
+        add(self.editContact, ns.Profile:CanEditContact(e.full))
         add(self.alt, ns.DB:CanEditLinks())
         add(self.spec)
         add(self.role)
@@ -1785,11 +1333,8 @@ function DP:VisibleSections(e)
         return list
     end
     add(self.linkLine)
-    add(self.statusBox, self:RefreshStatusBox(e))
     add(self.contactBox, self:RefreshContactBox(e))
-    add(self.aboutBox, self:RefreshAboutBox(e))
     add(self.tagsRead, self:LayoutTags(self.tagsRead, e))
-    add(self.kudos, self:RefreshKudos(e))
     add(self.schedule, self:RefreshSchedule(e))
     add(self.tabs)
     if self.tab == "notes" then
@@ -1812,7 +1357,7 @@ function DP:Layout(visible)
     for _, s in ipairs(visible) do
         s:ClearAllPoints()
         local gap = (s == self.tabs) and (SECTION_GAP + 4) or SECTION_GAP
-        if s == self.linkLine or s == self.statusBox or s == self.contactBox or s == self.aboutBox or s == self.tagsRead then gap = 8 end
+        if s == self.linkLine or s == self.contactBox or s == self.tagsRead then gap = 8 end
         s:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -gap)
         total = total + gap + s:GetHeight()
         prev = s
@@ -1836,24 +1381,6 @@ function DP:Refresh(forceText)
 
     self:RefreshHeader(e)
     if self.editing then
-        if mine then
-            local PF = ns.Profile
-            local ea, es = self.editAbout, self.editStatus
-            if forceText or not ea.Box:HasFocus() then ea.Box:SetText(PF:OwnAbout(e.full)) end
-            if forceText or not es.Box:HasFocus() then
-                local text = PF:Status(e.full)
-                es.Box:SetText(text or "")
-            end
-            local ep = self.editPronouns
-            if forceText or not ep.Box:HasFocus() then ep.Box:SetText(PF:OwnPronouns(e.full)) end
-            ep.Hint:SetText(e.isAlt and "Only this character. Leave it empty to show your main's."
-                or "Shown next to your name. Your alts show it too, unless they have their own.")
-            ea.Hint:SetText(e.isAlt and "Only this character. Leave it empty to show your main's About me."
-                or "Your alts show this too, unless they have their own.")
-            self:RefreshEditSchedule()
-        else
-            self.clearPronouns.Text:SetText(ns.Profile:OwnPronouns(e.full))
-        end
         local ec = self.editContact
         if ns.Profile:CanEditContact(e.full) then
             local d, n = ns.Profile:OwnContact(e.full)

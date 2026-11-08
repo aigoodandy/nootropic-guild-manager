@@ -72,29 +72,6 @@ local function InputBox(parent, width, maxLetters, numeric)
     return eb
 end
 
--- A pill that toggles on/off (gold when on).
-local function Toggle(parent, text, onClick)
-    local p = W.Pill(parent, 18, 14)
-    p:SetLabel(text)
-    function p:SetOn(on)
-        self.on = on
-        if on then
-            self:SetBackdropColor(0.35, 0.27, 0, 0.95)
-            self:SetBackdropBorderColor(1, 0.82, 0, 1)
-            self.Text:SetTextColor(1, 0.92, 0.5)
-        else
-            self:SetBackdropColor(0.06, 0.06, 0.06, 0.85)
-            self:SetBackdropBorderColor(0.32, 0.32, 0.32, 0.9)
-            self.Text:SetTextColor(0.6, 0.6, 0.6)
-        end
-    end
-    p:SetScript("OnClick", function(self)
-        onClick(self)
-        ns.PlaySound("U_CHAT_SCROLL_BUTTON")
-    end)
-    return p
-end
-
 local function SmallIconButton(parent, normal, pushed, tip)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(24, 24)

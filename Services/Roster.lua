@@ -79,7 +79,6 @@ function R:BuildAltIndex()
 end
 
 function R:Rebuild()
-    ns.Count("rosterBuilds")
     wipe(self.members)
     wipe(self.byName)
     self:BuildAltIndex()

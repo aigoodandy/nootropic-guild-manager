@@ -5,7 +5,7 @@
 
       Nootropic Guild Manager   appearance, minimap button, reset, about
         Recruiting              /who whisper button, auto-invite, Do Not Whisper
-        Officers                guild settings, tabs, audit history
+        Officers                permissions (Guild Master), audit history
 
     O:Open(key) opens one: nil (main), "recruiting" or "officers".
 ]]
@@ -203,30 +203,9 @@ function O:BuildMain()
     self.communitiesCheck = L:Check("Shortcut on the Guild & Communities window",
         "A side tab with the addon icon.", function(on) ns.Communities:SetEnabled(on) end)
 
-    -- which side of the window the tabs are on
-    local ty = L:Row(30)
-    local sideLabel = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    sideLabel:SetPoint("TOPLEFT", 18, ty - 4)
-    sideLabel:SetText("Tabs on the")
-    local side = W.Button(L.panel, "", 100, 22)
-    side:SetPoint("TOPLEFT", 110, ty)
-    side:SetScript("OnClick", function(btn)
-        local items = { { text = "Tabs on the", isTitle = true } }
-        for _, s in ipairs({ { "right", "Right side" }, { "left", "Left side" }, { "bottom", "Bottom" } }) do
-            items[#items + 1] = { text = s[2], radio = true,
-                checked = function() return (ns.DB:Settings().tabSide or "right") == s[1] end,
-                func = function()
-                    ns.DB:Settings().tabSide = s[1]
-                    ns.UI:LayoutTabs()
-                    O:Refresh()
-                end }
-        end
-        W.ShowMenu(btn, items)
-    end)
-    local sideHint = L.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    sideHint:SetPoint("LEFT", side, "RIGHT", 10, 0)
-    sideHint:SetText("of the window. Just for you.")
-    self.tabSideBtn = side
+    self.learnCheck = L:Check("Learn when I usually play",
+        "Notes the hour every 10 minutes while you play (last 4 weeks, this computer only) and shares just the summary, shown as \"Usually online\" on your profile. Off: nothing is noted or shared.",
+        function(on) ns.Profile:SetLearn(on) end)
     L:Space(4)
 
     L:Header("Minimap Button")
@@ -249,18 +228,13 @@ function O:BuildMain()
     local resetCols = W.Button(L.panel, "List Columns", 140, 24)
     resetCols:SetPoint("LEFT", resetWin, "RIGHT", 8, 0)
     resetCols:SetScript("OnClick", function()
-        W.Confirm("Reset the columns of the roster, the compact roster and the recruitment list to their default order, widths and visibility?", function()
+        W.Confirm("Reset the columns of the roster and the recruitment list to their default order, widths and visibility?", function()
             ns.RosterView:ResetColumns()
-            ns.CompactRoster.cols:Reset()
             ns.RecruitView.cols:Reset()
             ns:Print("List columns reset to defaults.")
         end)
     end)
-    W.Tooltip(resetCols, "Reset list columns", "Default column order, widths and which columns are shown, on the roster, the compact roster and the recruitment list.")
-    local resetSmall = W.Button(L.panel, "Compact Windows", 150, 24)
-    resetSmall:SetPoint("LEFT", resetCols, "RIGHT", 8, 0)
-    resetSmall:SetScript("OnClick", function() O:ResetCompactWindows() end)
-    W.Tooltip(resetSmall, "Reset compact windows", "Puts the compact roster and the recruiting bar back in their starting place and size.")
+    W.Tooltip(resetCols, "Reset list columns", "Default column order, widths and which columns are shown, on the roster and the recruitment list.")
     L:Space(6)
 
     L:Header("About")
@@ -279,25 +253,9 @@ function O:BuildMain()
     open:SetPoint("LEFT", syncNow, "RIGHT", 8, 0)
     open:SetScript("OnClick", function() ns.UI:OpenTab(ns.UI.TAB_ROSTER) end)
     L:Text("|cffffd100Commands|r\n"
-        .. "|cffffffff/ngm|r open or close     |cffffffff/ngm compact|r compact roster     |cffffffff/ngm mini|r recruiting bar\n"
-        .. "|cffffffff/ngm find <text>|r search the roster     |cffffffff/ngm polls|r polls     |cffffffff/ngm sync|r sync now\n"
-        .. "|cffffffff/ngm export|r copy the roster for a spreadsheet     |cffffffff/ngm diag|r troubleshooting     |cffffffff/ngm help|r every command", "GameFontHighlightSmall")
+        .. "|cffffffff/ngm|r open or close     |cffffffff/ngm find <text>|r search the roster     |cffffffff/ngm recruit|r recruiting\n"
+        .. "|cffffffff/ngm sync|r sync now     |cffffffff/ngm diag|r troubleshooting     |cffffffff/ngm help|r every command", "GameFontHighlightSmall")
     L:Finish()
-end
-
--- Compact roster and recruiting bar back to their starting place and size.
-function O:ResetCompactWindows()
-    local s = ns.DB:Settings()
-    if s.compact then s.compact.pos, s.compact.size = nil, nil end
-    s.miniPos = nil
-    local CR, MR = ns.CompactRoster, ns.RecruitMini
-    if CR.frame then
-        local c = CR:Settings()
-        CR.frame:SetSize(c.size.w, c.size.h)
-        CR:RestorePosition()
-    end
-    if MR.frame then MR:RestorePosition() end
-    ns:Print("Compact roster and recruiting bar positions reset.")
 end
 
 ------------------------------------------------------------------------
@@ -363,158 +321,14 @@ end
 ------------------------------------------------------------------------
 -- Officers page
 ------------------------------------------------------------------------
--- Tabs: a title box and a "who sees it" menu of guild ranks for each tab.
-local TAB_NOTES = {
-    roster = "Always shown to everyone.",
-    tags = "Officers, and ranks allowed to manage tags.",
-    audit = "Only ever shown to officers.",
-}
-
-local function RanksText(key)
-    if key == "roster" then return "Everyone" end
-    local set = ns.DB:TabSetting(key)
-    if not set then return "All ranks" end
-    local ranks, n = ns.DB:GuildRanks(), 0
-    for _, r in ipairs(ranks) do if r.index == 0 or set[r.index] then n = n + 1 end end
-    return ("%d of %d ranks"):format(n, #ranks)
-end
-
-function O:RankMenu(owner, key)
-    local DB = ns.DB
-    local items = { { text = "Who sees this tab", isTitle = true } }
-    items[#items + 1] = { text = "All ranks", radio = true,
-        checked = function() return DB:TabSetting(key) == nil end,
-        func = function()
-            local ok, err = DB:SetTabRanks(key, nil)
-            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-            O:Refresh()
-        end }
-    items[#items + 1] = { divider = true }
-    for _, r in ipairs(DB:GuildRanks()) do
-        local gm = r.index == 0
-        items[#items + 1] = {
-            text = r.name .. (gm and "  |cff9d9d9d(always)|r" or ""),
-            checked = function()
-                local set = DB:TabSetting(key)
-                return gm or not set or set[r.index] == true
-            end,
-            func = function()
-                if gm then return end -- the Guild Master always sees every tab
-                local set = DB:TabSetting(key)
-                if not set then -- from "all ranks": start with every rank ticked
-                    set = {}
-                    for _, x in ipairs(DB:GuildRanks()) do set[x.index] = true end
-                end
-                set[r.index] = not set[r.index] or nil
-                set[0] = true
-                local ok, err = DB:SetTabRanks(key, set)
-                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-                O:Refresh()
-            end,
-        }
-    end
-    W.ShowMenu(owner, items)
-end
-
-function O:BuildTabControls(L)
-    L:Header("Tabs  |cff9d9d9d(whole guild)|r")
-    L:Text("Change a tab's icon (click it; right-click for the usual one), rename it, or choose which ranks see it. Leave a title empty to keep the usual name. The Guild Master always sees every tab.")
-    local head = L:Row(18)
-    local function HeadText(text, x)
-        local fs = L.panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        fs:SetPoint("TOPLEFT", x, head)
-        fs:SetText(text)
-    end
-    HeadText("Tab", 20)
-    HeadText("Title", 124)
-    HeadText("Who sees it", 270)
-    self.tabRows = {}
-    for i, key in ipairs(ns.DB.TAB_KEYS) do
-        local y = L:Row(28)
-        -- the tab's icon: click to choose another, right-click for the usual one
-        local icon = CreateFrame("Button", nil, L.panel)
-        icon:SetSize(22, 22)
-        icon:SetPoint("TOPLEFT", 14, y)
-        icon.Tex = icon:CreateTexture(nil, "ARTWORK")
-        icon.Tex:SetAllPoints()
-        icon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-        icon:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        icon:SetScript("OnClick", function(self, button)
-            if not ns.IsOfficer() then return end
-            if button == "RightButton" then
-                local ok, err = ns.DB:SetTabIcon(key, nil)
-                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-                O:Refresh()
-                return
-            end
-            ns.IconPicker:Open(ns.UI:TabIcon(i), function(chosen)
-                local ok, err = ns.DB:SetTabIcon(key, chosen)
-                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-                O:Refresh()
-            end, self)
-        end)
-        W.Tooltip(icon, "Tab icon", "Click to choose another icon. Right-click for the usual one.")
-        local name = L.panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        name:SetPoint("TOPLEFT", 42, y - 4)
-        name:SetText(ns.UI:DefaultTabTitle(i))
-        local box = CreateFrame("EditBox", nil, L.panel, "InputBoxTemplate")
-        box:SetSize(130, 20)
-        box:SetPoint("TOPLEFT", 130, y - 1)
-        box:SetAutoFocus(false)
-        box:SetMaxLetters(ns.DB.TAB_TITLE_MAX)
-        local function save(self)
-            if self.saving then return end
-            self.saving = true
-            local _, current = ns.DB:TabSetting(key)
-            local text = ns.Trim(self:GetText() or "")
-            if text ~= (current or "") then
-                local ok, err = ns.DB:SetTabTitle(key, text)
-                if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-            end
-            self.saving = false
-        end
-        box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-        box:SetScript("OnEscapePressed", function(self)
-            local _, current = ns.DB:TabSetting(key)
-            self:SetText(current or "")
-            self:ClearFocus()
-        end)
-        box:SetScript("OnEditFocusLost", function(self) save(self); O:Refresh() end)
-        W.Tooltip(box, "Tab title", ("Up to %d characters. Leave empty for \"%s\"."):format(ns.DB.TAB_TITLE_MAX, ns.UI:DefaultTabTitle(i)))
-        local ranks = W.Button(L.panel, "", 140, 22)
-        ranks:SetPoint("TOPLEFT", 270, y)
-        ranks:SetScript("OnClick", function(self) if key ~= "roster" then O:RankMenu(self, key) end end)
-        local note = L.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        note:SetPoint("LEFT", ranks, "RIGHT", 8, 0)
-        note:SetText(TAB_NOTES[key] or "")
-        self.tabRows[i] = { key = key, box = box, ranks = ranks, icon = icon, index = i }
-    end
-    L:Space(10)
-end
-
-function O:RefreshTabControls(officer)
-    for _, row in ipairs(self.tabRows or {}) do
-        local _, title = ns.DB:TabSetting(row.key)
-        if not row.box:HasFocus() then row.box:SetText(title or "") end
-        row.ranks:SetText(RanksText(row.key))
-        local usable = officer and ns.DB:Guild() ~= nil
-        row.box:SetEnabled(usable)
-        row.box:SetAlpha(usable and 1 or 0.45)
-        row.ranks:SetEnabled(usable and row.key ~= "roster")
-        row.ranks:SetAlpha((usable and row.key ~= "roster") and 1 or 0.45)
-        W.SetIcon(row.icon.Tex, ns.UI:TabIcon(row.index))
-        row.icon:SetEnabled(usable)
-        row.icon:SetAlpha(usable and 1 or 0.45)
-    end
-end
 ------------------------------------------------------------------------
 -- Permissions (the Guild Master): which ranks may do what
 ------------------------------------------------------------------------
 function O:PermMenu(owner, key)
     local DB = ns.DB
     local items = { { text = "Who may do this", isTitle = true } }
-    items[#items + 1] = { text = "Officers (default)", radio = true,
-        tooltip = { title = "Officers", text = "Ranks that can read officer notes." },
+    items[#items + 1] = { text = DB:PermDefaultText(key) .. " (default)", radio = true,
+        tooltip = { title = DB:PermDefaultText(key), text = DB:PermDef(key).everyone and "Every rank." or "Ranks that can read officer notes." },
         checked = function() return DB:PermRanks(key) == nil end,
         func = function()
             local ok, err = DB:SetPermRanks(key, nil)
@@ -546,7 +360,7 @@ end
 
 function O:BuildPermControls(L)
     L:Header("Permissions  |cff9d9d9d(Guild Master, whole guild)|r")
-    L:Text("Choose which ranks may do each of these. By default it's officers (ranks that can read officer notes). Pick ranks to give it to them instead; the Guild Master always can. Officer Log, Audit and officer-only stats always stay with officers: the game only sends that data to officer ranks.")
+    L:Text("Choose which ranks may do each of these. By default recruiting is open to everyone and the rest is for officers (ranks that can read officer notes). Pick ranks to give it to them instead; the Guild Master always can. Officer Log, Audit and officer-only stats always stay with officers: the game only sends that data to officer ranks.")
     self.permRows = {}
     for _, perm in ipairs(ns.DB.PERMS) do
         local y = L:Row(28)
@@ -581,17 +395,6 @@ function O:BuildOfficers()
     local outer, L = NewPage("officers", "Officers", "For ranks that can read officer notes.")
     self.officerNote = L:Text("|cffff8080Only officers can change these.|r")
 
-    L:Header("Profiles  |cff9d9d9d(whole guild)|r")
-    self.pronounsCheck = L:Check("Guildmates can add pronouns to their profile",
-        "Off by default. When on, each guildmate can add their pronouns (up to 24 characters) on their own profile; they show next to their name on the profile and in the roster tooltip. Officers can clear someone's. Turning it off hides them again without deleting them.",
-        function(on)
-            local ok, err = ns.Profile:SetPronounsEnabled(on)
-            if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
-            O:Refresh()
-        end)
-    L:Space(4)
-
-    self:BuildTabControls(L)
     self:BuildPermControls(L)
 
     L:Header("Audit History  |cff9d9d9d(your copy)|r")
@@ -661,7 +464,7 @@ function O:Refresh()
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
     self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
     self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
-    self.tabSideBtn:SetText(s.tabSide == "left" and "Left side" or s.tabSide == "bottom" and "Bottom" or "Right side")
+    self.learnCheck:SetChecked(ns.Profile:LearnEnabled())
     self.minimapCheck:SetChecked(not s.minimap.hide)
     for _, b in ipairs(self.clickPickers) do b:SetText(D:MinimapActionLabel(s.minimap[b.key])) end
     local st = ns.Sync.stats
@@ -673,13 +476,6 @@ function O:Refresh()
     -- officers
     local officer = ns.IsOfficer()
     self.officerNote:SetShown(not officer)
-    -- texts that name tabs follow their titles
-    if self.pages.recruiting and self.pages.recruiting.Sub then
-        self.pages.recruiting.Sub:SetText(("Saved for the guild you're in. Messages and searching are on the %s tab."):format(ns.TabName("recruit")))
-    end
-    self.pronounsCheck:SetChecked(ns.Profile:PronounsEnabled())
-    SetUsable(self.pronounsCheck, officer and ns.DB:Guild() ~= nil)
-    self:RefreshTabControls(officer)
     self:RefreshPermControls()
     for _, rb in ipairs(self.auditRadios) do
         rb:SetChecked((s.auditDays or 30) == rb.days)

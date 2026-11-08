@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: |cffffd100Nootropic|r Guild Manager
-## Notes: Guild roster for WoW: Forever with mains and alts, professions, specs, tags, contact notes, polls, goals, an officer log, audit history and recruiting tools. Synced between guildmates.
+## Notes: Guild roster for WoW: Forever with mains and alts, professions, specs, tags, contact info, an officer log, audit history and recruiting tools. Synced between guildmates.
 ## Author: Nootropic
 ## Version: 2.0
 ## SavedVariables: NootropicGuildManagerDB
@@ -21,32 +21,20 @@ Services\Roster.lua
 Services\Comm.lua
 Services\Messages.lua
 Services\Recruit.lua
-Services\Polls.lua
-Services\Stats.lua
-Services\Goals.lua
 Services\Profile.lua
 Services\Audit.lua
 
 # Interface
 UI\Widgets.lua
 UI\Columns.lua
-UI\PieChart.lua
-UI\LineChart.lua
 UI\ScheduleGrid.lua
 UI\BrandIcon.lua
 UI\MemberPicker.lua
 UI\IconPicker.lua
 UI\RosterView.lua
-UI\CompactRoster.lua
-UI\ExportView.lua
 UI\DetailPanel.lua
 UI\RecruitView.lua
-UI\RecruitMini.lua
 UI\MessagesView.lua
-UI\ChartLayouts.lua
-UI\FormKit.lua
-UI\PollsView.lua
-UI\GoalsView.lua
 UI\TagsView.lua
 UI\AuditView.lua
 UI\MainFrame.lua

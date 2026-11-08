@@ -9,7 +9,7 @@
     Scopes
       guild    tags, tag assignments, main/alt links, specs and professions.
                Sent on the GUILD addon channel.
-      officer  officer log, officer-only stats and goals, audit trail. Sent only on the OFFICER
+      officer  officer log and audit trail. Sent only on the OFFICER
                addon channel (the game delivers it only to ranks that can read
                officer chat). Nothing is ever whispered.
 
@@ -40,34 +40,11 @@
                                                    blocks new whispers to them meanwhile)
       AV:<member>          addon version in use    the member only
       TI:<tagId>           tag icon (file id or texture path)   officers
-      GS:<name>            guild-wide setting, e.g. GS:pronouns = "1" (on)   officers
-      PL:<id>              poll (question, options, close time)   officers
-                           kept until its results expire
-      PV:<poll>:<member>   a member's vote in a poll   the member only
-                           (only counted if cast before the poll closed)
-      AB:<member>          About me text            the member; officers may only clear it ("")
-      ST:<member>          status line              the member only
+      GS:<name>            guild-wide setting, e.g. GS:perm_links = "1,3" (who may link mains)   officers
       CN:<member>          contact: "discord;note" (Discord name, then
                            anything else: BattleTag, timezone...)   officers, or the member
-      PN:<member>          pronouns (shown only while GS:pronouns = "1")
-                           the member; officers may only clear it ("")
       SC:<member>          usual online hours: 168 bits (Monday 00:00 UTC
                            onward) as 42 hex digits   the member only
-      KT:<id>              kudos type (like a tag definition)   officers
-      PI:<pollId>          each answer's color and icon, and the layout:
-                           "o2;layout;1=color:icon~2=..."   officers
-      SD:<id>              guild stat everyone sees:
-                           "v4;group;deleted;layout;title;looks;filter" (looks: each
-                           row's color and icon, "Mage=8:icon~...")   officers
-      SO:<id>              custom stat only officers see (officer scope), same value   officers
-      GD:<id>              guild goal everyone sees:
-                           "g1;deleted;target;due;title;parts;filter"
-                           (parts: "label^need^filter~...")   officers
-      GO:<id>              goal only officers see (officer scope), same value   officers
-      KD:<id>              kudos description (tooltip text; none = the
-                           default kudos' own text)   officers
-      KU:<member>:<type>:<id>  one anonymous kudos for <member>: no author,
-                           random id, kept 90 days   anyone in the guild
 
     Types with a ttl (or an expires function) expire: older records are
     deleted, left out of digests and repairs, and refused when they arrive.
@@ -109,28 +86,12 @@ S.TYPES = {
     AV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Addon version" },
     TI = { scope = "guild",   officer = true, label = "Tag icon" },
     GS = { scope = "guild",   officer = true, label = "Guild setting" },
-    PL = { scope = "guild",   officer = true, label = "Poll" },
-    PV = { scope = "guild",   selfOnly = true, noAudit = true, label = "Poll vote" },
-    AB = { scope = "guild",   officer = true, self = true, label = "About me" },
-    ST = { scope = "guild",   selfOnly = true, noAudit = true, label = "Status" },
     CN = { scope = "guild",   officer = true, self = true, label = "Contact" },
-    PN = { scope = "guild",   officer = true, self = true, label = "Pronouns" },
     SC = { scope = "guild",   selfOnly = true, noAudit = true, label = "Usually online" },
-    KT = { scope = "guild",   officer = true, label = "Kudos type" },
-    KD = { scope = "guild",   officer = true, label = "Kudos description" },
-    PI = { scope = "guild",   officer = true, label = "Poll look" },
-    SD = { scope = "guild",   officer = true, label = "Guild stat" },
-    SO = { scope = "officer", officer = true, label = "Officer stat" },
-    GD = { scope = "guild",   officer = true, label = "Guild goal" },
-    GO = { scope = "officer", officer = true, label = "Officer goal" },
-    KU = { scope = "guild",   anyone = true, noAudit = true, ttl = 90 * 86400, low = true, immutable = true, anonymous = true, label = "Kudos" },
 }
 local CHANNEL = { guild = "GUILD", officer = "OFFICER" }
 -- Types whose key is not about one member.
-local NO_MEMBER = { T = true, A = true, TI = true, GS = true, PL = true, KT = true, KD = true, SD = true, SO = true, PI = true, GD = true, GO = true }
-
--- Orphaned poll votes (their poll is unknown) are kept this long.
-local ORPHAN_VOTE_TTL = 30 * 86400
+local NO_MEMBER = { T = true, A = true, TI = true, GS = true }
 
 S.officers = {} -- players seen sending on the officer channel this session
 S.stats = { sent = 0, received = 0, applied = 0, retries = 0, dropped = 0 }
@@ -174,11 +135,8 @@ function S.ParseKey(key)
     local typ, rest = key:match("^(%u+):(.*)$")
     if not typ or not S.TYPES[typ] then return nil end
     local member
-    if typ == "L" or typ == "KU" then
+    if typ == "L" then
         member = rest:match("^([^:]+):")
-    elseif typ == "PV" then
-        member = rest:match("^[^:]+:(.+)$")
-        if not member then return nil end
     elseif not NO_MEMBER[typ] then
         member = rest
     end
@@ -186,18 +144,9 @@ function S.ParseKey(key)
 end
 
 -- When a record stops being kept (server time), or nil when it never expires.
--- Polls are kept until their results expire; votes go with their poll.
 function S:ExpiresAt(key, rec)
-    local typ, _, rest = S.ParseKey(key)
+    local typ = S.ParseKey(key)
     if not typ then return nil end
-    if typ == "PL" then
-        local p = S.Codec.ParsePoll(rec.v)
-        return p and p.expireAt or rec.t + ORPHAN_VOTE_TTL
-    elseif typ == "PV" then
-        local poll = self:Get("PL:" .. rest:match("^([^:]+):"))
-        local p = poll and S.Codec.ParsePoll(poll.v)
-        return p and p.expireAt or rec.t + ORPHAN_VOTE_TTL
-    end
     local def = S.TYPES[typ]
     return def.ttl and rec.t + def.ttl or nil
 end
@@ -262,21 +211,7 @@ function S:Accept(typ, member, def, rec, ctx)
     if typ == "A" and rec.t < Now() - self:RetentionSeconds() then return false end
     local expires = self:ExpiresAt(ctx.key, rec)
     if expires and expires < Now() then return false end
-    if def.anonymous and (rec.a or "") ~= "" then return false end -- anonymous records (kudos) never carry a name
-    if typ == "PV" and not self:VoteInTime(ctx.key, rec) then return false end
-    -- someone else's About me or pronouns can only be cleared (officers), never rewritten
-    if (typ == "AB" or typ == "PN") and rec.a ~= member and rec.v ~= "" then return false end
     return true
-end
-
--- A vote counts only if it was cast before its poll closed (a minute of
--- slack for clock differences). Votes for polls we don't know yet pass.
-function S:VoteInTime(key, rec)
-    local pollId = key:match("^PV:([^:]+):")
-    local poll = pollId and self:Get("PL:" .. pollId)
-    local p = poll and S.Codec.ParsePoll(poll.v)
-    if not p then return true end
-    return not p.deleted and rec.t <= p.closeAt + 60
 end
 
 -- Records left out of digests and repairs: old audit entries (each officer
@@ -290,11 +225,10 @@ end
 
 -- Deletes records past their expiry.
 function S:PruneExpired()
-    local now, removed, polls = Now(), 0, false
+    local now, removed = Now(), 0
     for _, scope in ipairs({ "guild", "officer" }) do
         local store = self:Store(scope)
         if store then
-            -- collect first: a vote's expiry depends on its poll record
             local dead = {}
             for key, rec in pairs(store) do
                 local expires = self:ExpiresAt(key, rec)
@@ -303,12 +237,10 @@ function S:PruneExpired()
             for _, key in ipairs(dead) do
                 store[key] = nil
                 removed = removed + 1
-                if key:sub(1, 1) == "P" and key:sub(3, 3) == ":" then polls = true end
             end
         end
     end
     if removed > 0 then ns:Fire("RECRUITS_CHANGED") end
-    if polls then ns:Fire("POLLS_CHANGED") end
     return removed
 end
 
@@ -393,7 +325,6 @@ function S:Apply(key, rec, ctx)
     if ctx.origin == "remote" and not self:Accept(typ, member, def, rec, ctx) then return false end
     local cur = store[key]
     if cur and not Newer(rec, cur) then return false end
-    if cur and def.immutable then return false end -- kudos can't be changed or deleted
     store[key] = rec
     self:Materialize(typ, key, member, rec)
     if not def.noAudit and not ctx.migration and ns.IsOfficer() then
@@ -478,154 +409,6 @@ function Codec.ParseLog(v)
     return { ts = tonumber(created), author = creator, text = text }
 end
 
--- Kudos type: "color;order;retired;icon;name"
-function Codec.KudosType(color, order, retired, icon, name)
-    return ("%d;%s;%d;%s;%s"):format(color or 1, tostring(order or 0), retired and 1 or 0,
-        (Clean(icon or ""):gsub(";", "")), Clean(name))
-end
-function Codec.ParseKudosType(v)
-    local color, order, retired, icon, name = (v or ""):match("^(%d+);([%d%.%-]+);(%d);([^;]*);(.*)$")
-    if not color then return nil end
-    return { color = tonumber(color), order = tonumber(order) or 0, retired = retired == "1",
-        icon = ns.Data:ParseIcon(icon), name = name }
-end
-
--- Row looks: a color and icon for each row of a stat ("Mage") or answer of
--- a poll ("1"): { [label] = { color = n or nil, icon = icon, false (show
--- none) or nil (the row's own) } }, written as "label=color:icon~...":
--- color 0 = the row's own, icon "-" = none, "" = the row's own.
-local function LookLabel(s) return (Clean(s or ""):gsub("[~=;]", "")) end
-function Codec.Looks(looks)
-    local parts = {}
-    for label, l in pairs(looks or {}) do
-        local icon = l.icon == false and "-" or (Clean(l.icon or ""):gsub("[~;:]", ""))
-        parts[#parts + 1] = ("%s=%d:%s"):format(LookLabel(label), tonumber(l.color) or 0, icon)
-    end
-    table.sort(parts)
-    return table.concat(parts, "~")
-end
-function Codec.ParseLooks(v)
-    local out = {}
-    for entry in (v or ""):gmatch("[^~]+") do
-        local label, color, icon = entry:match("^([^=]*)=(%d+):(.*)$")
-        if label then
-            color = tonumber(color)
-            local parsed
-            if icon == "-" then parsed = false elseif icon ~= "" then parsed = ns.Data:ParseIcon(icon) end
-            out[label] = { color = color ~= 0 and color or nil, icon = parsed }
-        end
-    end
-    return out
-end
-Codec.LookLabel = LookLabel
-
--- Stat: "v4;group;deleted;layout;title;looks;filter" (the filter is a roster
--- search and may itself contain ";"). layout: how it's drawn (barspie, bars,
--- pie, columns, number). Earlier 1.13 betas wrote "v3;group;deleted;title;
--- looks;filter", "v2;group;deleted;color;icon;title;filter" and
--- "group;deleted;title;filter", still read.
--- s: { group, deleted, layout, title, looks, filter }
--- v5 adds a description: "v5;group;deleted;layout;title;desc;looks;filter".
-function Codec.CustomStat(s)
-    return ("v5;%s;%d;%s;%s;%s;%s;%s"):format((Clean(s.group or ""):gsub(";", "")), s.deleted and 1 or 0,
-        (Clean(s.layout or ""):gsub(";", "")), (Clean(s.title or ""):gsub(";", ",")),
-        (Clean(s.desc or ""):gsub(";", ",")), Codec.Looks(s.looks), Clean(s.filter or ""))
-end
-function Codec.ParseCustomStat(v)
-    v = v or ""
-    local group, deleted, layout, title, desc, looks, filter = v:match("^v5;([^;]*);(%d);([^;]*);([^;]*);([^;]*);([^;]*);(.*)$")
-    if group then
-        return { group = group, deleted = deleted == "1", layout = layout ~= "" and layout or nil, title = title,
-            desc = desc ~= "" and desc or nil, looks = Codec.ParseLooks(looks), filter = filter }
-    end
-    group, deleted, layout, title, looks, filter = v:match("^v4;([^;]*);(%d);([^;]*);([^;]*);([^;]*);(.*)$")
-    if group then
-        return { group = group, deleted = deleted == "1", layout = layout ~= "" and layout or nil, title = title,
-            looks = Codec.ParseLooks(looks), filter = filter }
-    end
-    group, deleted, title, looks, filter = v:match("^v3;([^;]*);(%d);([^;]*);([^;]*);(.*)$")
-    if not group then
-        group, deleted, title, filter = v:match("^v2;([^;]*);(%d);%d+;[^;]*;([^;]*);(.*)$")
-    end
-    if not group then
-        group, deleted, title, filter = v:match("^([^;]*);(%d);([^;]*);(.*)$")
-        if not group then return nil end
-    end
-    return { group = group, deleted = deleted == "1", title = title, looks = Codec.ParseLooks(looks), filter = filter }
-end
-
--- Goal: "g1;deleted;target;due;title;parts;filter". due: a time (0 = none).
--- parts: "label^need^filter~label^need^filter" (sub-targets counted among
--- the members the goal's filter matches). The filter is a roster search.
--- With a description: "g2;deleted;target;due;title;desc;parts;filter" (g1
--- is still written without one, so the built-in goals read the same everywhere).
--- g: { deleted, target, due, title, desc, parts = { { label, need, filter } }, filter }
-local function PartText(s) return (Clean(s or ""):gsub("[~^;]", " ")) end
-function Codec.Goal(g)
-    local parts = {}
-    for _, p in ipairs(g.parts or {}) do
-        parts[#parts + 1] = ("%s^%d^%s"):format(PartText(p.label), tonumber(p.need) or 0, PartText(p.filter))
-    end
-    local head = ("%d;%d;%d;%s;"):format(g.deleted and 1 or 0, tonumber(g.target) or 0, tonumber(g.due) or 0,
-        (Clean(g.title or ""):gsub(";", ",")))
-    local desc = (Clean(g.desc or ""):gsub(";", ","))
-    if desc ~= "" then
-        return "g2;" .. head .. desc .. ";" .. table.concat(parts, "~") .. ";" .. Clean(g.filter or "")
-    end
-    return "g1;" .. head .. table.concat(parts, "~") .. ";" .. Clean(g.filter or "")
-end
-function Codec.ParseGoal(v)
-    local deleted, target, due, title, desc, parts, filter = (v or ""):match("^g2;(%d);(%d+);(%d+);([^;]*);([^;]*);([^;]*);(.*)$")
-    if not deleted then
-        deleted, target, due, title, parts, filter = (v or ""):match("^g1;(%d);(%d+);(%d+);([^;]*);([^;]*);(.*)$")
-    end
-    if not deleted then return nil end
-    local list = {}
-    for entry in parts:gmatch("[^~]+") do
-        local label, need, pf = entry:match("^([^%^]*)%^(%d+)%^(.*)$")
-        if label then list[#list + 1] = { label = label, need = tonumber(need), filter = pf } end
-    end
-    due = tonumber(due)
-    return { deleted = deleted == "1", target = tonumber(target), due = due ~= 0 and due or nil,
-        title = title, desc = desc ~= "" and desc or nil, parts = list, filter = filter }
-end
-
--- Poll answer looks, layout and description (PI:<pollId>):
--- "o3;layout;desc;looks", or "o2;layout;looks" without a description;
--- looks keyed by answer number. Earlier betas wrote "o;looks" (and
--- "color;icon" for the whole poll, ignored). Returns looks, layout, desc.
-function Codec.PollLooks(looks, layout, desc)
-    layout = (Clean(layout or ""):gsub(";", ""))
-    desc = (Clean(desc or ""):gsub(";", ","))
-    if desc ~= "" then return "o3;" .. layout .. ";" .. desc .. ";" .. Codec.Looks(looks) end
-    return "o2;" .. layout .. ";" .. Codec.Looks(looks)
-end
-function Codec.ParsePollLooks(v)
-    v = v or ""
-    local layout, desc, rest = v:match("^o3;([^;]*);([^;]*);(.*)$")
-    if layout then return Codec.ParseLooks(rest), layout ~= "" and layout or nil, desc ~= "" and desc or nil end
-    layout, rest = v:match("^o2;([^;]*);(.*)$")
-    if layout then return Codec.ParseLooks(rest), layout ~= "" and layout or nil end
-    rest = v:match("^o;(.*)$")
-    return rest and Codec.ParseLooks(rest) or {}, nil
-end
-
--- Poll: "closeAt;expireAt;deleted;question;option1;option2;..."
-local function PollText(s) return (Clean(s):gsub(";", ",")) end
-function Codec.Poll(p)
-    local parts = { tostring(math.floor(p.closeAt)), tostring(math.floor(p.expireAt)), p.deleted and "1" or "0", PollText(p.question) }
-    for _, o in ipairs(p.options) do parts[#parts + 1] = PollText(o) end
-    return table.concat(parts, ";")
-end
-function Codec.ParsePoll(v)
-    local f = ns.Split(v or "", ";")
-    local closeAt, expireAt = tonumber(f[1]), tonumber(f[2])
-    if not (closeAt and expireAt and f[4]) then return nil end
-    local p = { closeAt = closeAt, expireAt = expireAt, deleted = f[3] == "1", question = f[4], options = {} }
-    for i = 5, #f do p.options[#p.options + 1] = f[i] end
-    return p
-end
-
 local pending = { members = {}, tags = false, links = false, audit = false }
 
 function S:Notify(kind, member)
@@ -663,18 +446,8 @@ function S:Materialize(typ, key, member, rec)
     if typ == "T" or typ == "TI" then
         self:Notify("tags")
         return
-    elseif typ == "PL" or typ == "PV" or typ == "PI" then
-        ns.Debounce("pollschanged", 0.2, function() ns:Fire("POLLS_CHANGED") end)
-        return
     elseif typ == "GS" then
         ns.Debounce("guildsettings", 0.1, function() ns:Fire("GUILD_SETTINGS_CHANGED") end)
-        return
-    elseif typ == "SD" or typ == "SO" or typ == "GD" or typ == "GO" then
-        ns.Debounce("statschanged", 0.2, function() ns:Fire("STATS_CHANGED") end)
-        return
-    elseif typ == "KT" or typ == "KD" or typ == "KU" then
-        if typ == "KU" then ns.Profile:InvalidateKudosIndex() else ns.DB.kudosCache = nil end
-        ns.Debounce("kudoschanged", 0.2, function() ns:Fire("KUDOS_CHANGED") end)
         return
     elseif typ == "DN" or typ == "RS" then
         -- Do Not Whisper entries are about people outside the guild: no member record
@@ -705,14 +478,8 @@ function S:Materialize(typ, key, member, rec)
             data.ts = rec.t
             m.auto = data
         end
-    elseif typ == "AB" then
-        m.about = v ~= "" and v or nil
-    elseif typ == "ST" then
-        m.status, m.statusAt = (v ~= "" and v or nil), rec.t
     elseif typ == "CN" then
         m.contact = v ~= "" and v or nil
-    elseif typ == "PN" then
-        m.pronouns = v ~= "" and v or nil
     elseif typ == "SC" then
         m.schedule = v ~= "" and v or nil
     elseif typ == "AV" then
@@ -739,7 +506,8 @@ function S:RebuildAll()
     for _, m in pairs(g.members) do
         m.tags, m.main, m.spec, m.profs, m.auto, m.log, m.version = {}, nil, nil, nil, nil, nil, nil
         m.rating = nil
-        m.about, m.status, m.statusAt, m.schedule, m.contact = nil, nil, nil, nil, nil
+        m.schedule, m.contact = nil, nil
+        m.about, m.status, m.statusAt, m.pronouns = nil, nil, nil, nil
     end
     for _, scope in ipairs({ "guild", "officer" }) do
         for key, rec in pairs(self:Store(scope)) do
@@ -966,7 +734,6 @@ function S:OnMessage(msg, channel, sender)
     local f = ns.Split(msg, FS)
     if f[1] ~= PROTO then return end -- other protocol versions are ignored
     self.stats.received = self.stats.received + 1
-    ns.Count("bytesIn", #msg)
     local kind = f[2]
     if kind == "R" then
         local key, t, author, batch = f[3], tonumber(f[4]), f[5], f[6]
@@ -1069,7 +836,6 @@ function S:Pump()
             tokens = tokens - cost
             if result == "ok" then
                 S.stats.sent = S.stats.sent + 1
-                ns.Count("bytesOut", cost)
             else
                 S.stats.dropped = S.stats.dropped + 1
             end
@@ -1100,33 +866,6 @@ function S:SeedDefaults()
         local key = "T:d" .. i
         if not store[key] then
             store[key] = { v = Codec.TagDef(def[2], i * 10, false, def[1]), t = 1, a = "" }
-        end
-    end
-    -- default guild stats, the same way (time 6: replaces an untouched
-    -- default from an earlier beta, which were times 1 to 5)
-    for i, def in ipairs(ns.Stats.DEFAULTS) do
-        local key = "SD:d" .. i
-        local v = Codec.CustomStat({ title = def[1], group = def[2], layout = def[3] })
-        local cur = store[key]
-        if not cur or (cur.t < 6 and (cur.a or "") == "") then
-            store[key] = { v = v, t = 6, a = "" }
-        end
-    end
-    -- default goals, the same way (time 1; bump it when a default changes,
-    -- e.g. once the launch date is known, so untouched copies get the update)
-    local GOAL_SEED_TIME = 3 -- 2: the launch date added; 3: 2.0's evergreen goal
-    for i in ipairs(ns.Goals.DEFAULTS) do
-        local key = "GD:d" .. i
-        local cur = store[key]
-        if not cur or (cur.t < GOAL_SEED_TIME and (cur.a or "") == "") then
-            store[key] = { v = Codec.Goal(ns.Goals.DefaultGoal(i)), t = GOAL_SEED_TIME, a = "" }
-        end
-    end
-    -- default kudos, the same way (identical everywhere, so they never conflict)
-    for i, def in ipairs(ns.Data.DEFAULT_KUDOS) do
-        local key = "KT:d" .. i
-        if not store[key] then
-            store[key] = { v = Codec.KudosType(def[2], i * 10, false, def[3], def[1]), t = 1, a = "" }
         end
     end
 end
@@ -1179,8 +918,9 @@ function S:Migrate()
 end
 
 -- Deletes stored records of types this version no longer has (reviews,
--- ratings and map dot colors from 1.x), so they don't linger in the saved
--- data or upset digests.
+-- ratings, map dot colors, polls, stats, goals, kudos, About me, status,
+-- pronouns), and retired guild settings (tab titles and ranks, pronouns), so
+-- they don't linger in the saved data or upset digests.
 function S:PurgeUnknown()
     local removed = 0
     for _, scope in ipairs({ "guild", "officer" }) do
@@ -1188,7 +928,7 @@ function S:PurgeUnknown()
         if store then
             local dead = {}
             for key, rec in pairs(store) do
-                if not S.ParseKey(key) then
+                if not S.ParseKey(key) or key:match("^GS:tab_") or key == "GS:pronouns" or key == "GS:reviews" then
                     dead[#dead + 1] = key
                 elseif key:sub(1, 2) == "A:" then
                     -- audit entries about removed types

@@ -18,16 +18,7 @@ AU.CATEGORIES = {
     { key = "L",  label = "Officer log" },
     { key = "T",  label = "Tag list" },
     { key = "TI", label = "Tag icons" },
-    { key = "PL", label = "Polls" },
-    { key = "SD", label = "Guild stats" },
-    { key = "SO", label = "Officer stats" },
-    { key = "GD", label = "Guild goals" },
-    { key = "GO", label = "Officer goals" },
-    { key = "AB", label = "About me" },
     { key = "CN", label = "Contact" },
-    { key = "PN", label = "Pronouns" },
-    { key = "KT", label = "Kudos list" },
-    { key = "KD", label = "Kudos descriptions" },
     { key = "GS", label = "Guild settings" },
     { key = "DN", label = "Do Not Whisper" },
 }
@@ -121,8 +112,19 @@ function AU:Describe(e)
         local icon = D:ParseIcon(new)
         return "Tag icon changed: " .. (icon and ("|T" .. icon .. ":14:14:0:0:64:64:5:59:5:59|t ") or "") .. TagName(e.ref or "?")
     elseif t == "GS" then
-        if e.ref == "pronouns" then
-            return new == "1" and (GREEN .. "Pronouns on profiles turned on|r") or (RED .. "Pronouns on profiles turned off|r")
+        local perm = (e.ref or ""):match("^perm_(.+)$")
+        local def = perm and ns.DB:PermDef(perm)
+        if def then
+            local function Who(v)
+                if v == "" then return ns.DB:PermDefaultText(perm) .. " (default)" end
+                if v == "-" then return "Guild Master only" end
+                local names = {}
+                for _, r in ipairs(ns.DB:GuildRanks()) do
+                    for n in v:gmatch("%d+") do if tonumber(n) == r.index then names[#names + 1] = r.name end end
+                end
+                return #names > 0 and table.concat(names, ", ") or v
+            end
+            return ("Permission \"%s\" set to %s"):format(def.label, Who(new))
         end
         return "Guild setting changed: " .. (e.ref or "?")
     elseif t == "CN" then
@@ -132,12 +134,6 @@ function AU:Describe(e)
         if new == "" then return RED .. "Contact info cleared|r" .. who end
         if od ~= nd then return ("Discord changed%s: %s"):format(who, nd ~= "" and nd or (GRAY .. "none|r")) end
         return "Contact note changed" .. who
-    elseif t == "AB" then
-        if new == "" then
-            local who = e.author and e.member and e.author ~= e.member and (" by " .. ShortChar(e.author)) or ""
-            return RED .. "About me cleared|r" .. who
-        end
-        return "About me changed"
     elseif t == "RL" then
         local function Names(v)
             local out = {}
@@ -148,51 +144,6 @@ function AU:Describe(e)
             return #out > 0 and table.concat(out, ", ") or "none"
         end
         return "Role set to " .. Names(new) .. (old ~= "" and (GRAY .. " (was " .. Names(old) .. ")|r") or "")
-    elseif t == "PN" then
-        if new == "" then
-            local who = e.author and e.member and e.author ~= e.member and (" by " .. ShortChar(e.author)) or ""
-            return RED .. "Pronouns cleared|r" .. who
-        end
-        return "Pronouns set to " .. new
-    elseif t == "KT" then
-        local o, n = ns.Sync.Codec.ParseKudosType(old), ns.Sync.Codec.ParseKudosType(new)
-        if n and not o then return "Kudos added: " .. n.name end
-        if o and n and n.retired ~= o.retired then
-            return (n.retired and (RED .. "Kudos retired:|r ") or (GREEN .. "Kudos brought back:|r ")) .. n.name
-        end
-        if o and n and o.name ~= n.name then return ("Kudos renamed from %s to %s"):format(o.name, n.name) end
-        if o and n and o.order ~= n.order then return "Kudos moved: " .. n.name end
-        return "Kudos changed: " .. (n and n.name or "?")
-    elseif t == "PI" then
-        local rec = ns.Sync:Get("PL:" .. (e.ref or ""))
-        local poll = rec and ns.Sync.Codec.ParsePoll(rec.v)
-        return "Poll icon or color changed" .. (poll and (": \"" .. poll.question .. "\"") or "")
-    elseif t == "GD" or t == "GO" then
-        local o, n = ns.Sync.Codec.ParseGoal(old), ns.Sync.Codec.ParseGoal(new)
-        local who = t == "GD" and "Guild goal" or "Officer goal"
-        local title = n and n.title or (o and o.title) or "?"
-        if n and not o then return who .. " created: " .. title end
-        if n and n.deleted and not (o and o.deleted) then return RED .. who .. " deleted:|r " .. title end
-        return who .. " changed: " .. title
-    elseif t == "SD" or t == "SO" then
-        local o, n = ns.Sync.Codec.ParseCustomStat(old), ns.Sync.Codec.ParseCustomStat(new)
-        local who = t == "SD" and "Guild stat" or "Officer stat"
-        local title = n and n.title or (o and o.title) or "?"
-        if n and not o then return who .. " created: " .. title end
-        if n and n.deleted and not (o and o.deleted) then return RED .. who .. " deleted:|r " .. title end
-        return who .. " changed: " .. title
-    elseif t == "KD" then
-        local k = e.ref and ns.Profile:KudosType(e.ref)
-        local name = k and k.name or (e.ref or "?")
-        if new == "" then return "Kudos description cleared: " .. name end
-        return "Kudos description changed: " .. name .. GRAY .. " (\"" .. new .. "\")|r"
-    elseif t == "PL" then
-        local o, n = ns.Sync.Codec.ParsePoll(old), ns.Sync.Codec.ParsePoll(new)
-        local q = n and n.question or (o and o.question) or "?"
-        if n and not o then return "Poll created: \"" .. q .. "\"" end
-        if n and n.deleted and not (o and o.deleted) then return RED .. "Poll deleted:|r \"" .. q .. "\"" end
-        if o and n and n.closeAt < o.closeAt then return "Poll closed early: \"" .. q .. "\"" end
-        return "Poll changed: \"" .. q .. "\""
     end
     return t .. " changed"
 end

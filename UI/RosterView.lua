@@ -349,8 +349,6 @@ function RV:ShowColumnsMenu(owner)
             RV:Relayout()
         end,
     }
-    items[#items + 1] = { divider = true }
-    items[#items + 1] = { text = "Export roster...", func = function() ns.Export:Open() end }
     W.ShowMenu(owner, items)
 end
 
@@ -1095,21 +1093,12 @@ function RV:ShowRowTooltip(row, e, hint)
     end
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     local PF = ns.Profile
-    local pronouns = PF:Pronouns(e.full)
-    GameTooltip:AddLine(e.short .. (pronouns and ("  |cffb0b0b0(" .. pronouns .. ")|r") or ""), ns.ClassColor(e.classFile))
+    GameTooltip:AddLine(e.short, ns.ClassColor(e.classFile))
     GameTooltip:AddLine(("Level %d %s"):format(e.level, e.className), 1, 1, 1)
-    local status = PF:Status(e.full)
-    if status then GameTooltip:AddLine("\"" .. status .. "\"", 1, 0.82, 0, true) end
     local hours = PF:Hours(e.full) -- local or server time, as your game clock is set
     local summary = hours and PF.Summary(hours)
     if summary then
         GameTooltip:AddLine(("Usually online: %s (%s)"):format(summary, PF.ClockLabel()), 0.7, 0.7, 0.7, true)
-    end
-    local kudos = PF:KudosList(e.full)
-    if #kudos > 0 then
-        local parts = {}
-        for i = 1, math.min(3, #kudos) do parts[i] = ("%s x%d"):format(kudos[i].type.name, kudos[i].count) end
-        GameTooltip:AddLine("Kudos: " .. table.concat(parts, ", "), 0.94, 0.87, 0.69, true)
     end
     if e.spec then Pair("Specialization", e.spec .. (e.dist and (" (" .. e.dist .. ")") or "")) end
     if e.roleList and #e.roleList > 0 then Pair("Role", table.concat(e.roleList, ", ")) end
@@ -1184,9 +1173,6 @@ function RV:ShowRowMenu(row, e)
     local items = { { text = e.short, isTitle = true } }
     if ns.DB:CanEditTags(full) and #tagItems > 0 then items[#items + 1] = { text = "Tags", submenu = tagItems } end
     if ns.DB:CanEditLinks() then items[#items + 1] = { text = "Main / Alt", submenu = altItems } end
-    if ns.Profile:CanGiveKudos(full) then
-        items[#items + 1] = { text = "Give Kudos", submenu = ns.DetailPanel:KudosMenuItems(e) }
-    end
     for _, it in ipairs({
         { divider = true },
         { text = "Open Profile", func = function() RV:Select(full) end },
@@ -1236,7 +1222,6 @@ function RV:Refresh()
         return
     end
     self.dirty = false
-    ns.Count("rosterRedraws")
 
     local s = ns.DB:Settings()
     if s.sortKey and not COL[s.sortKey] then s.sortKey = "rank" end -- from an older version

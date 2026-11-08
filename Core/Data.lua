@@ -81,7 +81,6 @@ end
 D.MINIMAP_ACTIONS = {
     { key = "roster",  tab = true },
     { key = "recruit", tab = true },
-    { key = "polls",   tab = true },
     { key = "tags",    tab = true, suffix = " (officers)" },
     { key = "audit",   tab = true, suffix = " (officers)" },
     { key = "options", label = "Open Options" },
@@ -139,7 +138,7 @@ end
 ------------------------------------------------------------------------
 -- Content tags
 ------------------------------------------------------------------------
--- Colors for tags, kudos, polls and stats. Saved by number, so new ones go
+-- Colors for tags. Saved by number, so new ones go
 -- at the end. The first ten are the general colors new things cycle through;
 -- the class colors follow.
 D.TAG_COLORS = {
@@ -172,7 +171,7 @@ D.TAG_COLORS = {
 }
 D.BASE_COLORS = 10 -- new things cycle through the first ten
 
--- The color a new tag, kudos, poll or stat starts with (the nth made).
+-- The color a new tag starts with (the nth made).
 function D:NextColor(n)
     return (n % self.BASE_COLORS) + 1
 end
@@ -206,32 +205,6 @@ D.DEFAULT_TAGS = {
     { "Roleplay",      9,  ICON .. "Spell_Shadow_Charm" },
     { "Social",        10, ICON .. "INV_Drink_05" },
 }
-
--- Default kudos: { name, colorIndex, icon }. Officers can rename, recolor,
--- re-icon or retire them, and add their own (up to D.MAX_KUDOS active).
--- name, color, icon, description (shown in tooltips)
-D.DEFAULT_KUDOS = {
-    { "Great Tank",    2, "INV_Shield_06",
-        "Held aggro, kept the group safe and set a pace everyone could follow." },
-    { "Healer Hero",   6, "Spell_Nature_HealingTouch",
-        "Kept everyone standing, even when things went sideways." },
-    { "Damage Dealer", 4, "INV_Sword_04",
-        "Brought the big numbers and knew when to hold back." },
-    { "Group Leader",  5, "INV_BannerPVP_02",
-        "Got the group together, kept it organized and made the calls." },
-    { "Helpful",       1, "Spell_Holy_SealOfSacrifice",
-        "Went out of their way to help: a quest, a run, a hand when it was needed." },
-    { "Good Teacher",  3, "INV_Misc_Book_09",
-        "Explained a fight, a class or a profession with patience." },
-    { "Generous",      7, "INV_Misc_Coin_02",
-        "Shared gold, crafts, materials or loot without being asked." },
-    { "Good Vibes",    8, "INV_Drink_05",
-        "Made playing together more fun. Friendly, positive and great company." },
-    { "Funny",         9, "INV_Misc_Head_Murloc_01",
-        "Made guild chat or the group laugh. Mrglglgl!" },
-}
-D.MAX_KUDOS = 12
-D.MAX_KUDOS_DESC = 255
 
 -- Roles a character plays (set on their profile; any of them)
 D.ROLES = {

@@ -19,81 +19,13 @@ end
 ns.version = Meta("Version") or "dev"
 
 ------------------------------------------------------------------------
--- Performance counters (/ngm perf)
+-- Tab names in text ("Open the Recruitment tab"). key: "roster",
+-- "recruit", "tags" or "audit".
 ------------------------------------------------------------------------
-ns.perf = { started = GetTime() }
-
-function ns.Count(name, n)
-    ns.perf[name] = (ns.perf[name] or 0) + (n or 1)
-end
-
-local function KB(bytes)
-    if bytes >= 1024 * 1024 then return ("%.1f MB"):format(bytes / 1024 / 1024) end
-    return ("%.1f KB"):format(bytes / 1024)
-end
-
--- /ngm perf: memory, sync traffic, stored records and redraw counts.
-function ns.PerfReport()
-    local p = ns.perf
-    local secs = math.max(1, GetTime() - p.started)
-    local mins = secs / 60
-    local function Rate(n) return ("%d (%.1f/min)"):format(n or 0, (n or 0) / mins) end
-    ns:Print(("Performance this session (%dh %02dm):"):format(math.floor(secs / 3600), math.floor(secs / 60) % 60))
-
-    if UpdateAddOnMemoryUsage and GetAddOnMemoryUsage then
-        pcall(UpdateAddOnMemoryUsage)
-        local ok, kb = pcall(GetAddOnMemoryUsage, ns.name)
-        if ok and kb then ns:Print("  Memory: " .. KB(kb * 1024)) end
-    end
-
-    local st = ns.Sync.stats
-    ns:Print(("  Sync: %d sent (%s), %d received (%s), %d applied, %d queued, %d retries, %d dropped"):format(
-        st.sent, KB(p.bytesOut or 0), st.received, KB(p.bytesIn or 0), st.applied, ns.Sync:QueueSize(), st.retries, st.dropped))
-    ns:Print(("  Sending: %.0f bytes/sec on average (limit %d)"):format((p.bytesOut or 0) / secs, ns.Sync.BYTES_PER_SEC))
-
-    for _, scope in ipairs({ "guild", "officer" }) do
-        local store = ns.DB:Guild() and ns.Sync:Store(scope)
-        if store then
-            local total, byType = 0, {}
-            for key in pairs(store) do
-                total = total + 1
-                local typ = key:match("^(%u+):")
-                if typ then byType[typ] = (byType[typ] or 0) + 1 end
-            end
-            local list = {}
-            for typ, n in pairs(byType) do list[#list + 1] = { typ, n } end
-            table.sort(list, function(a, b) return a[2] > b[2] end)
-            local parts = {}
-            for i = 1, math.min(5, #list) do
-                local def = ns.Sync.TYPES[list[i][1]]
-                parts[i] = ("%s %d"):format(def and def.label or list[i][1], list[i][2])
-            end
-            ns:Print(("  Stored %s records: %d%s"):format(scope, total, #parts > 0 and (" (" .. table.concat(parts, ", ") .. ")") or ""))
-        end
-    end
-
-    ns:Print(("  Roster: rebuilt %s, redrawn %s"):format(Rate(p.rosterBuilds), Rate(p.rosterRedraws)))
-    ns:Print(("  Kudos index built %d times"):format(p.kudosIndexBuilds or 0))
-end
-
-------------------------------------------------------------------------
--- Tab names in text ("Vote on the Insights tab"): the title officers gave the
--- tab in Options > Officers > Tabs, else its usual name. key: "roster",
--- "recruit", "polls", "tags" or "audit".
-------------------------------------------------------------------------
-local USUAL_TAB_NAMES = { roster = "Roster", recruit = "Recruitment", polls = "Insights", tags = "Tags", audit = "Audit" }
+local TAB_NAMES = { roster = "Roster", recruit = "Recruitment", tags = "Tags", audit = "Audit" }
 
 function ns.TabName(key)
-    local UI, DB = ns.UI, ns.DB
-    if UI and UI.TabTitle and DB and DB.TAB_KEYS then
-        for i, k in ipairs(DB.TAB_KEYS) do
-            if k == key then
-                local ok, title = pcall(UI.TabTitle, UI, i)
-                if ok and title then return title end
-            end
-        end
-    end
-    return USUAL_TAB_NAMES[key] or key
+    return TAB_NAMES[key] or key
 end
 
 ------------------------------------------------------------------------
@@ -366,8 +298,6 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
     ns.Sync:Init()
     ns.Comm:Init()
     ns.Recruit:Init()
-    ns.Polls:Init()
-    ns.Goals:Init()
     ns.Profile:Init()
     ns.Minimap:Init()
     ns.Options:Init()
@@ -378,111 +308,6 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
 end)
 
 ------------------------------------------------------------------------
--- /ngm inspect: what the mouse is over (for copying Blizzard's look):
--- the frame's name, size and parent, and every texture on it and on its
--- child frames (atlas or file, layer, size, texture coordinates).
-------------------------------------------------------------------------
-local function Fmt(n) return n and ("%.0f"):format(n) or "?" end
-
--- Prints a line and keeps it in the saved data (NootropicGuildManagerDB.inspectLog),
--- which the game writes to WTF\Account\...\SavedVariables on /reload or logout,
--- so the output can be read without copying it out of chat.
-local INSPECT_KEEP = 300
-local function Out(text)
-    ns:Print(text)
-    if not NootropicGuildManagerDB then return end
-    local log = NootropicGuildManagerDB.inspectLog or {}
-    NootropicGuildManagerDB.inspectLog = log
-    log[#log + 1] = text
-    while #log > INSPECT_KEEP do table.remove(log, 1) end
-end
-
-local function PrintRegions(frame, indent)
-    for _, r in ipairs({ frame:GetRegions() }) do
-        if r:GetObjectType() == "Texture" then
-            local atlas = r.GetAtlas and r:GetAtlas()
-            local tex = atlas and ("atlas " .. atlas) or ("file " .. tostring(r:GetTexture()))
-            local layer, sub = r:GetDrawLayer()
-            local coords = ""
-            if not atlas and r.GetTexCoord then
-                local a, b, c, d, e, f2, g, h = r:GetTexCoord()
-                if a and (a ~= 0 or b ~= 0 or c ~= 0 or d ~= 1 or e ~= 1 or f2 ~= 0 or g ~= 1 or h ~= 1) then
-                    coords = (" coords %.3f %.3f %.3f %.3f"):format(a, e, b, d) -- left right top bottom
-                end
-            end
-            local point, rel, relPoint, x, y = r:GetPoint(1)
-            Out(("%s%s %s/%s %sx%s%s%s %s"):format(indent, tex, tostring(layer), tostring(sub or 0),
-                Fmt(r:GetWidth()), Fmt(r:GetHeight()), coords, r:IsShown() and "" or " (hidden)",
-                point and ("@" .. point .. " " .. Fmt(x) .. "," .. Fmt(y)) or ""))
-            -- masks that trim this texture's shape
-            for m = 1, (r.GetNumMaskTextures and r:GetNumMaskTextures() or 0) do
-                local mask = r:GetMaskTexture(m)
-                if mask then
-                    local matlas = mask.GetAtlas and mask:GetAtlas()
-                    local mp, _, _, mx, my = mask:GetPoint(1)
-                    Out(("%s  masked by %s %sx%s %s"):format(indent,
-                        matlas and ("atlas " .. matlas) or ("file " .. tostring(mask:GetTexture())),
-                        Fmt(mask:GetWidth()), Fmt(mask:GetHeight()), mp and ("@" .. mp .. " " .. Fmt(mx) .. "," .. Fmt(my)) or ""))
-                end
-            end
-        elseif r:GetObjectType() == "MaskTexture" then
-            local matlas = r.GetAtlas and r:GetAtlas()
-            local mp, _, _, mx, my = r:GetPoint(1)
-            Out(("%smask %s %sx%s %s"):format(indent, matlas and ("atlas " .. matlas) or ("file " .. tostring(r:GetTexture())),
-                Fmt(r:GetWidth()), Fmt(r:GetHeight()), mp and ("@" .. mp .. " " .. Fmt(mx) .. "," .. Fmt(my)) or ""))
-        end
-    end
-end
-
-function ns.InspectUnderMouse()
-    local f = (GetMouseFoci and GetMouseFoci()[1]) or (GetMouseFocus and GetMouseFocus())
-    if not f or f == WorldFrame then
-        Out("Hover a window part, then type /ngm inspect and press Enter (keep the mouse still).")
-        return
-    end
-    local parent = f:GetParent()
-    Out("---- /ngm inspect " .. date("%H:%M:%S"))
-    local point, rel, relPoint, x, y = f:GetPoint(1)
-    if point then
-        Out(("  placed %s of %s %s, offset %s,%s"):format(point,
-            rel and (rel.GetDebugName and rel:GetDebugName() or tostring(rel:GetName())) or "?", tostring(relPoint), Fmt(x), Fmt(y)))
-    end
-    Out(("Frame: %s (%s) %sx%s, parent %s"):format(f.GetDebugName and f:GetDebugName() or tostring(f:GetName()),
-        f:GetObjectType(), Fmt(f:GetWidth()), Fmt(f:GetHeight()),
-        parent and (parent.GetDebugName and parent:GetDebugName() or tostring(parent:GetName())) or "none"))
-    -- a bar's fill
-    local function BarFill(frame, indent)
-        if frame.GetStatusBarTexture then
-            local t = frame:GetStatusBarTexture()
-            if t then
-                Out(("%sbar fill: %s, color %.2f %.2f %.2f"):format(indent,
-                    tostring(t.GetAtlas and t:GetAtlas() or t:GetTexture()), t:GetVertexColor()))
-            end
-        end
-    end
-    PrintRegions(f, "  ")
-    BarFill(f, "  ")
-    -- every frame inside it, a few levels down (bars are often nested)
-    local function Children(frame, indent, depth)
-        if depth > 5 then return end
-        for _, child in ipairs({ frame:GetChildren() }) do
-            local cp, _, _, cx, cy = child:GetPoint(1)
-            Out(("%schild %s (%s) %sx%s%s"):format(indent,
-                child.GetDebugName and child:GetDebugName() or tostring(child:GetName()), child:GetObjectType(),
-                Fmt(child:GetWidth()), Fmt(child:GetHeight()), cp and (" @" .. cp .. " " .. Fmt(cx) .. "," .. Fmt(cy)) or ""))
-            PrintRegions(child, indent .. "  ")
-            BarFill(child, indent .. "  ")
-            Children(child, indent .. "  ", depth + 1)
-        end
-    end
-    Children(f, "  ", 1)
-    local hl = f.GetHighlightTexture and f:GetHighlightTexture()
-    if hl then Out("  highlight: " .. tostring(hl.GetAtlas and hl:GetAtlas() or hl:GetTexture())) end
-    local ck = f.GetCheckedTexture and f:GetCheckedTexture()
-    if ck then Out("  checked: " .. tostring(ck.GetAtlas and ck:GetAtlas() or ck:GetTexture())) end
-end
-
-------------------------------------------------------------------------
 -- Slash commands
 ------------------------------------------------------------------------
 local function PrintHelp()
@@ -491,15 +316,10 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm find <text>|r  - open with a search")
     ns:Print("  |cffffffff/ngm sync|r  - sync with guildmates now and show sync stats")
     ns:Print(("  |cffffffff/ngm audit|r  - open the %s tab (officers)"):format(ns.TabName("audit")))
-    ns:Print(("  |cffffffff/ngm insights|r  - open the %s tab (goals, polls and stats)"):format(ns.TabName("polls")))
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
     ns:Print(("  |cffffffff/ngm recruit|r  - open the %s tab"):format(ns.TabName("recruit")))
-    ns:Print("  |cffffffff/ngm mini|r  - show or hide the small recruiting bar")
-    ns:Print("  |cffffffff/ngm compact|r  - show or hide the compact guild roster")
-    ns:Print("  |cffffffff/ngm export|r  - copy the roster as text for a spreadsheet or .csv file")
     ns:Print("  |cffffffff/ngm options|r  - open the options")
     ns:Print("  |cffffffff/ngm diag|r  - troubleshoot the Guild & Communities shortcut")
-    ns:Print("  |cffffffff/ngm perf|r  - memory, sync traffic and how often things redraw")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
 end
 
@@ -518,21 +338,11 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns.Communities:Diagnose()
         ns.WhoWhisper:Diagnose()
         ns.Roster:Diagnose()
-    elseif cmd == "perf" then
-        ns.PerfReport()
-    elseif cmd == "inspect" then
-        ns.InspectUnderMouse()
     elseif cmd == "options" or cmd == "config" or cmd == "settings" then
         ns.Options:Open()
     elseif cmd == "recruit" then
         ns.UI:Show()
         ns.UI:SelectTab(ns.UI.TAB_RECRUIT)
-    elseif cmd == "mini" then
-        ns.RecruitMini:Toggle()
-    elseif cmd == "compact" then
-        ns.CompactRoster:Toggle()
-    elseif cmd == "export" then
-        ns.Export:Open()
     elseif cmd == "sync" then
         ns.Comm:Report()
         local started = ns.Sync:Exchange(true)
@@ -543,9 +353,6 @@ SlashCmdList.NOOTROPICGM = function(msg)
     elseif cmd == "audit" then
         ns.UI:Show()
         ns.UI:SelectTab(ns.UI.TAB_AUDIT)
-    elseif cmd == "insights" or cmd == "poll" or cmd == "polls" or cmd == "stats" or cmd == "goals" then
-        ns.UI:Show()
-        ns.UI:SelectTab(ns.UI.TAB_POLLS)
     elseif cmd == "minimap" then
         ns.Minimap:ToggleShown()
     elseif cmd == "reset" then

@@ -54,10 +54,19 @@ end
 function DB:Init()
     NootropicGuildManagerDB = NootropicGuildManagerDB or {}
     local sv = NootropicGuildManagerDB
-    local fresh = sv.settings == nil
     ApplyDefaults(DEFAULTS, sv)
-    sv.settings.ratingHiddenOnce = nil -- 2.0: ratings removed
-    sv.settings.hiddenColumns.rating = nil
+    -- 2.0: settings of removed features
+    local st = sv.settings
+    st.ratingHiddenOnce, st.hiddenColumns.rating = nil, nil
+    st.tabSide, st.compact, st.miniPos, st.export = nil, nil, nil, nil
+    st.shareLocation, st.showOnMap, st.customDots = nil, nil, nil
+    st.reviewed, st.kudosGiven = nil, nil
+    sv.inspectLog = nil
+    for _, mine in pairs(st.schedules or {}) do mine.days = nil end
+    for _, g in pairs(sv.guilds) do
+        g.myGoals, g.myStats, g.goalHistory, g.pollsSeen = nil, nil, nil, nil
+        g.kudosOutbox, g.reviewOutbox = nil, nil
+    end
     self.sv = sv
 end
 
@@ -242,67 +251,11 @@ end
 ------------------------------------------------------------------------
 -- Guild-wide settings (shared; officers change them)
 ------------------------------------------------------------------------
--- Tabs: which ranks see each one, and its title. GS:tab_<key> =
--- "<ranks>;<title>": ranks "*" (everyone) or rank numbers "1,2,4" (0 is
--- the Guild Master, who always sees every tab); an empty title keeps the
--- usual name. The Roster tab can be renamed but never hidden.
-DB.TAB_KEYS = { "roster", "recruit", "polls", "tags", "audit" }
-DB.TAB_TITLE_MAX = 16
-
--- allowed ranks ({ [rankIndex] = true }, or nil for everyone), title (or
--- nil), icon (or nil). Saved as "ranks;title;icon" (older: "ranks;title").
-function DB:TabSetting(key)
-    local v = ns.Sync:Value("GS:tab_" .. key)
-    if not v or v == "" then return nil, nil, nil end
-    local ranks, rest = v:match("^([^;]*);(.*)$")
-    if not ranks then return nil, nil, nil end
-    local title, icon = rest:match("^([^;]*);(.*)$")
-    if not title then title, icon = rest, "" end
-    local set
-    if ranks ~= "*" then
-        set = {}
-        for n in ranks:gmatch("%d+") do set[tonumber(n)] = true end
-    end
-    return set, (title ~= "" and title or nil), (icon ~= "" and ns.Data:ParseIcon(icon) or nil)
-end
-
-local function SaveTab(key, set, title, icon)
-    if not ns.IsOfficer() then return nil, "Only officers can change the tabs." end
-    local ranks = "*"
-    if set then
-        local list = {}
-        for n in pairs(set) do list[#list + 1] = n end
-        table.sort(list)
-        ranks = table.concat(list, ",")
-    end
-    title = ns.Trim(((title or ""):gsub("[;|\r\n\t]", ""))):sub(1, DB.TAB_TITLE_MAX)
-    icon = icon and (tostring(icon):gsub("[;|\r\n\t]", "")) or ""
-    local v = (ranks == "*" and title == "" and icon == "") and "" or (ranks .. ";" .. title .. ";" .. icon)
-    return ns.Sync:Set("GS:tab_" .. key, v)
-end
-
-function DB:SetTabRanks(key, set)
-    local _, title, icon = self:TabSetting(key)
-    if key == "roster" then set = nil end
-    return SaveTab(key, set, title, icon)
-end
-
-function DB:SetTabTitle(key, title)
-    local set, _, icon = self:TabSetting(key)
-    return SaveTab(key, set, title, icon)
-end
-
--- icon nil = the tab's usual icon
-function DB:SetTabIcon(key, icon)
-    local set, title = self:TabSetting(key)
-    return SaveTab(key, set, title, icon)
-end
-
 ------------------------------------------------------------------------
 -- Permissions: the Guild Master picks which ranks may do each of these
 -- (Options > Officers > Permissions). GS:perm_<key> = "" (the default:
--- officers, i.e. ranks that can read officer notes) or rank numbers
--- "1,3,4". The Guild Master (rank 0) always may, and only they change
+-- officers, i.e. ranks that can read officer notes; everyone for recruit)
+-- or rank numbers "1,3,4" ("-" = nobody but the Guild Master). The Guild Master (rank 0) always may, and only they change
 -- these. Officer-only data (officer log, audit, officer stats) can't be
 -- handed out: the game only delivers it to officer ranks.
 ------------------------------------------------------------------------
@@ -310,11 +263,12 @@ DB.PERMS = {
     { key = "tags",      label = "Manage the tag list",               hint = "Create, rename, recolor, reorder and delete tags (Tags tab)." },
     { key = "tagothers", label = "Tag other guildmates",              hint = "Everyone can always tag themselves." },
     { key = "links",     label = "Link mains and alts",               hint = "Mark alts, change mains, unlink." },
+    { key = "recruit",   label = "Recruit",                           everyone = true,
+      hint = "The Recruitment tab and the /who whisper button: search, whisper and invite." },
     { key = "profiles",  label = "Edit other guildmates' profiles",   hint = "Spec, roles, professions and contact info. Everyone can always edit their own." },
-    { key = "polls",     label = "Create and close polls",            hint = "Insights tab." },
 }
 DB.PERM_BY_TYPE = { T = "tags", TI = "tags", MT = "tagothers", M = "links",
-    MS = "profiles", RL = "profiles", MP = "profiles", CN = "profiles", PL = "polls", PI = "polls" }
+    MS = "profiles", RL = "profiles", MP = "profiles", CN = "profiles" }
 
 -- { [rankIndex] = true }, or nil for the default (officers).
 function DB:PermRanks(key)
@@ -330,12 +284,19 @@ function DB:IsGuildMaster()
 end
 
 -- May you do `key`? (the Guild Master always may)
+function DB:PermDef(key)
+    for _, p in ipairs(self.PERMS) do if p.key == key then return p end end
+end
+
 function DB:HasPerm(key)
     if not IsInGuild() then return false end
     local rank = self:MyRankIndex()
     if rank == 0 then return true end
     local set = self:PermRanks(key)
-    if not set then return ns.IsOfficer() end
+    if not set then
+        local def = self:PermDef(key)
+        return (def and def.everyone) and true or ns.IsOfficer()
+    end
     return rank ~= nil and set[rank] == true
 end
 
@@ -350,10 +311,16 @@ function DB:SetPermRanks(key, set)
     return ns.Sync:Set("GS:perm_" .. key, v)
 end
 
+-- The default's name: "Everyone" or "Officers".
+function DB:PermDefaultText(key)
+    local def = self:PermDef(key)
+    return (def and def.everyone) and "Everyone" or "Officers"
+end
+
 -- "Officers (default)", "Guild Master only" or "Veteran, Officer".
 function DB:PermText(key)
     local set = self:PermRanks(key)
-    if not set then return "Officers (default)" end
+    if not set then return self:PermDefaultText(key) .. " (default)" end
     local names = {}
     for _, r in ipairs(self:GuildRanks()) do
         if r.index ~= 0 and set[r.index] then names[#names + 1] = r.name end
@@ -367,16 +334,6 @@ function DB:MyRankIndex()
     if not IsInGuild() then return nil end
     local _, _, index = GetGuildInfo("player")
     return index
-end
-
--- Does your rank get this tab? (Officer-only tabs are checked separately.)
-function DB:TabAllowedForMe(key)
-    if key == "roster" then return true end
-    local set = self:TabSetting(key)
-    if not set then return true end
-    local rank = self:MyRankIndex()
-    if rank == nil or rank == 0 then return true end
-    return set[rank] == true
 end
 
 -- The guild's ranks: { { index = 0, name = "Guild Master" }, ... }

@@ -1,6 +1,7 @@
 --[[
     Nootropic Guild Manager - Main window
-    Blizzard portrait frame with bottom tabs (Roster / Content Tags),
+    Blizzard portrait frame with icon tabs down the right side (Roster,
+    Recruitment, Tags, Audit),
     a status line, and the member detail flyout.
 ]]
 local _, ns = ...
@@ -10,9 +11,9 @@ ns.UI = UI
 
 local FRAME_W, FRAME_H = 1000, 580
 local MIN_W, MIN_H, MAX_W, MAX_H = 640, 520, 1800, 1100
-local TAB_LABELS = { "Roster", "Recruitment", "Insights", "Tags", "Audit" }
-UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_POLLS, UI.TAB_TAGS, UI.TAB_AUDIT = 1, 2, 3, 4, 5
-local OFFICER_TABS = { [4] = true, [5] = true } -- Tags and Audit
+local TAB_LABELS = { "Roster", "Recruitment", "Tags", "Audit" }
+UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_TAGS, UI.TAB_AUDIT = 1, 2, 3, 4
+local OFFICER_TABS = { [3] = true, [4] = true } -- Tags and Audit
 
 ------------------------------------------------------------------------
 -- Creation
@@ -40,7 +41,6 @@ function UI:Create()
 
     self:UpdateTitle()
     self:BuildPortrait(f)
-    self:BuildCompactButton(f)
     self:RestorePosition()
 
     -- Status line along the bottom edge
@@ -54,7 +54,6 @@ function UI:Create()
     ns.RosterView.LIST_WIDTH = math.floor(f:GetWidth() - ns.RosterView.LIST_INSET)
     ns.RosterView:Build(f)
     ns.RecruitView:Build(f)
-    ns.PollsView:Build(f)
     ns.TagsView:Build(f)
     ns.AuditView:Build(f)
     ns.DetailPanel:Build(f)
@@ -73,8 +72,6 @@ function UI:Create()
     end, "opening the window"))
     f:SetScript("OnHide", ns.Safe(function()
         ns.PlaySound("IG_CHARACTER_INFO_CLOSE")
-        -- whispers still going out: keep the controls on screen in the small bar
-        if ns.Recruit:IsSending() and not ns.RecruitMini:IsShown() then ns.RecruitMini:Show() end
     end, "closing the window"))
     ns:On("OFFICER_CHANGED", function()
         UI:LayoutTabs()
@@ -101,41 +98,6 @@ end
 -- The portrait shows the addon icon (mug, stein or guild emblem).
 function UI:BuildPortrait(f)
     self.portrait = ns.Brand:AttachPortrait(f)
-end
-
--- Red Compact arrow beside the close button (as on the spellbook), on the
--- Roster tab (compact roster) and the Recruitment tab (small recruiting bar).
-function UI:BuildCompactButton(f)
-    local close = f.CloseButton or (f.GetName and _G[f:GetName() .. "CloseButton"])
-    local size = close and math.floor(close:GetWidth() + 0.5) or 24
-    if size < 16 then size = 24 end
-    local mini = W.SizeButton(f, "condense", size, function()
-        if UI.tab == UI.TAB_RECRUIT then
-            ns.RecruitMini:Compact()
-        else
-            ns.CompactRoster:Compact()
-        end
-    end)
-    if close then
-        mini:SetPoint("RIGHT", close, "LEFT", 0, 0)
-    else
-        mini:SetPoint("TOPRIGHT", -28, -2)
-    end
-    mini:MatchLevel(close)
-    mini.Button:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine("Compact")
-        if UI.tab == UI.TAB_RECRUIT then
-            GameTooltip:AddLine("A small recruiting bar you can move anywhere: search, tick new players and send whispers while you play.", 1, 1, 1, true)
-        else
-            GameTooltip:AddLine("A small guild roster you can move anywhere: names and locations.", 1, 1, 1, true)
-        end
-        GameTooltip:AddLine("Its expand arrow brings you back here.", 0.7, 0.7, 0.7, true)
-        GameTooltip:Show()
-    end)
-    mini.Button:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    mini:Hide()
-    self.miniButton = mini
 end
 
 function UI:BuildResizeGrip(f)
@@ -204,12 +166,11 @@ local function IconIfPresent(path, fallback)
     return path
 end
 
--- The usual icon of each tab (officers can pick another in Options).
+-- Each tab's icon.
 UI.DEFAULT_TAB_ICONS = {
     -- a group of people, as on the Guild & Communities window's roster tab
     IconIfPresent("Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend", "Interface\\Icons\\Spell_Holy_PrayerOfFortitude"), -- Roster
     "Interface\\Icons\\Ability_Warrior_BattleShout",  -- Recruitment
-    "Interface\\Icons\\INV_Scroll_03",                -- Insights
     "Interface\\Icons\\INV_Misc_Note_01",             -- Tags
     "Interface\\Icons\\INV_Misc_Spyglass_02",         -- Audit
 }
@@ -220,12 +181,9 @@ local function Mirror(tex)
     tex:SetTexCoord(urx, ury, lrx, lry, ulx, uly, llx, lly)
 end
 
--- Where the tabs are: "right" (default), "left" (icon tabs down that side)
--- or "bottom" (the classic text tabs under the window). Options >
--- Appearance; each player's own choice.
+-- The tabs always run down the window's right side.
 function UI:TabSide()
-    local side = ns.DB:Settings().tabSide
-    return (side == "left" or side == "bottom") and side or "right"
+    return "right"
 end
 
 function UI:TabsOnLeft()
@@ -360,28 +318,18 @@ function UI:BuildTabs(f)
     self:LayoutTabs()
 end
 
--- The icon officers gave the tab, or its usual one.
 function UI:TabIcon(id)
-    local _, _, icon = ns.DB:TabSetting(ns.DB.TAB_KEYS[id])
-    return icon or self.DEFAULT_TAB_ICONS[id]
+    return self.DEFAULT_TAB_ICONS[id]
 end
 
 function UI:IsTabAvailable(id)
-    -- officers choose which ranks see each tab (Options > Officers)
-    if id ~= UI.TAB_ROSTER and not ns.DB:TabAllowedForMe(ns.DB.TAB_KEYS[id]) then return false end
+    if id == UI.TAB_RECRUIT then return ns.DB:HasPerm("recruit") end
     if id == UI.TAB_TAGS and ns.DB:HasPerm("tags") then return true end
     return not OFFICER_TABS[id] or ns.IsOfficer()
 end
 
--- The tab's usual name.
-function UI:DefaultTabTitle(id)
-    return TAB_LABELS[id]
-end
-
--- The title officers gave the tab, or its usual name.
 function UI:TabTitle(id)
-    local _, title = ns.DB:TabSetting(ns.DB.TAB_KEYS[id])
-    return title or self:DefaultTabTitle(id)
+    return TAB_LABELS[id]
 end
 
 -- Shows only the tabs this player may use: down the chosen side, or along
@@ -451,8 +399,6 @@ function UI:SelectTab(id)
 
     ns.RosterView.page:SetShown(id == UI.TAB_ROSTER)
     ns.RecruitView.page:SetShown(id == UI.TAB_RECRUIT)
-    if self.miniButton then self.miniButton:SetShown(id == UI.TAB_RECRUIT or id == UI.TAB_ROSTER) end
-    ns.PollsView.page:SetShown(id == UI.TAB_POLLS)
     ns.TagsView.page:SetShown(id == UI.TAB_TAGS)
     ns.AuditView.page:SetShown(id == UI.TAB_AUDIT)
     if id ~= UI.TAB_ROSTER then ns.DetailPanel:Hide() end
