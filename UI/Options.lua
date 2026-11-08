@@ -202,6 +202,9 @@ function O:BuildMain()
         end)
     self.communitiesCheck = L:Check("Shortcut on the Guild & Communities window",
         "A side tab with the addon icon.", function(on) ns.Communities:SetEnabled(on) end)
+    self.blizzRosterCheck = L:Check("Show tags and alts on the Guild roster",
+        "On the game's Guild & Communities roster: tag icons and an alt marker after names, this addon's details in the tooltip, and Profile, Tags and Main / Alt in the right-click menu. Alt+click a member for their profile.",
+        function(on) ns.GuildRoster:SetEnabled(on) end)
 
     self.learnCheck = L:Check("Learn when I usually play",
         "Notes the hour every 10 minutes while you play (last 4 weeks, this computer only) and shares just the summary, shown as \"Usually online\" on your profile. Off: nothing is noted or shared.",
@@ -464,6 +467,7 @@ function O:Refresh()
     self.titleCheck:SetChecked(s.titleUseGuild and true or false)
     self.addonCountCheck:SetChecked(s.showAddonCount ~= false)
     self.communitiesCheck:SetChecked(s.communitiesButton ~= false)
+    self.blizzRosterCheck:SetChecked(s.blizzRoster ~= false)
     self.learnCheck:SetChecked(ns.Profile:LearnEnabled())
     self.minimapCheck:SetChecked(not s.minimap.hide)
     for _, b in ipairs(self.clickPickers) do b:SetText(D:MinimapActionLabel(s.minimap[b.key])) end

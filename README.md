@@ -14,15 +14,23 @@ A guild manager for **World of Warcraft: Forever**: a searchable roster with pro
 ## Opening it
 
 - `/ngm` (or `/nootropic`), the minimap button, the addon compartment menu, or the **shortcut tab on the Guild & Communities window**.
-- Minimap button: left-click opens the Roster, right-click the Options, shift-click Recruitment (all changeable in Options). Clicking again closes the window.
+- Minimap button: left-click opens Find, right-click the Options, shift-click Recruitment (all changeable in Options). Clicking again closes the window.
 - Drag the grip in the bottom-right corner to resize the window. The size is saved.
 
 ## What you see
 
-**Roster tab** — every guild member with first name (with class icon), second name, level, class, location, spec, Main / Alt ("Main" or "Alt of Markpri"), up to three professions with skill levels, tags, guild rank, and the version of Nootropic Guild Manager they run (hidden by default; shown in red when someone in the guild has a newer version, "-" if they don't use the addon). Click a column header to sort; sorting by Main / Alt groups each main with their alts. Offline members are dimmed.
+**On the game's Guild & Communities roster** — Nootropic Guild Manager works on top of Blizzard's own guild roster rather than replacing it:
+
+- **After each name**: up to three of their tag icons, and "alt" for alts.
+- **Hover a member**: Blizzard's tooltip gets this addon's details underneath: main or alts, spec, roles, professions with skill levels, Discord, when they usually play, and their tags.
+- **Right-click a member**: **Profile**, **Tags** (tick to add or remove, if your rank may) and **Main / Alt** (mark as alt, change main, make main, unlink, add an alt; if your rank may) are added to Blizzard's menu.
+- **Alt+click a member** (or **Profile** in the menu) opens their profile docked beside the window, next to Blizzard's own member details when those are open.
+- Only shown on your guild, not other communities. **Options > Show tags and alts on the Guild roster** turns all of it off. Nothing Blizzard does is changed or replaced, so inviting, promoting and removing keep working normally.
+
+**Find tab** (in this addon's window) — for what the game's roster can't do: search by tags, professions, spec, Discord and more (see **Searching**), group mains with their alts, and filter by tags. It lists every guild member with first name (with class icon), second name, level, class, location, spec, Main / Alt ("Main" or "Alt of Markpri"), up to three professions with skill levels, tags, guild rank, and the version of Nootropic Guild Manager they run (hidden by default; shown in red when someone in the guild has a newer version, "-" if they don't use the addon). Second name, level, class, location and rank start hidden, since the game's roster shows them; turn them on from the Columns menu. Click a column header to sort; sorting by Main / Alt groups each main with their alts. Offline members are dimmed.
 
 - **Right-click any column header** to show or hide columns. Your choice is saved between logins. Name can't be hidden.
-- **Rearrange columns** by dragging a header left or right; a gold marker shows where it will land. The order is saved between logins. "Reset column order" in the Columns menu, or **Reset Roster Columns** in Options (order, widths and shown columns), puts things back.
+- **Rearrange columns** by dragging a header left or right; a gold marker shows where it will land. The order is saved between logins. "Reset column order" in the Columns menu, or **List Columns** in Options (order, widths and shown columns), puts things back.
 - **Resize a column** by dragging the right edge of its header. Widths are saved; "Reset column widths" in the Columns menu undoes it. The last column fills the leftover space.
 - **Smaller windows** shrink columns toward a minimum width, then hide them in this order: Rank, Class, Lvl, Location, Professions, Main / Alt, Tags, Spec, Second Name. First Name is never hidden. Hidden columns come back when you widen the window, and the Columns menu marks them "(window too narrow)".
 - The **Spec** column and the profile show each class's talent-tree icon.
@@ -50,7 +58,7 @@ A guild manager for **World of Warcraft: Forever**: a searchable roster with pro
    - **Name:** type part of a character's name to show only matching players in the list right away; **Search** also looks for that name, so you can find a specific character. Clear it to see everyone again.
    - **Filter** opens a small menu: **Class**, **Step levels** (after each search the level range moves up by its own size, wrapping back to 1 at max level; keep clicking Search to sweep every level), and **Hide contacted**. **Reset filters** turns them all off. The Filter button shows how many are on, e.g. "Filter (2)".
    - The line under the search bar sums things up: players in the list, how many were new in the last search, how many you've whispered and how many replied, plus warnings (search capped at 50, Do Not Whisper players skipped). Active filters are listed on its right.
-   - **Columns** work like the Roster tab's: drag a header sideways to move it, drag its edge to resize it, and right-click any header to show or hide columns (Lvl, Class, Zone, Status) or reset them. The tick box and Name always stay.
+   - **Columns** work like the Roster tab's: drag a header sideways to move it, drag its edge to resize it, and right-click any header to show or hide columns (Lvl, Class, Zone, Status) or reset them, like the Find tab's. The tick box and Name always stay.
 2. **Tick the players you want to message** (click the checkbox or anywhere on the row). **Select New** ticks every player nobody in the guild has contacted; **Clear** unticks all; **Clear New** (beside them) removes everyone you haven't contacted from the list. Hover a row to read the message that player will get.
 3. Click **Send Whispers (N)**. Whispers go out one at a time, at least 12 seconds apart and no more than 40 per hour, so the game never sees the addon as a spammer. The button shows the countdown and turns into **Stop** while sending. If the game ever refuses an automatic whisper, the addon switches to click-to-send: the button becomes **Send Next** and each click sends one (same pacing).
 4. The Status column tracks each player: New, Queued, Whispered, Replied, Invited, and Joined! (detected automatically when they appear in your roster). Contacted players stay in the list so you never message anyone twice; **Clear New** removes only the uncontacted ones and **Hide contacted** (in Filter) hides the contacted ones.
@@ -102,7 +110,7 @@ Each message starts with `message:`. Lines you leave out mean "any"; `#` lines a
 
 Messages and keywords are saved per guild.
 
-**Tags tab** (officers, and ranks the Guild Master lets manage tags) — manage the guild's tags. The list is on the left with each one's count of members; click one to edit it on the right: its name, an **icon** (click the big icon or **Change...** to pick any icon from the game's macro icon menu, **search** them by the names of the spells and items that use them (e.g. "fire bolt", "murloc", "plate"; the first time the picker opens each session it indexes spells and items in the background for a few seconds; hover an icon to see what uses it), or **paste** one found outside the game: its name like `inv_misc_head_murloc_01`, its file number like `134169`, or a Wowhead icon link; a preview shows whether this version of the game has it), a **color** (Quest Gold, Rare Blue, Epic Purple, Horde Red, Legendary Orange, Emerald Dream, Murloc Green, Northrend Ice, Darnassus Rose, Mithril Silver, plus the nine class colors under **Class Colors**) and its order, with a preview. **Save** keeps your changes, **Undo** drops them. The editor also shows who has a tag (**Show in Roster** lists them there). **Delete** removes a tag from everyone. **+ New Tag** starts a new one in the same editor. Right-click a row for Move Up, Move Down and Delete. Tags are shared with everyone in the guild running the addon. Ten tags are created to start, each with its own icon: Questing, Dungeons, Raiding, World PvP, Battlegrounds, Crafting, Gathering, Leveling, Roleplay, Social.
+**Tags tab** (officers, and ranks the Guild Master lets manage tags) — manage the guild's tags. The list is on the left with each one's count of members; click one to edit it on the right: its name, an **icon** (click the big icon or **Change...** to pick any icon from the game's macro icon menu, **search** them by the names of the spells and items that use them (e.g. "fire bolt", "murloc", "plate"; the first time the picker opens each session it indexes spells and items in the background for a few seconds; hover an icon to see what uses it), or **paste** one found outside the game: its name like `inv_misc_head_murloc_01`, its file number like `134169`, or a Wowhead icon link; a preview shows whether this version of the game has it), a **color** (Quest Gold, Rare Blue, Epic Purple, Horde Red, Legendary Orange, Emerald Dream, Murloc Green, Northrend Ice, Darnassus Rose, Mithril Silver, plus the nine class colors under **Class Colors**) and its order, with a preview. **Save** keeps your changes, **Undo** drops them. The editor also shows who has a tag (**Show in Roster** lists them on the Find tab). **Delete** removes a tag from everyone. **+ New Tag** starts a new one in the same editor. Right-click a row for Move Up, Move Down and Delete. Tags are shared with everyone in the guild running the addon. Ten tags are created to start, each with its own icon: Questing, Dungeons, Raiding, World PvP, Battlegrounds, Crafting, Gathering, Leveling, Roleplay, Social.
 
 Members can tag **themselves** (on their own profile or by right-clicking their own row); only officers can tag other people.
 
@@ -132,8 +140,8 @@ Open from **Options > AddOns > Nootropic Guild Manager**, `/ngm options`, shift-
 Options has three pages in the game's AddOns list:
 
 - **Nootropic Guild Manager** (main page)
-  - **Appearance**: the **addon icon** (Ale Mug, Brewfest Stein or your **Guild Emblem**, shown on the window, the minimap button and the Guild & Communities shortcut; the emblem falls back to the mug outside a guild or without a tabard), **use my guild's name in the window title** (also in the "x using ... Guild Manager" text), **show how many guildmates use the addon** (on by default), the **shortcut on the Guild & Communities window**, and **Learn when I usually play** (on by default).
-  - **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Roster, Recruitment, Tags, Audit, Options, show/hide window, or nothing).
+  - **Appearance**: the **addon icon** (Ale Mug, Brewfest Stein or your **Guild Emblem**, shown on the window, the minimap button and the Guild & Communities shortcut; the emblem falls back to the mug outside a guild or without a tabard), **use my guild's name in the window title** (also in the "x using ... Guild Manager" text), **show how many guildmates use the addon** (on by default), the **shortcut on the Guild & Communities window**, **Show tags and alts on the Guild roster** (on by default), and **Learn when I usually play** (on by default).
+  - **Minimap Button**: show/hide it, and choose what left-click, right-click and shift-click do (Find, Recruitment, Tags, Audit, Options, show/hide window, or nothing).
   - **Reset**: window size and position, and list columns (roster and recruitment list).
   - **About**: sync stats with a **Sync Now** button, **Open Guild Manager**, and the most useful commands.
 - **Recruiting** (saved per guild): the **recruitment whisper button on /who results** (on by default), **Auto-Invite** (invite on a keyword reply, ask me first, up to 5 keywords) and **Do Not Whisper** (on/off, up to 5 words, and the shared list). The Recruitment tab shows how these are set under **Replies**, with a **Reply Settings...** button that opens this page.
@@ -210,7 +218,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 | `/ngm find <text>` | open with a search |
 | `/ngm recruit` | open the Recruitment tab |
 | `/ngm options` | open the options |
-| `/ngm diag` | report what the Guild & Communities shortcut and the /who whisper buttons can see, and which name and version the addon uses for you |
+| `/ngm diag` | report what the Guild & Communities shortcut, the guild roster hooks and the /who whisper buttons can see, and which name and version the addon uses for you |
 | `/ngm sync` | sync now and show sync stats |
 | `/ngm audit` | open the Audit tab (officers) |
 | `/ngm minimap` | show or hide the minimap button |
@@ -222,7 +230,7 @@ A note on trust: the addon checks permissions before sending anything, and offic
 NootropicGuildManager.toc
 Core/      Core.lua (namespace, events, utils, slash)  Data.lua (classes, specs, professions, tags)  Database.lua (saved data, permissions)  Sync.lua (records, repair, transport)
 Services/  Roster.lua (roster, search, sort)  Comm.lua (own spec/professions)  Messages.lua (custom message rules)  Recruit.lua (/who, whisper queue, invites)  Profile.lua (contact, usually online)  Audit.lua (change descriptions)
-UI/        Widgets.lua  Columns.lua  ScheduleGrid.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  RosterView.lua  DetailPanel.lua  RecruitView.lua  MessagesView.lua  TagsView.lua  AuditView.lua  MainFrame.lua  MinimapButton.lua  Options.lua  Communities.lua  WhoWhisper.lua
+UI/        Widgets.lua  Columns.lua  ScheduleGrid.lua  BrandIcon.lua  MemberPicker.lua  IconPicker.lua  RosterView.lua (Find tab)  DetailPanel.lua  GuildRoster.lua (hooks on the game's roster)  RecruitView.lua  MessagesView.lua  TagsView.lua  AuditView.lua  MainFrame.lua  MinimapButton.lua  Options.lua  Communities.lua  WhoWhisper.lua
 ```
 
 ## Names in WoW: Forever

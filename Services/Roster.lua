@@ -81,6 +81,8 @@ end
 function R:Rebuild()
     wipe(self.members)
     wipe(self.byName)
+    self.byGuid = self.byGuid or {}
+    wipe(self.byGuid)
     self:BuildAltIndex()
 
     if IsInGuild() then
@@ -108,6 +110,7 @@ function R:Rebuild()
                 }
                 -- race isn't in the guild roster; the game knows it from their character id
                 local guid = select(17, GetGuildRosterInfo(i))
+                if guid then e.guid = guid; self.byGuid[guid] = e end
                 if guid and GetPlayerInfoByGUID then
                     local ok, _, _, race, raceFile, sex = pcall(GetPlayerInfoByGUID, guid)
                     if ok and race and race ~= "" then e.race, e.raceFile, e.sex = race, raceFile, sex end

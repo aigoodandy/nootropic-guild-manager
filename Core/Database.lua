@@ -26,6 +26,7 @@ local DEFAULTS = {
         minimap = { angle = 200, hide = false, left = "roster", right = "options", shift = "recruit" },
         iconStyle = "mug",           -- "mug" | "stein" | "emblem"
         communitiesButton = true,    -- shortcut on the Guild & Communities window
+        blizzRoster = true,          -- tags, alts and tooltips on the game's guild roster
         titleUseGuild = false,       -- window title: "<Guild> Guild Manager"
         showAddonCount = true,       -- "x using ... Guild Manager" at the bottom of the window
         whoWhisperButton = true,     -- recruitment whisper button on the game's /who results
@@ -33,7 +34,8 @@ local DEFAULTS = {
         onlineOnly = false,
         sortKey = "rank",
         sortAsc = true,
-        hiddenColumns = { version = true }, -- false = shown on purpose
+        -- the game's own roster already shows level, class, zone and rank
+        hiddenColumns = { version = true, second = true, level = true, class = true, zone = true, rank = true }, -- false = shown on purpose
         columnWidths = {},
         frameSize = { w = 1000, h = 580 },
     },

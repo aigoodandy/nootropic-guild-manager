@@ -22,7 +22,7 @@ ns.version = Meta("Version") or "dev"
 -- Tab names in text ("Open the Recruitment tab"). key: "roster",
 -- "recruit", "tags" or "audit".
 ------------------------------------------------------------------------
-local TAB_NAMES = { roster = "Roster", recruit = "Recruitment", tags = "Tags", audit = "Audit" }
+local TAB_NAMES = { roster = "Find", recruit = "Recruitment", tags = "Tags", audit = "Audit" }
 
 function ns.TabName(key)
     return TAB_NAMES[key] or key
@@ -302,6 +302,7 @@ ns:RegisterEvent("PLAYER_LOGIN", function()
     ns.Minimap:Init()
     ns.Options:Init()
     ns.Communities:Init()
+    ns.GuildRoster:Init()
     ns.WhoWhisper:Init()
     ns.Brand:Init()
     ns:Print(("v%s loaded. Type |cffffffff/ngm|r to open."):format(ns.version))
@@ -312,7 +313,7 @@ end)
 ------------------------------------------------------------------------
 local function PrintHelp()
     ns:Print("commands:")
-    ns:Print("  |cffffffff/ngm|r  - open or close the roster")
+    ns:Print("  |cffffffff/ngm|r  - open or close the window")
     ns:Print("  |cffffffff/ngm find <text>|r  - open with a search")
     ns:Print("  |cffffffff/ngm sync|r  - sync with guildmates now and show sync stats")
     ns:Print(("  |cffffffff/ngm audit|r  - open the %s tab (officers)"):format(ns.TabName("audit")))
@@ -336,6 +337,7 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns.UI:SetSearch(rest)
     elseif cmd == "diag" then
         ns.Communities:Diagnose()
+        ns.GuildRoster:Diagnose()
         ns.WhoWhisper:Diagnose()
         ns.Roster:Diagnose()
     elseif cmd == "options" or cmd == "config" or cmd == "settings" then
@@ -377,7 +379,7 @@ end
 function NootropicGuildManager_OnCompartmentEnter(_, button)
     GameTooltip:SetOwner(button or UIParent, "ANCHOR_LEFT")
     GameTooltip:AddLine("Nootropic Guild Manager")
-    GameTooltip:AddLine("Click to open the guild roster.", 1, 1, 1)
+    GameTooltip:AddLine("Click to open Nootropic Guild Manager.", 1, 1, 1)
     GameTooltip:AddLine("Right-click for options.", 0.8, 0.8, 0.8)
     GameTooltip:Show()
 end

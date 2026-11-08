@@ -82,7 +82,7 @@ function RV:ResetColumns()
     s.columnOrder = nil
     wipe(s.columnWidths)
     wipe(s.hiddenColumns)
-    s.hiddenColumns.version = true
+    for _, key in ipairs({ "version", "second", "level", "class", "zone", "rank" }) do s.hiddenColumns[key] = true end
     self:Relayout()
     self:Refresh()
 end
@@ -1193,7 +1193,7 @@ end
 function RV:Select(full)
     self.selected = full
     self:UpdateSelection()
-    ns.DetailPanel:Show(full)
+    ns.DetailPanel:Show(full, ns.UI.frame)
 end
 
 function RV:ClearSelection()

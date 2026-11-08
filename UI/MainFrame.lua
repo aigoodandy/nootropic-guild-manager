@@ -1,6 +1,6 @@
 --[[
     Nootropic Guild Manager - Main window
-    Blizzard portrait frame with icon tabs down the right side (Roster,
+    Blizzard portrait frame with icon tabs down the right side (Find,
     Recruitment, Tags, Audit),
     a status line, and the member detail flyout.
 ]]
@@ -11,7 +11,7 @@ ns.UI = UI
 
 local FRAME_W, FRAME_H = 1000, 580
 local MIN_W, MIN_H, MAX_W, MAX_H = 640, 520, 1800, 1100
-local TAB_LABELS = { "Roster", "Recruitment", "Tags", "Audit" }
+local TAB_LABELS = { "Find", "Recruitment", "Tags", "Audit" }
 UI.TAB_ROSTER, UI.TAB_RECRUIT, UI.TAB_TAGS, UI.TAB_AUDIT = 1, 2, 3, 4
 local OFFICER_TABS = { [3] = true, [4] = true } -- Tags and Audit
 
@@ -56,7 +56,7 @@ function UI:Create()
     ns.RecruitView:Build(f)
     ns.TagsView:Build(f)
     ns.AuditView:Build(f)
-    ns.DetailPanel:Build(f)
+    ns.DetailPanel:Build()
     self:BuildTabs(f)
     self:BuildResizeGrip(f)
     ns.TagsView:OnResize(f:GetWidth())
@@ -401,7 +401,7 @@ function UI:SelectTab(id)
     ns.RecruitView.page:SetShown(id == UI.TAB_RECRUIT)
     ns.TagsView.page:SetShown(id == UI.TAB_TAGS)
     ns.AuditView.page:SetShown(id == UI.TAB_AUDIT)
-    if id ~= UI.TAB_ROSTER then ns.DetailPanel:Hide() end
+    if id ~= UI.TAB_ROSTER and ns.DetailPanel.host == f then ns.DetailPanel:Hide() end
 end
 
 ------------------------------------------------------------------------

@@ -93,7 +93,7 @@ local function NameLink(parent)
     end)
     b:SetScript("OnLeave", function(self) self.Underline:Hide(); GameTooltip:Hide() end)
     b:SetScript("OnClick", function(self)
-        if self.inRoster then ns.RosterView:Select(self.full) end
+        if self.inRoster then DP:OpenMember(self.full) end
     end)
     function b:SetCharacter(full)
         self.full = full
@@ -141,13 +141,23 @@ end
 ------------------------------------------------------------------------
 -- Build
 ------------------------------------------------------------------------
-function DP:Build(parent)
-    local f = CreateFrame("Frame", "NootropicGMDetailFrame", parent, "BasicFrameTemplateWithInset")
+-- Built once, on UIParent, and docked beside whichever window opened it:
+-- our own window, or the game's Guild & Communities window.
+function DP:Ensure()
+    if not self.frame then self:Build() end
+    return self.frame
+end
+
+function DP:Build()
+    if self.frame then return end
+    local f = CreateFrame("Frame", "NootropicGMDetailFrame", UIParent, "BasicFrameTemplateWithInset")
     f:SetWidth(WIDTH)
-    f:SetPoint("TOPLEFT", parent, "TOPRIGHT", 0, -28)
-    f:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", 0, 4)
+    f:SetFrameStrata("HIGH")
+    f:SetToplevel(true)
+    f:SetClampedToScreen(true)
     f:EnableMouse(true)
     f:Hide()
+    tinsert(UISpecialFrames, f:GetName())
     W.SetTitle(f, "Character Profile")
     f:SetScript("OnHide", ns.Safe(function()
         DP:FlushNote()
@@ -1271,8 +1281,39 @@ end
 ------------------------------------------------------------------------
 -- Show, edit mode, layout
 ------------------------------------------------------------------------
-function DP:Show(full)
-    if not self.frame then return end
+-- Docks the profile beside `host` (default: our window), as tall as it.
+function DP:Dock(host)
+    local f = self:Ensure()
+    host = host or (ns.UI and ns.UI.frame)
+    if not host then return end
+    self.host = host
+    f:ClearAllPoints()
+    -- beside the game's own member details, when that's open
+    local beside = host
+    local gd = CommunitiesGuildMemberDetailFrame
+    if host ~= (ns.UI and ns.UI.frame) and gd and gd:IsShown() then beside = gd end
+    f:SetPoint("TOPLEFT", beside, "TOPRIGHT", 0, beside == host and -28 or 0)
+    f:SetPoint("BOTTOMLEFT", host, "BOTTOMRIGHT", beside == host and 0 or (beside:GetWidth() or 0), 4)
+    if not self.hooked then self.hooked = {} end
+    if not self.hooked[host] then
+        self.hooked[host] = true
+        host:HookScript("OnHide", function() if DP.host == host then DP:Hide() end end)
+    end
+end
+
+-- Opens a character from inside the profile (a main/alt link): selects it
+-- on our Find tab when the profile sits there, otherwise just shows it.
+function DP:OpenMember(full)
+    if self.host == (ns.UI and ns.UI.frame) and ns.RosterView.page and ns.RosterView.page:IsVisible() then
+        ns.RosterView:Select(full)
+    else
+        self:Show(full, self.host)
+    end
+end
+
+function DP:Show(full, host)
+    self:Ensure()
+    self:Dock(host or self.host)
     if self.full ~= full then
         self:FlushNote()
         self:FlushText()

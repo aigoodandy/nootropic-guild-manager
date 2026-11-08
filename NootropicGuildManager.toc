@@ -33,6 +33,7 @@ UI\MemberPicker.lua
 UI\IconPicker.lua
 UI\RosterView.lua
 UI\DetailPanel.lua
+UI\GuildRoster.lua
 UI\RecruitView.lua
 UI\MessagesView.lua
 UI\TagsView.lua
