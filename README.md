@@ -6,7 +6,7 @@ of Fame and friendly recruiting, shared between everyone in the guild who runs i
 
 <img src="docs/logo.svg" width="96" alt="NGM's herald banner: blue, on a gilt rod, sealed in red wax with an N">
 
-![The Find tab: every guildmate with level, class, spec, main or alt, location, professions, rank and addon version](docs/screenshots/1-find.png)
+![The Find tab in 3.0, in the guild's colors: every guildmate with level, class, spec, main or alt, location, professions, rank and addon version](docs/screenshots/1-find.png)
 
 [![Support on Ko-fi](https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/keasbeexd) [![Sponsor on GitHub](https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/keasbeexd)
 
