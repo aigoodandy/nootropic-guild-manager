@@ -6,6 +6,7 @@
 local ROOT = arg[1]
 local NOW = 1800000000
 local ns = { Widgets = {} }
+ns.GOLD, ns.ORANGE, ns.BLUE = "|cfffabd2f", "|cfffe8019", "|cff83a598" -- Core.lua sets these
 local guild = { members = {}, sync = { guild = {}, officer = {} } }
 local settings = {}
 function ns:Fire() end function ns:On() end function ns:RegisterEvent() end function ns:Print() end
@@ -93,6 +94,11 @@ assert(os.date("!%Y%m%d", dec1) == "20261201")
 assert(not HF:RecordChampions(dec5), "not an officer")
 iAmOfficer = true
 assert(not HF:RecordChampions(dec1), "the 1st: numbers still being tallied")
+-- a guild using NGM Peon: NGM Peon crowns them, so no officer's game does
+local realValue = ns.Sync.Value
+ns.Sync.Value = function(self, k) if k == "GS:peon" then return "1" end return realValue(self, k) end
+assert(HF:PeonCrowns() and not HF:RecordChampions(dec1 + 86400), "NGM Peon crowns: the addon doesn't")
+ns.Sync.Value = realValue
 local printed = {}
 ns.Print = function(_, m) printed[#printed + 1] = m end
 assert(HF:RecordChampions(dec1 + 86400), "the 2nd")

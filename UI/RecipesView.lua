@@ -15,10 +15,11 @@ ns.RecipesView = RV
 
 local ROW_H = 22
 local MAX_RESULTS = 300
-local GREEN, GRAY = "|cff40ff40", "|cff9d9d9d"
+local GREEN, GRAY = "|cff20ff20", "|cff9d9d9d"
 
 function RV:Build()
     local f = CreateFrame("Frame", "NootropicGMRecipesWindow", UIParent, "BasicFrameTemplateWithInset")
+    ns.Theme:Skin(f)
     W.CombatSafeClose(f)
     f:SetSize(520, 480)
     f:SetFrameStrata("DIALOG")
@@ -58,11 +59,11 @@ function RV:Build()
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.empty = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    self.empty = f:CreateFontString(nil, "OVERLAY", "NGMFontDim")
     self.empty:SetPoint("CENTER", scrollBox, "CENTER")
     self.empty:SetWidth(420)
 
-    self.summary = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.summary = f:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     self.summary:SetPoint("BOTTOMLEFT", 16, 12)
     self.summary:SetPoint("BOTTOMRIGHT", -16, 12)
     self.summary:SetJustifyH("LEFT")
@@ -93,12 +94,12 @@ function RV:InitRow(row, r)
         row.Icon = row:CreateTexture(nil, "ARTWORK")
         row.Icon:SetSize(16, 16)
         row.Icon:SetPoint("LEFT", 4, 0)
-        row.Name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        row.Name = row:CreateFontString(nil, "OVERLAY", "NGMFontText")
         row.Name:SetPoint("LEFT", row.Icon, "RIGHT", 6, 0)
         row.Name:SetWidth(210)
         row.Name:SetJustifyH("LEFT")
         row.Name:SetWordWrap(false)
-        row.Who = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        row.Who = row:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
         row.Who:SetPoint("LEFT", row.Name, "RIGHT", 6, 0)
         row.Who:SetPoint("RIGHT", -6, 0)
         row.Who:SetJustifyH("LEFT")
@@ -122,10 +123,10 @@ function RV:ShowRowTooltip(row, r)
         GameTooltip:AddLine(r.name)
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine(("Known by %d guildmate%s (%s):"):format(#r.crafters, #r.crafters == 1 and "" or "s", r.prof), 1, 0.82, 0)
+    GameTooltip:AddLine(("Known by %d guildmate%s (%s):"):format(#r.crafters, #r.crafters == 1 and "" or "s", r.prof), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3])
     for i, full in ipairs(r.crafters) do
         if i > 15 then GameTooltip:AddLine(("...and %d more"):format(#r.crafters - 15), 0.6, 0.6, 0.6) break end
-        GameTooltip:AddLine(ns.ShortName(full) .. (Online(full) and "  |cff40ff40online|r" or ""), 1, 1, 1)
+        GameTooltip:AddLine(ns.ShortName(full) .. (Online(full) and "  |cff20ff20online|r" or ""), 1, 1, 1)
     end
     GameTooltip:AddLine("Click to open a crafter's profile.", 0.5, 0.5, 0.5)
     GameTooltip:Show()
@@ -140,7 +141,7 @@ function RV:ShowRowMenu(row, r)
     local items = { { text = r.name, isTitle = true } }
     for i, full in ipairs(r.crafters) do
         if i > 25 then break end
-        items[#items + 1] = { text = ns.ShortName(full) .. (Online(full) and "  |cff40ff40online|r" or ""),
+        items[#items + 1] = { text = ns.ShortName(full) .. (Online(full) and "  |cff20ff20online|r" or ""),
             func = function() ns.DetailPanel:Show(full, ns.UI.frame) end }
     end
     W.ShowMenu(row, items)

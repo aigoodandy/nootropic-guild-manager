@@ -14,6 +14,7 @@ local ROW_H = 22
 
 function MP:Build()
     local f = CreateFrame("Frame", "NootropicGMMemberPicker", UIParent, "BasicFrameTemplateWithInset")
+    ns.Theme:Skin(f)
     W.CombatSafeClose(f)
     f:SetSize(280, 400)
     f:SetFrameStrata("DIALOG")
@@ -52,7 +53,7 @@ function MP:Build()
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.empty = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    self.empty = f:CreateFontString(nil, "OVERLAY", "NGMFontDim")
     self.empty:SetPoint("CENTER", scrollBox, "CENTER")
 end
 
@@ -64,9 +65,9 @@ function MP:InitRow(row, e)
         row.Icon = row:CreateTexture(nil, "ARTWORK")
         row.Icon:SetSize(16, 16)
         row.Icon:SetPoint("LEFT", 4, 0)
-        row.Name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        row.Name = row:CreateFontString(nil, "OVERLAY", "NGMFontLabel")
         row.Name:SetPoint("LEFT", row.Icon, "RIGHT", 6, 0)
-        row.Info = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        row.Info = row:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
         row.Info:SetPoint("RIGHT", -6, 0)
         row:SetScript("OnClick", function(self) MP:Pick(self.entry.full) end)
     end

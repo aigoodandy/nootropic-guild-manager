@@ -261,7 +261,6 @@ end
 
 function HF:Publish()
     if not (IsInGuild() and ns.DB:Guild() and ns.Sync.readyFor) then return end
-    if not ns.Sharing:Get("stats") then return end
     local cur = self:ReadMine()
     if not cur then return end
     self.dirty = false
@@ -392,6 +391,14 @@ end
 ------------------------------------------------------------------------
 HF.RECORD_ON_DAY = 2 -- UTC day of the month: a day's lag so last month's numbers are all in
 
+-- A guild using NGM Peon (GS:peon = "1", brought in with /ngm peon): NGM
+-- Peon crowns the champions from Blizzard's numbers for everyone, and the
+-- addon shows those (HW records in its code) instead of crowning its own,
+-- so the game and Discord never name different winners.
+function HF:PeonCrowns()
+    return ns.Sync:Value("GS:peon") == "1"
+end
+
 function HF.EncodeChampions(champs)
     local parts = {}
     for _, s in ipairs(HF.STATS) do
@@ -419,7 +426,7 @@ end
 
 function HF:RecordChampions(now)
     now = now or ns.DB:Now()
-    if not (ns.IsOfficer() and ns.Sync.readyFor) then return false end
+    if not (ns.IsOfficer() and ns.Sync.readyFor) or self:PeonCrowns() then return false end
     if tonumber(date("!%d", now)) < self.RECORD_ON_DAY then return false end
     local last = HF.PrevMonth(HF.Month(now))
     local key = "HW:" .. last
@@ -429,8 +436,8 @@ function HF:RecordChampions(now)
     local ok = ns.Sync:Set(key, HF.EncodeChampions(champs))
     if ok then
         -- your copy crowned them: tell you they're ready to announce
-        ns:Print(("|cffffd100%s's Hall of Fame champions have been crowned!|r You can now announce the winners: "
-            .. "|cffffffff/ngm hof|r, then |cffffd100Announce Champions|r."):format(HF.MonthName(last)))
+        ns:Print(((ns.GOLD .. "%s's Hall of Fame champions have been crowned!|r You can now announce the winners: ")
+            .. ("|cffffffff/ngm hof|r, then " .. ns.GOLD .. "Announce Champions|r.")):format(HF.MonthName(last)))
     end
     return ok
 end
@@ -451,7 +458,7 @@ end
 
 function HF:Recount(now)
     now = now or ns.DB:Now()
-    if not (ns.IsOfficer() and ns.Sync.readyFor and self:InRecount(now)) then return false end
+    if not (ns.IsOfficer() and ns.Sync.readyFor and self:InRecount(now)) or self:PeonCrowns() then return false end
     local month = HF.Month(now)
     local last = HF.PrevMonth(month)
     local key = "HW:" .. last
@@ -501,7 +508,7 @@ function HF:Recount(now)
     if not changed then return false end
     local ok = ns.Sync:Set(key, HF.EncodeChampions(final))
     if ok then
-        ns:Print(("|cffffd100Recount:|r late numbers changed %s's Hall of Fame champions. %s. You may want to announce the correction (|cffffffff/ngm hof|r, |cffffd100Announce Champions|r)."):format(
+        ns:Print(((ns.GOLD .. "Recount:|r late numbers changed %s's Hall of Fame champions. %s. You may want to announce the correction (|cffffffff/ngm hof|r, " .. ns.GOLD .. "Announce Champions|r).")):format(
             HF.MonthName(last), table.concat(notes, "; ")))
     end
     return ok
@@ -684,7 +691,7 @@ end
 function HF:TitleText(full)
     local titles, won = self:TitlesFor(full)
     if #titles == 0 then return nil end
-    return ("|cffffd100%s's Champion:|r %s"):format(HF.MonthName(won), table.concat(titles, ", "))
+    return ((ns.GOLD .. "%s's Champion:|r %s")):format(HF.MonthName(won), table.concat(titles, ", "))
 end
 
 ------------------------------------------------------------------------

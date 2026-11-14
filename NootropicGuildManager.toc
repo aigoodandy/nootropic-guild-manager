@@ -2,7 +2,7 @@
 ## Title: |cffffd100Nootropic|r Guild Manager
 ## Notes: Guild roster for WoW: Forever with mains and alts, professions, specs, contact info, a guild census and play-time heatmap, a Hall of Fame, an officer log, a roster change log and recruiting tools. Synced between guildmates.
 ## Author: Nootropic
-## Version: 2.12.0
+## Version: 3.0.0
 ## X-Website: https://ngmpeon.app
 ## X-License: MIT
 ## X-Curse-Project-ID: 1793021
@@ -17,6 +17,7 @@
 # Core
 Core\Core.lua
 Core\Data.lua
+Core\Accent.lua
 Core\Database.lua
 Core\Records.lua
 Core\Sync.lua
@@ -37,6 +38,9 @@ Services\HofCheck.lua
 Services\Sharing.lua
 
 # Interface
+Services\DiscordCode.lua
+Services\Events.lua
+UI\Theme.lua
 UI\Widgets.lua
 UI\Columns.lua
 UI\ScheduleGrid.lua
@@ -52,6 +56,9 @@ UI\RecruitView.lua
 UI\DNWView.lua
 UI\RecipesView.lua
 UI\InvitePrompt.lua
+UI\DiscordCodeView.lua
+UI\PeonPasteView.lua
+UI\EventsView.lua
 UI\MessagesView.lua
 UI\AuditView.lua
 UI\MainFrame.lua

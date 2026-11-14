@@ -11,10 +11,15 @@ ns.UI = UI
 
 local FRAME_W, FRAME_H = 1000, 580
 local MIN_W, MIN_H, MAX_W, MAX_H = 640, 520, 1800, 1100
-local TAB_LABELS = { "Find", "Play Together", "Recruitment", "Audit", "Overview", "Hall of Fame" }
-UI.TAB_ROSTER, UI.TAB_TOGETHER, UI.TAB_RECRUIT, UI.TAB_AUDIT, UI.TAB_OVERVIEW, UI.TAB_HOF = 1, 2, 3, 4, 5, 6
+local TAB_LABELS = { "Find", "Play Together", "Recruitment", "Audit", "Overview", "Hall of Fame", "Upcoming Events" }
+UI.TAB_ROSTER, UI.TAB_TOGETHER, UI.TAB_RECRUIT, UI.TAB_AUDIT, UI.TAB_OVERVIEW, UI.TAB_HOF, UI.TAB_EVENTS = 1, 2, 3, 4, 5, 6, 7
 -- the order the tabs run down the window (ids stay stable for saved settings)
-local TAB_ORDER = { 1, 2, 5, 6, 3, 4 }
+-- as the dashboard: everyone's tabs first (Find, then Upcoming Events,
+-- Overview, Hall of Fame as there; Play Together has no twin), then the
+-- ones for recruiters and officers after a wider gap (the dashboard's
+-- manager tabs)
+local TAB_ORDER = { 1, 7, 5, 6, 2, 3, 4 }
+local GROUP_START = { [3] = true } -- a wider gap above this tab
 local OFFICER_TABS = { [4] = true } -- Audit
 
 ------------------------------------------------------------------------
@@ -24,6 +29,8 @@ function UI:Create()
     if self.frame then return self.frame end
 
     local f = CreateFrame("Frame", "NootropicGMFrame", UIParent, "ButtonFrameTemplate")
+
+    ns.Theme:Skin(f)
 
     W.CombatSafeClose(f)
     self.frame = f
@@ -48,10 +55,10 @@ function UI:Create()
     self:RestorePosition()
 
     -- Status line along the bottom edge
-    self.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.status = f:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     self.status:SetPoint("BOTTOMLEFT", 14, 8)
     self:BuildAddonCount(f)
-    self.version = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.version = f:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.version:SetPoint("BOTTOMRIGHT", -14, 8)
     self.version:SetText("v" .. ns.version)
     self:BuildSyncDot(f)
@@ -63,6 +70,7 @@ function UI:Create()
     ns.AuditView:Build(f)
     ns.OverviewView:Build(f)
     ns.HallOfFameView:Build(f)
+    ns.EventsView:Build(f)
     ns.DetailPanel:Build()
     self:BuildTabs(f)
     self:BuildResizeGrip(f)
@@ -150,8 +158,8 @@ end
 -- the character panel's (CharacterFrameModeTab1..: a 55x55 frame, the
 -- common-sidetab art at 55x60, a 50x50 icon nudged 4 left, the
 -- common-sidetab-selected art when chosen, common-sidetab-hover on hover,
--- each tab 2 below the last). Hover one for its title.
--- Clients without that art fall back to the spellbook's tab art.
+-- each tab 2 below the last). Hover one for its title. The open tab's glow
+-- takes the theme's accent. Clients without that art get the spellbook's.
 ------------------------------------------------------------------------
 local TAB_SIZE, TAB_GAP = 55, 2
 UI.TAB_OUTSIDE = 55 -- how far the tabs reach past the window's right edge
@@ -159,6 +167,7 @@ UI.TAB_OUTSIDE = 55 -- how far the tabs reach past the window's right edge
 local function HasAtlas(name)
     return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
 end
+
 
 -- An icon file if this client has it, else the fallback.
 local function IconIfPresent(path, fallback)
@@ -179,6 +188,7 @@ UI.DEFAULT_TAB_ICONS = {
     "Interface\\Icons\\INV_Misc_Spyglass_02",         -- Audit
     IconIfPresent("Interface\\Icons\\INV_Misc_Map_01", "Interface\\Icons\\INV_Misc_Book_09"), -- Overview
     IconIfPresent("Interface\\Icons\\INV_Misc_Trophy_Argent", "Interface\\Icons\\INV_Misc_Gem_Pearl_04"), -- Hall of Fame
+    IconIfPresent("Interface\\Icons\\INV_Misc_PocketWatch_01", "Interface\\Icons\\INV_Misc_Note_01"), -- Upcoming Events
 }
 
 -- Flips a texture left to right (keeps an atlas's own coordinates).
@@ -300,6 +310,12 @@ local function CreateSideTab(f, i)
             if left then self.Bg:SetPoint("TOPRIGHT", 3, 11) else self.Bg:SetPoint("TOPLEFT", -3, 11) end
         end
     end
+    -- the open tab's glow in the theme's accent (gold, or the guild's)
+    if tab.Selected and ns.Theme then
+        local function Tint() tab.Selected:SetVertexColor(ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3]) end
+        Tint()
+        ns.Theme:OnAccent(Tint)
+    end
     tab:SetScript("OnClick", function(self)
         UI:SelectTab(self:GetID())
         ns.PlaySound("IG_CHARACTER_INFO_TAB")
@@ -365,7 +381,7 @@ function UI:LayoutTabs()
                 elseif left then
                     tab:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, -tab.gap)
                 else
-                    tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -tab.gap)
+                    tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -(GROUP_START[i] and tab.gap + 10 or tab.gap))
                 end
             elseif bottom then
                 -- under the window, starting near its left corner
@@ -405,6 +421,7 @@ function UI:SelectTab(id)
     ns.AuditView.page:SetShown(id == UI.TAB_AUDIT)
     ns.OverviewView.page:SetShown(id == UI.TAB_OVERVIEW)
     ns.HallOfFameView.page:SetShown(id == UI.TAB_HOF)
+    ns.EventsView.page:SetShown(id == UI.TAB_EVENTS)
     if id ~= UI.TAB_ROSTER and ns.DetailPanel.host == f then ns.DetailPanel:Hide() end
 end
 
@@ -426,11 +443,11 @@ function UI:BuildAddonCount(f)
     local b = CreateFrame("Button", nil, f)
     b:SetHeight(16)
     b:SetPoint("LEFT", self.status, "RIGHT", 0, 0)
-    b.Text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.Text = b:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     b.Text:SetPoint("LEFT", 0, 0)
     b.Underline = b:CreateTexture(nil, "OVERLAY")
     b.Underline:SetHeight(1)
-    b.Underline:SetColorTexture(1, 0.82, 0, 0.8)
+    ns.Theme:Paint(b.Underline, ns.Theme.C.yellow, 0.8)
     b.Underline:Hide()
     b:SetScript("OnEnter", function(self)
         self.Underline:ClearAllPoints()
@@ -502,7 +519,7 @@ function UI:RefreshStatus()
     end
     local guild = GetGuildInfo("player") or "Guild"
     local total, online, withAddon = ns.Roster:Stats()
-    self.status:SetText(("|cffffd100%s|r   %d members  -  |cff40ff40%d online|r"):format(guild, total, online))
+    self.status:SetText(((ns.GOLD .. "%s|r   %d members  -  |cff20ff20%d online|r")):format(guild, total, online))
     if ns.DB:Settings().showAddonCount == false then
         count:Hide()
         return

@@ -6,7 +6,9 @@ local ADDON_NAME, ns = ...
 _G.NootropicGuildManager = ns -- exposed for /dump debugging
 
 ns.name = ADDON_NAME
-ns.GOLD = "|cffffd100"
+ns.GOLD = "|cffffd100"   -- the accent (the guild theme changes these: UI/Theme.lua ApplyPalette)
+ns.ORANGE = "|cffff8000"
+ns.BLUE = "|cff71d5ff"
 ns.GRAY = "|cff9d9d9d"
 
 local function Meta(field)
@@ -231,7 +233,7 @@ function ns.Safe(fn, where)
             local msg = tostring(err)
             if not reported[msg] then
                 reported[msg] = true
-                ns:Print(("|cffff5555error in %s:|r %s"):format(where or "a handler", msg))
+                ns:Print(("|cffff2020error in %s:|r %s"):format(where or "a handler", msg))
                 ns:Print("Please send that line to the addon author. Everything else keeps working.")
             end
         end
@@ -314,12 +316,15 @@ ns:RegisterEvent("GUILD_ROSTER_UPDATE", function() ns.Debounce("officercheck", 0
 ns:RegisterEvent("PLAYER_GUILD_UPDATE", function() ns.Debounce("officercheck", 0.5, CheckOfficer) end)
 
 ns:RegisterEvent("PLAYER_LOGIN", function()
+    ns.Theme:LoadTheme() -- the guild's colours, before any window is built
     ns.Roster:Init()
     ns.Sync:Init()
     ns.RosterLog:Init()
     ns.Recipes:Init()
     ns.Readiness:Init()
     ns.HallOfFame:Init()
+    ns.DiscordCode:Init()
+    ns.Events:Init()
     ns.HofCheck:Init()
     ns.Sharing:Init()
     ns.Comm:Init()
@@ -354,6 +359,11 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
     ns:Print(("  |cffffffff/ngm recruit|r  - open the %s tab"):format(ns.TabName("recruit")))
     ns:Print("  |cffffffff/ngm options|r  - open the options")
+    ns:Print("  |cffffffff/ngm discord|r  - Guild Master: the update code for NGM Peon (ngmpeon.app, Sync tab, step 2)")
+    ns:Print("  |cffffffff/ngm discord all|r  - the same, with everything (not just what changed)")
+    ns:Print("  |cffffffff/ngm discord setup|r  - the short code for /ngm-guild setup in Discord")
+    ns:Print("  |cffffffff/ngm peon|r  - bring in the code from NGM Peon's dashboard (ngmpeon.app, Sync tab, step 3)")
+    ns:Print("  |cffffffff/ngm events|r  - the guild's upcoming events from NGM Peon, and where to sign up")
     ns:Print("  |cffffffff/ngm diag|r  - troubleshooting: version, sync, and the addon's hooks into game windows")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
 end
@@ -372,13 +382,14 @@ SlashCmdList.NOOTROPICGM = function(msg)
     elseif cmd == "diag" then
         local me = ns.PlayerFullName()
         ns:Print(("Version %s, playing as %s%s. Sync: %s."):format(ns.version, me,
-            ns.Roster.byName[me] and "" or " (|cffff5555not found on the guild roster|r)", select(2, ns.Sync:Health())))
+            ns.Roster.byName[me] and "" or " (|cffff2020not found on the guild roster|r)", select(2, ns.Sync:Health())))
         ns:Print(("Rank settings (Officer, Invite) of other ranks: %s."):format(ns.Sync:RankFlags(1)
             and "read from the game" or "not given by the game, taken from the Guild Master's addon"))
         ns.Communities:Diagnose()
         ns.GuildRoster:Diagnose()
         ns.WhoWhisper:Diagnose()
         ns.Recruit:Diagnose()
+        ns.Accent:Diagnose()
     elseif cmd == "options" or cmd == "config" or cmd == "settings" then
         ns.Options:Open()
     elseif cmd == "recruit" then
@@ -404,6 +415,13 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns.UI:OpenTab(ns.UI.TAB_OVERVIEW)
     elseif cmd == "hof" or cmd == "fame" or cmd == "halloffame" then
         ns.UI:OpenTab(ns.UI.TAB_HOF)
+    elseif cmd == "peon" then
+        ns.PeonPasteView:Open()
+    elseif cmd == "events" or cmd == "calendar" or cmd == "cal" then
+        ns.UI:OpenTab(ns.UI.TAB_EVENTS)
+    elseif cmd == "discord" then
+        local mode = rest and rest:lower():match("^%s*(%a+)")
+        ns.DiscordCodeView:Open((mode == "setup" or mode == "all") and mode or nil)
     elseif cmd == "dnw" then
         ns.DNWView:Toggle()
     elseif cmd == "minimap" then

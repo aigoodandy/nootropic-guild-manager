@@ -183,7 +183,7 @@ local function CreateButton(row)
     b.Check:Hide()
     if b.SetMotionScriptsWhileDisabled then b:SetMotionScriptsWhileDisabled(true) end -- tooltip says why it's off
 
-    b.Wait = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+    b.Wait = b:CreateFontString(nil, "OVERLAY", "NGMFontNumber")
     b.Wait:SetPoint("CENTER", 0, 0)
     b.Wait:SetText("...")
     b.Wait:Hide()
@@ -198,7 +198,7 @@ local function CreateButton(row)
                 ns:Print(("Whisper queued. Timed whispers were blocked this session: use |cffffffffSend Next|r on the %s tab."):format(ns.TabName("recruit")))
             end
         elseif err then
-            ns:Print("|cffff5555" .. err .. "|r")
+            ns:Print("|cffff2020" .. err .. "|r")
         end
         WI:UpdateButton(row)
     end)
@@ -210,7 +210,7 @@ local function CreateButton(row)
         GameTooltip:AddLine("Send recruitment whisper")
         GameTooltip:AddLine(ns.ShortName(info.name), ns.ClassColor(info.classFile))
         if self.state == "queued" then
-            GameTooltip:AddLine("Waiting in the whisper queue (whispers are spaced out).", 1, 0.82, 0, true)
+            GameTooltip:AddLine("Waiting in the whisper queue (whispers are spaced out).", ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], true)
         elseif self.state == "sent" then
             GameTooltip:AddLine("Whispered.", 0.4, 1, 0.4, true)
         elseif self.reason then
@@ -223,7 +223,7 @@ local function CreateButton(row)
                 guild = info.guild ~= "" and info.guild or nil }
             local text, rule = RC:TemplateFor(p)
             local msg = RC:Format(text, p)
-            GameTooltip:AddLine("Message: " .. (rule and rule.name or "Default"), 1, 0.82, 0)
+            GameTooltip:AddLine("Message: " .. (rule and rule.name or "Default"), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3])
             local tab = ns.TabName("recruit")
             GameTooltip:AddLine(msg ~= "" and ("|cffff80ff" .. msg .. "|r") or ("|cff9d9d9d(empty - write a message on the %s tab)|r"):format(tab), 1, 1, 1, true)
             GameTooltip:AddLine(("Click to whisper. Whispers are spaced out like on the %s tab."):format(tab), 0.7, 0.7, 0.7, true)
@@ -345,10 +345,12 @@ end
 
 function WI:Init()
     local watcher = CreateFrame("Frame")
+    watcher:Hide() -- runs only while /who results are on screen (started below)
     -- the window fills its rows a moment after the results arrive
     ns:RegisterEvent("WHO_LIST_UPDATE", function()
         if not WI:Enabled() then return end
         WI:Results()
+        watcher:Show()
         for _, delay in ipairs({ 0.1, 0.6, 1.5 }) do
             C_Timer.After(delay, function() WI:Scan() end)
         end
@@ -359,12 +361,12 @@ function WI:Init()
         elapsed = elapsed + (dt or 0)
         if elapsed < 0.25 then return end
         elapsed = 0
-        if not WI:Enabled() or not next(WI.buttons) then return end
+        if not WI:Enabled() or not next(WI.buttons) then watcher:Hide() return end
         local any = false
         for container in pairs(WI.containers) do
             if container:IsVisible() then any = true break end
         end
-        if any then WI:UpdateAll() end
+        if any then WI:UpdateAll() else watcher:Hide() end -- the /who window closed: stop
     end)
     ns:On("ROSTER_UPDATED", function() if next(WI.buttons) then WI:UpdateAll() end end)
     ns:On("RECRUITS_CHANGED", function() if next(WI.buttons) then WI:UpdateAll() end end)

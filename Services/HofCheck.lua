@@ -145,7 +145,7 @@ function CK:TooltipLine(full)
         local s = ns.HallOfFame.BY_KEY[b.key]
         parts[#parts + 1] = ("%s %d (game: %d)"):format(s and s.label or b.key, b.claimed, b.real)
     end
-    return ("|cffff6060Hall of Fame numbers don't match the game|r (checked %s by %s): %s"):format(
+    return ("|cffff2020Hall of Fame numbers don't match the game|r (checked %s by %s): %s"):format(
         when, ns.ShortName(res.by or "?"), table.concat(parts, ", "))
 end
 

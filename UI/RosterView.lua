@@ -284,7 +284,7 @@ function RV:StartColumnMove(c)
     h:SetAlpha(0.5)
     if not self.dropMarker then
         local m = self.header:CreateTexture(nil, "OVERLAY")
-        m:SetColorTexture(1, 0.82, 0, 1)
+        ns.Theme:Paint(m, ns.Theme.C.yellow, 1)
         m:SetWidth(3)
         self.dropMarker = m
     end
@@ -380,10 +380,10 @@ local function Check(parent, text)
     cb:SetSize(22, 22)
     local label = cb.Text or cb.text
     if not label then
-        label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label = cb:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
         label:SetPoint("LEFT", cb, "RIGHT", 2, 1)
     end
-    label:SetFontObject("GameFontHighlightSmall")
+    label:SetFontObject("NGMFontTextSmall")
     label:SetText(text)
     cb.Label = label
     return cb
@@ -413,10 +413,10 @@ function RV:BuildToolbar(page, frame)
     end)
     W.Tooltip(search, "Searching the roster",
         "Words match names, classes, specs and professions. Every word must match.",
-        "|cffffd100prof:|r |cffffd100spec:|r |cffffd100class:|r |cffffd100race:|r |cffffd100role:|r |cffffd100name:|r |cffffd100rank:|r |cffffd100zone:|r |cffffd100note:|r |cffffd100discord:|r limit a word to one field.",
-        "|cffffd100main:markpri|r  a main and their alts    |cffffd100is:alt|r  |cffffd100is:main|r  |cffffd100is:addon|r  |cffffd100is:online|r",
-        "|cffffd100level>=50|r  level filter",
-        "|cffffd100-alchemy|r excludes, |cffffd100zone:\"elwynn forest\"|r matches a phrase.",
+        (ns.GOLD .. "prof:|r " .. ns.GOLD .. "spec:|r " .. ns.GOLD .. "class:|r " .. ns.GOLD .. "race:|r " .. ns.GOLD .. "role:|r " .. ns.GOLD .. "name:|r " .. ns.GOLD .. "rank:|r " .. ns.GOLD .. "zone:|r " .. ns.GOLD .. "note:|r " .. ns.GOLD .. "discord:|r limit a word to one field."),
+        (ns.GOLD .. "main:markpri|r  a main and their alts    " .. ns.GOLD .. "is:alt|r  " .. ns.GOLD .. "is:main|r  " .. ns.GOLD .. "is:addon|r  " .. ns.GOLD .. "is:online|r"),
+        (ns.GOLD .. "level>=50|r  level filter"),
+        (ns.GOLD .. "-alchemy|r excludes, " .. ns.GOLD .. "zone:\"elwynn forest\"|r matches a phrase."),
         "Right-click a column header to choose columns.")
     self.searchBox = search
 
@@ -435,22 +435,22 @@ function RV:BuildToolbar(page, frame)
     local clear = CreateFrame("Button", nil, page)
     clear:SetSize(60, 16)
     clear:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -63)
-    clear.Text = clear:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    clear.Text = clear:CreateFontString(nil, "OVERLAY", "NGMFontLabelSmall")
     clear.Text:SetPoint("RIGHT", 0, 0)
     clear.Text:SetText("|TInterface\\Buttons\\UI-StopButton:12|t Clear")
     clear:SetWidth(math.ceil(clear.Text:GetStringWidth()) + 4)
     clear:SetScript("OnClick", function() RV:ClearFilters() end)
     clear:SetScript("OnEnter", function(self) self.Text:SetTextColor(1, 1, 1) end)
-    clear:SetScript("OnLeave", function(self) self.Text:SetTextColor(1, 0.82, 0) end)
+    clear:SetScript("OnLeave", function(self) ns.Theme:Ink(self.Text, ns.Theme.C.yellow) end)
     self.clearBtn = clear
 
-    local filters = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local filters = page:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     filters:SetPoint("RIGHT", clear, "LEFT", -8, 0)
     filters:SetJustifyH("RIGHT")
     filters:SetWordWrap(false)
     self.filterInfo = filters
 
-    local count = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local count = page:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     count:SetPoint("TOPLEFT", frame, "TOPLEFT", 80, -66)
     count:SetPoint("RIGHT", filters, "LEFT", -12, 0)
     count:SetJustifyH("LEFT")
@@ -466,8 +466,8 @@ local function DropPanel(page, width, height)
     p:EnableMouse(true)
     p:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
         insets = { left = 3, right = 3, top = 3, bottom = 3 } })
-    p:SetBackdropColor(0.06, 0.05, 0.04, 0.97)
-    p:SetBackdropBorderColor(0.7, 0.6, 0.4, 1)
+    ns.Theme:Fill(p, ns.Theme.C.bg1, 0.97)
+    ns.Theme:EdgeColor(p, ns.Theme.C.edge)
     p:Hide()
     return p
 end
@@ -511,7 +511,7 @@ function RV:BuildFilterPanel(page)
     p.Online = online
 
     local function Picker(label, y, onClick)
-        local text = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        local text = p:CreateFontString(nil, "OVERLAY", "NGMFontLabelSmall")
         text:SetPoint("TOPLEFT", 16, y - 4)
         text:SetText(label)
         local b = W.Button(p, "", 150, 20)
@@ -560,7 +560,7 @@ function RV:BuildFilterPanel(page)
     end)
     p.Addon = addon
 
-    local reset = W.Button(p, "Reset filters", 110, 20)
+    local reset = W.Button(p, "Reset filters", 110, 20, "alt")
     reset:SetPoint("BOTTOMLEFT", 12, 12)
     reset:SetScript("OnClick", function()
         ns.DB:Settings().onlineOnly = false
@@ -629,7 +629,7 @@ function RV:RefreshFilterInfo()
     if f.classFile then add(("|c%s%s|r"):format(ns.ClassHex(f.classFile), D:ClassName(f.classFile))) end
     if f.rank then add(f.rank) end
     if f.addonOnly then add("using the addon") end
-    self.filterInfo:SetText(table.concat(parts, "  |cff6d6d6d-|r  "))
+    self.filterInfo:SetText(table.concat(parts, "  |cff6e6e6e-|r  "))
     self.clearBtn:SetShown(#parts > 0)
     self.filterBtn:SetText(filterCount > 0 and ("Filter (%d)"):format(filterCount) or "Filter")
 end
@@ -674,7 +674,7 @@ function RV:BuildList(page, inset)
         grip:SetPoint("BOTTOMRIGHT", 4, 0)
         grip:SetFrameLevel(h:GetFrameLevel() + 5)
         grip.Line = grip:CreateTexture(nil, "OVERLAY")
-        grip.Line:SetColorTexture(1, 0.82, 0, 0.9)
+        ns.Theme:Paint(grip.Line, ns.Theme.C.yellow, 0.9)
         grip.Line:SetWidth(2)
         grip.Line:SetPoint("TOP", 0, -2)
         grip.Line:SetPoint("BOTTOM", 0, 2)
@@ -710,7 +710,7 @@ function RV:BuildList(page, inset)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    local empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    local empty = page:CreateFontString(nil, "OVERLAY", "NGMFontDim")
     empty:SetPoint("CENTER", scrollBox, "CENTER", 0, 20)
     empty:SetWidth(420)
     self.emptyText = empty
@@ -721,7 +721,7 @@ end
 -- its cell and moves the others.
 ------------------------------------------------------------------------
 local function Text(parent, font, justify)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NGMFontTextSmall")
     fs:SetJustifyH(justify or "LEFT")
     fs:SetWordWrap(false)
     return fs
@@ -739,7 +739,7 @@ local function BuildRow(row)
     row.Selected:SetAllPoints()
     row.Selected:SetTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight")
     row.Selected:SetBlendMode("ADD")
-    row.Selected:SetVertexColor(1, 0.82, 0, 0.5)
+    ns.Theme:Tint(row.Selected, ns.Theme.C.yellow, 0.5)
 
     row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
     row:GetHighlightTexture():SetAlpha(0.45)
@@ -761,7 +761,7 @@ local function BuildRow(row)
     -- Name: [alt] [online] [class] name. The "alt" tag is the same one the
     -- addon puts on the game's guild roster, in the same place (just left
     -- of the online icon).
-    row.Alt = cells.name:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    row.Alt = cells.name:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     row.Alt:SetPoint("LEFT", 2, 0)
     row.Alt:SetText("alt")
     row.Status = cells.name:CreateTexture(nil, "ARTWORK")
@@ -770,12 +770,12 @@ local function BuildRow(row)
     row.ClassIcon = cells.name:CreateTexture(nil, "ARTWORK")
     row.ClassIcon:SetSize(16, 16)
     row.ClassIcon:SetPoint("LEFT", 34, 0)
-    row.Name = Text(cells.name, "GameFontNormal")
+    row.Name = Text(cells.name, "NGMFontLabel")
     row.Name:SetPoint("LEFT", row.ClassIcon, "RIGHT", 5, 0)
     row.Name:SetPoint("RIGHT", -4, 0)
 
     -- Second name
-    row.Second = Text(cells.second, "GameFontNormal")
+    row.Second = Text(cells.second, "NGMFontLabel")
     row.Second:SetPoint("LEFT", 6, 0)
     row.Second:SetPoint("RIGHT", -4, 0)
 
@@ -821,7 +821,7 @@ local function BuildRow(row)
         text:SetPoint("LEFT", icon, "RIGHT", 3, 0)
         row.Profs[i] = { icon = icon, text = text }
     end
-    row.NoProfs = Text(cells.profs, "GameFontDisableSmall")
+    row.NoProfs = Text(cells.profs, "NGMFontDimSmall")
     row.NoProfs:SetPoint("LEFT", 6, 0)
     row.NoProfs:SetText("-")
 
@@ -887,7 +887,7 @@ end
 
 
 local function MainLabel(e)
-    if not e.isAlt then return "|cffd0d0d0Main|r" end
+    if not e.isAlt then return "|cffffffffMain|r" end
     local mainEntry = ns.Roster.byName[e.main]
     local hex = mainEntry and ns.ClassHex(mainEntry.classFile) or "ffbbbbbb"
     return ("|cff9d9d9dAlt of|r |c%s%s|r"):format(hex, e.mainShort)
@@ -935,18 +935,18 @@ function RV:InitRow(row, e)
     row.Spec:ClearAllPoints()
     row.Spec:SetPoint("LEFT", specIcon and row.SpecIcon or row.cells.spec, specIcon and "RIGHT" or "LEFT", specIcon and 4 or 6, 0)
     row.Spec:SetPoint("RIGHT", -4, 0)
-    row.Spec:SetText(e.spec or "|cff6d6d6d-|r")
+    row.Spec:SetText(e.spec or "|cff6e6e6e-|r")
 
     row.Main:SetText(MainLabel(e))
 
     -- Location
     if COL.zone.shown then
-        row.Zone:SetText((e.zone ~= "" and e.zone) or "|cff6d6d6d-|r")
+        row.Zone:SetText((e.zone ~= "" and e.zone) or "|cff6e6e6e-|r")
     end
 
     -- Last online
     if COL.seen.shown then
-        row.Seen:SetText(e.online and "|cff40ff40Online|r" or (ns.FormatLastSeen(e.lastOnline) .. " ago"))
+        row.Seen:SetText(e.online and "|cff20ff20Online|r" or (ns.FormatLastSeen(e.lastOnline) .. " ago"))
     end
 
     -- Professions
@@ -971,18 +971,18 @@ function RV:InitRow(row, e)
         row.Remind:SetShown(canRemind and true or false)
         if not e.hasAddon then
             if ns.InstallReminder:Reminded(e.full) then
-                row.Version:SetText("|cff6d6d6d(reminded)|r")
+                row.Version:SetText("|cff6e6e6e(reminded)|r")
             elseif canRemind then
                 row.Version:SetText("|cff66bbff(missing)|r") -- clickable: online, not reminded yet
             else
-                row.Version:SetText("|cff6d6d6d(missing)|r")
+                row.Version:SetText("|cff6e6e6e(missing)|r")
             end
         elseif not e.version then
             -- uses the addon, but its version hasn't arrived yet
             row.Version:SetText("|cff9d9d9d?|r")
         elseif ns.Roster:IsOutdated(e) then
             -- red: someone in the guild has a newer version
-            row.Version:SetText("|cffff4040" .. e.version .. "|r")
+            row.Version:SetText("|cffff2020" .. e.version .. "|r")
         else
             row.Version:SetText("|cffffffff" .. e.version .. "|r")
         end
@@ -1031,7 +1031,7 @@ function RV:ShowRowTooltip(row, e, hint)
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     -- the same header as the game's own guild roster tooltip
     GameTooltip:AddLine(e.full, ns.ClassColor(e.classFile))
-    if e.rank and e.rank ~= "" then GameTooltip:AddLine(e.rank, 1, 0.82, 0) end
+    if e.rank and e.rank ~= "" then GameTooltip:AddLine(e.rank, ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3]) end
     GameTooltip:AddLine(("Level %d %s%s"):format(e.level or 0, e.race and e.race ~= "" and (e.race .. " ") or "", e.className or ""), 1, 1, 1)
     if e.zone and e.zone ~= "" then GameTooltip:AddLine(e.zone, 1, 1, 1) end
     GameTooltip:AddLine(" ")
@@ -1140,11 +1140,11 @@ function RV:Refresh()
 
     -- summary: "9 members - 3 online - 2 using the addon - showing 4"
     local total, online, withAddon = ns.Roster:Stats()
-    local SEP = "  |cff6d6d6d-|r  "
+    local SEP = "  |cff6e6e6e-|r  "
     local summary = (total == 1 and "1 member" or (total .. " members")) .. SEP
-        .. ("|cff40ff40%d online|r"):format(online) .. SEP
+        .. ("|cff20ff20%d online|r"):format(online) .. SEP
         .. (withAddon == 1 and "1 using the addon" or (withAddon .. " using the addon"))
-    if #list ~= total then summary = summary .. SEP .. ("|cffffd100showing %d|r"):format(#list) end
+    if #list ~= total then summary = summary .. SEP .. ((ns.GOLD .. "showing %d|r")):format(#list) end
     self.countText:SetText(summary)
 
     if not IsInGuild() then

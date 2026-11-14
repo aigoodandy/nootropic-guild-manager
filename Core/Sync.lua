@@ -196,7 +196,7 @@ function S:Candidates(lane, seed, filter)
     local me = Me()
     if self:InLane(lane) and (not filter or filter(me)) then list[#list + 1] = me end
     local function score(name)
-        local officer = (lane == "guild" and self:KnownOfficer(name)) and 0 or 1
+        local officer = ((lane == "guild" or lane == "events") and self:KnownOfficer(name)) and 0 or 1
         return officer * P32 + Spread(seed:lower() .. "|" .. name:lower())
     end
     table.sort(list, function(a, b) return score(a) < score(b) end)
@@ -917,8 +917,8 @@ function S:StatusLines()
     end
     if self:GuildBroken() then
         out[#out + 1] = self.relay
-            and ("|cffff5555Your guild messages don't arrive|r (a game issue); sending through %s%s."):format(self.relay, self.relayAcked and "" or ", waiting for them to answer")
-            or "|cffff5555Your guild messages don't arrive|r (a game issue), and no officer running the addon is online to send them through."
+            and ("|cffff2020Your guild messages don't arrive|r (a game issue); sending through %s%s."):format(self.relay, self.relayAcked and "" or ", waiting for them to answer")
+            or "|cffff2020Your guild messages don't arrive|r (a game issue), and no officer running the addon is online to send them through."
     end
     local ranks = {}
     for _, r in ipairs(ns.DB:GuildRanks()) do

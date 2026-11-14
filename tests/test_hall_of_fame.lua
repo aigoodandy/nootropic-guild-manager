@@ -110,12 +110,9 @@ b = HV:Boards()
 assert(#b.boards.quests == 1 and b.boards.quests[1].n == 20)
 settings.hofPeriod = nil
 
--- turning sharing off clears your record
+-- statistics are public (Blizzard): always shared, no switch
 ns.Sharing:Set("stats", false)
-assert(ns.Sync:Value("HF:Me Self-R") == "")
-HF:Publish()
-assert(ns.Sync:Value("HF:Me Self-R") == "", "nothing shared while off")
-assert(HF:For("Me Self-R", "all") == nil)
+assert(ns.Sharing:Get("stats") == true, "no switch for statistics")
 
 assert(HV.Number(1234567) == "1,234,567" and HV.Number(12) == "12" and HV.Number(123) == "123")
 print("OK")

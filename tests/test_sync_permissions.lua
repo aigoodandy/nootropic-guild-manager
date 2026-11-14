@@ -82,7 +82,9 @@ check("own-profile off, but rank may edit everyone's profiles", rec("Bob Member-
 permRanks.profiles = nil
 check("own-profile off and no profiles permission: refused", rec("Bob Member-R", "RL:Bob Member-R", "Bob Member-R", "healer"), "tank")
 permRanks.ownprofile = nil
-check("own-profile back to default (everyone): own edit works", rec("Bob Member-R", "RL:Bob Member-R", "Bob Member-R", "tanky"), "tanky")
+check("own-profile back to default (everyone): own edit works", rec("Bob Member-R", "RL:Bob Member-R", "Bob Member-R", "tank,healer"), "tank,healer")
+check("a role value that isn't a role is refused", rec("Bob Member-R", "RL:Bob Member-R", "Bob Member-R", "admin"), "tank,healer")
+check("a main that isn't a name is refused", rec("Bob Member-R", "M:Bob Member-R", "Bob Member-R", "a,b:c"), nil)
 -- limits
 for i = 1, 12 do rec("Ann Member-R", "RP:Ann Member-R:" .. i, "Ann Member-R", "Alchemy;1") end
 check("13th profession list from one member", rec("Ann Member-R", "RP:Ann Member-R:99", "Ann Member-R", "Alchemy;1"), nil)

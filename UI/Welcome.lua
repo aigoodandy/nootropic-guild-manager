@@ -36,30 +36,33 @@ local function Pages()
               .. "This short tour shows what's where and lets you choose what you share. It takes about a minute." },
         { key = "find", icon = TAB_ICONS[1], title = "Find",
           text = "Search the whole guild by name, class, spec, profession, Discord or notes. Every main is grouped with their alts.\n\n"
-              .. "Type words to search, or use fields like |cffffd100prof:alchemy|r, |cffffd100spec:holy|r or |cffffd100is:online|r. Right-click a column header to choose columns. Click anyone to open their profile.\n\n"
+              .. ("Type words to search, or use fields like " .. ns.GOLD .. "prof:alchemy|r, " .. ns.GOLD .. "spec:holy|r or " .. ns.GOLD .. "is:online|r. Right-click a column header to choose columns. Click anyone to open their profile.\n\n")
               .. GRAY .. "On the game's own Guild roster you'll also see alt markers, richer tooltips and Profile on the right-click menu.|r" },
+        { key = "events", icon = TAB_ICONS[7], title = "Upcoming Events",
+          text = "The guild's events for the next 30 days: dungeons, raids and guild nights, with the time (your own), how long, and how many are coming.\n\n"
+              .. ("Sign up in " .. ns.GOLD .. "Discord|r, with the buttons on each event's post: the tab says which channel. Events are created on the " .. ns.GOLD .. "NGM Peon dashboard|r.") },
+        { key = "overview", icon = TAB_ICONS[5], title = "Overview",
+          text = "The guild at a glance: how many of each class, level and profession, counting the people who've played lately.\n\n"
+              .. (ns.GOLD .. "When we play|r is a week heatmap from the hours guildmates share: hover a block to see who usually plays then. Click any bar to list those members on the Find tab.") },
+        { key = "hof", icon = TAB_ICONS[6], title = "Hall of Fame",
+          text = ("Guild leaderboards from everyone's character statistics: quests, kills, dungeon bosses, honorable kills, deaths, flights, fish, hugs and more, plus " .. ns.GOLD .. "Social Butterfly|r, the time spent chatting with guildmates.\n\n")
+              .. ("Each card's leader for the month is its " .. ns.GOLD .. "champion|r, shown on the card all next month; titles add up on " .. ns.GOLD .. "Most Champion Wins|r. Each member's own addon shares their numbers (never gold), the same ones Blizzard publishes.") },
         { key = "together", icon = TAB_ICONS[2], title = "Play Together",
           text = "Who to play with right now: guildmates online within a few levels of you (people in your zone first), and guildmates who usually play at this hour.\n\n"
               .. "Usual hours are learned from when people actually play, so this list grows over the first few days." },
-        { key = "overview", icon = TAB_ICONS[5], title = "Overview",
-          text = "The guild at a glance: how many of each class, level and profession, counting the people who've played lately.\n\n"
-              .. "|cffffd100When we play|r is a week heatmap from the hours guildmates share: hover a block to see who usually plays then. Click any bar to list those members on the Find tab." },
-        { key = "hof", icon = TAB_ICONS[6], title = "Hall of Fame",
-          text = "Guild leaderboards from everyone's character statistics: quests, kills, dungeon bosses, honorable kills, deaths, flights, fish, hugs and more, plus |cffffd100Social Butterfly|r, the time spent chatting with guildmates.\n\n"
-              .. "Each card's leader for the month is its |cffffd100champion|r, shown on the card all next month; titles add up on |cffffd100Most Champion Wins|r. Each member's own addon shares their numbers (never gold); turn it off in Options > Sharing." },
         { key = "craft", icon = "Interface\\Icons\\Trade_Alchemy", title = "Who Can Craft It?",
           text = "Every recipe your guildmates know, in one search, with crafters who are online first.\n\n"
-              .. "Open it from the |cffffd100Who Can Craft?|r button on the Find tab, or type |cffffd100/ngm craft flask|r.\n\n"
+              .. ("Open it from the " .. ns.GOLD .. "Who Can Craft?|r button on the Find tab, or type " .. ns.GOLD .. "/ngm craft flask|r.\n\n")
               .. "Your own recipes are shared when you open one of your profession windows, so open each of yours once." },
         { key = "profiles", icon = "Interface\\Icons\\INV_Misc_Head_Dragon_01", title = "Profiles and Raids",
           text = "Every profile shows spec, roles, professions (and their recipes), Discord, when they usually play, and your own private notes about them, which never leave your computer.\n\n"
-              .. "The |cffffd100Raids|r tab shows raid readiness: the Onyxia attunement and the Barrow Deeps key, worked out by each member's own addon." },
+              .. ("The " .. ns.GOLD .. "Raids|r tab shows raid readiness: the Onyxia attunement and the Barrow Deeps key, worked out by each member's own addon.") },
     }
     if ns.Recruit:MayRecruit() then
         list[#list + 1] = { key = "recruit", icon = TAB_ICONS[3], title = "Recruitment",
-            text = "Search |cffffd100/who|r for players without a guild, tick the ones you like, and send friendly whispers one at a time.\n\n"
+            text = ("Search " .. ns.GOLD .. "/who|r for players without a guild, tick the ones you like, and send friendly whispers one at a time.\n\n")
                 .. "Anyone whispered by the guild is locked for 14 days, and anyone who says no goes on the shared Do Not Whisper list, so nobody gets pestered twice.\n\n"
-                .. "When someone replies yes, an Invite prompt shows the |cffffd100/ginvite|r line to copy and paste: WoW: Forever only accepts invites you type yourself." }
+                .. ("When someone replies yes, an Invite prompt shows the " .. ns.GOLD .. "/ginvite|r line to copy and paste: WoW: Forever only accepts invites you type yourself.") }
     end
     if ns.IsOfficer() then
         list[#list + 1] = { key = "audit", icon = TAB_ICONS[4], title = "Audit (officers)",
@@ -67,7 +70,7 @@ local function Pages()
                 .. "Profiles also get an Officer tab with the officer log, the character's history, when they joined and since when they've held their rank." }
     end
     list[#list + 1] = { key = "sharing", icon = "Interface\\Icons\\INV_Letter_15", title = "What You Share",
-        text = "Choose what your copy of the addon shares with the guild. You can change these any time in Options > Sharing." }
+        text = "Two things only your copy of the addon knows: your recipes and when you usually play. Keep them to yourself if you like; change it any time in Options > Sharing." }
     list[#list + 1] = { key = "profile", icon = "Interface\\Icons\\INV_Misc_Note_01", title = "Your Profile",
         text = "A few basics guildmates see on your profile. All optional; you can edit them later from your profile's Edit button." }
     if ns.DB:IsGuildMaster() then
@@ -75,9 +78,9 @@ local function Pages()
             text = "Choose which ranks may do each of these. \"Officers\" means the ranks the game marks Officer (Guild Control). You can change this any time in Options > Officers." }
     end
     list[#list + 1] = { key = "done", icon = D.LOGO, full = true, title = "You're All Set",
-        text = "Open the window any time with |cffffd100/ngm|r or the minimap button.\n\n"
-            .. "Options has everything from this tour, plus an |cffffd100About|r page with links to the Nootropic Discord and the addon's page.\n\n"
-            .. "Want this tour again? |cffffd100/ngm welcome|r." }
+        text = ("Open the window any time with " .. ns.GOLD .. "/ngm|r or the minimap button.\n\n")
+            .. ("Options has everything from this tour, plus an " .. ns.GOLD .. "About|r page with links to the Nootropic Discord and the addon's page.\n\n")
+            .. ("Want this tour again? " .. ns.GOLD .. "/ngm welcome|r.") }
     return list
 end
 
@@ -89,12 +92,12 @@ local function Check(parent, text, hint)
     cb:SetSize(26, 26)
     local label = cb.Text or cb.text
     if type(label) ~= "table" then
-        label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        label = cb:CreateFontString(nil, "OVERLAY", "NGMFontText")
         label:SetPoint("LEFT", cb, "RIGHT", 4, 1)
     end
-    label:SetFontObject("GameFontHighlight")
+    label:SetFontObject("NGMFontText")
     label:SetText(text)
-    local h = parent:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local h = parent:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     h:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -2)
     h:SetWidth(BODY_W - 34)
     h:SetJustifyH("LEFT")
@@ -104,7 +107,7 @@ local function Check(parent, text, hint)
 end
 
 local function Input(parent, label, maxLetters, width)
-    local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", "NGMFontLabelSmall")
     fs:SetText(label)
     local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     eb:SetSize(width, 22)
@@ -119,6 +122,7 @@ end
 
 function WL:Build()
     local f = CreateFrame("Frame", "NootropicGMWelcome", UIParent, "BasicFrameTemplateWithInset")
+    ns.Theme:Skin(f)
     W.CombatSafeClose(f)
     f:SetSize(WIDTH, HEIGHT)
     f:SetPoint("CENTER", 0, 40)
@@ -144,19 +148,19 @@ function WL:Build()
     pic:SetPoint("TOPLEFT", 22, -44)
     pic:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
         insets = { left = 3, right = 3, top = 3, bottom = 3 } })
-    pic:SetBackdropColor(0.08, 0.05, 0.02, 1)
-    pic:SetBackdropBorderColor(0.85, 0.65, 0.25, 1)
+    ns.Theme:Fill(pic, ns.Theme.C.bg1)
+    ns.Theme:EdgeColor(pic, ns.Theme.C.yellow)
     self.icon = pic:CreateTexture(nil, "ARTWORK")
     self.icon:SetPoint("TOPLEFT", 6, -6)
     self.icon:SetPoint("BOTTOMRIGHT", -6, 6)
     self.pic = pic
 
-    self.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    self.title = f:CreateFontString(nil, "OVERLAY", "NGMFontTitle")
     self.title:SetPoint("TOPLEFT", pic, "TOPRIGHT", 18, -4)
     self.title:SetWidth(BODY_W)
     self.title:SetJustifyH("LEFT")
 
-    self.text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    self.text = f:CreateFontString(nil, "OVERLAY", "NGMFontText")
     self.text:SetPoint("TOPLEFT", self.title, "BOTTOMLEFT", 0, -10)
     self.text:SetWidth(BODY_W)
     self.text:SetJustifyH("LEFT")
@@ -170,7 +174,7 @@ function WL:Build()
     self:BuildPerms(f)
 
     -- footer
-    self.back = W.Button(f, "Back", 90, 24)
+    self.back = W.Button(f, "Back", 90, 24, "alt")
     self.back:SetPoint("BOTTOMLEFT", 16, 14)
     self.back:SetScript("OnClick", function() WL:Go(WL.index - 1) end)
     self.next = W.Button(f, "Next", 110, 24)
@@ -181,7 +185,7 @@ function WL:Build()
     self.skip = CreateFrame("Button", nil, f)
     self.skip:SetSize(90, 20)
     self.skip:SetPoint("RIGHT", self.next, "LEFT", -12, 0)
-    self.skip.Text = self.skip:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.skip.Text = self.skip:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.skip.Text:SetPoint("RIGHT")
     self.skip.Text:SetText("Skip the tour")
     self.skip:SetScript("OnClick", function() f:Hide() end)
@@ -202,11 +206,8 @@ function WL:BuildSharing(f)
     p:SetSize(BODY_W, 220)
     self.extras.sharing = p
     local rows = {
-        { "report", "Share my spec and professions", "What the game reports about your talents and professions." },
         { "recipes", "Share my recipes", "So guildmates can find you in Who Can Craft?. Shared when you open a profession window." },
         { "learn", "Learn when I usually play", "Shares a summary of the hours you usually play (this character), for Play Together and your profile." },
-        { "together", "Show me in Play Together", "Guildmates near your level see you when you're online or usually around." },
-        { "stats", "Share my statistics", "Quests, kills, bosses and more, plus your guild chat time (never what was said), for the Hall of Fame. Never gold." },
     }
     p.checks = {}
     local y = 0
@@ -229,7 +230,7 @@ function WL:BuildProfile(f)
     self.extras.profile = p
     p.discord = Input(p, "Discord name", ns.Profile.DISCORD_MAX, 220)
     p.discord.Label:SetPoint("TOPLEFT", 0, 0)
-    local rl = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local rl = p:CreateFontString(nil, "OVERLAY", "NGMFontLabelSmall")
     rl:SetPoint("TOPLEFT", 0, -52)
     rl:SetText("Roles you play on this character")
     p.roles = {}
@@ -240,17 +241,17 @@ function WL:BuildProfile(f)
         cb:SetPoint("TOPLEFT", x - 4, -68)
         local label = cb.Text or cb.text
         if type(label) ~= "table" then
-            label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            label = cb:CreateFontString(nil, "OVERLAY", "NGMFontText")
             label:SetPoint("LEFT", cb, "RIGHT", 4, 1)
         end
-        label:SetFontObject("GameFontHighlight")
+        label:SetFontObject("NGMFontText")
         label:SetText(("|T%s:16|t %s"):format(r.icon, r.label))
         cb.key = r.key
         cb:SetScript("OnClick", function() WL:SaveRoles() end)
         p.roles[#p.roles + 1] = cb
         x = x + 130
     end
-    p.locked = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    p.locked = p:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     p.locked:SetPoint("TOPLEFT", 0, -104)
     p.locked:SetWidth(BODY_W)
     p.locked:SetJustifyH("LEFT")
@@ -264,7 +265,7 @@ function WL:BuildPerms(f)
     p.rows = {}
     local y = 0
     for _, perm in ipairs(ns.DB.PERMS) do
-        local label = p:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        local label = p:CreateFontString(nil, "OVERLAY", "NGMFontText")
         label:SetPoint("TOPLEFT", 0, y - 4)
         label:SetWidth(200)
         label:SetJustifyH("LEFT")
@@ -284,11 +285,8 @@ end
 
 function WL:RefreshSharing()
     local c = self.extras.sharing.checks
-    c.report:SetChecked(ns.Sharing:Get("report"))
     c.recipes:SetChecked(ns.Sharing:Get("recipes"))
     c.learn:SetChecked(ns.Profile:LearnEnabled())
-    c.together:SetChecked(ns.Sharing:Get("together"))
-    c.stats:SetChecked(ns.Sharing:Get("stats"))
 end
 
 function WL:RefreshProfile()

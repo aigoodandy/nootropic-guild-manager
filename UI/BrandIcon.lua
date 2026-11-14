@@ -2,106 +2,44 @@
     Nootropic Guild Manager - Brand icon
     One renderer for the addon's icon wherever it appears (window portrait,
     minimap button, Guild & Communities shortcut, options previews).
-    Styles: your guild's tabard (the default) or the Nootropic medallion
-    (Media/Logo.tga), which the tabard falls back to outside a guild or
-    without one.
-
-    Large icons copy Blizzard's own guild portrait (CommunitiesFrame
-    PortraitOverlay): a 60x60 circle, the tabard background and border from
-    Interface\GuildFrame\GuildFrame, and a 56x64 emblem centered on top,
-    everything scaled from that 60px reference. Small ones (under 48px) get
-    the guild's background color and the emblem only (see ShowEmblem).
+    Always NGM's herald banner in the guild's colors: four layers
+    (Media/Banner*.tga, from docs/Banner*.svg): a round dark field with a
+    gilt ring, the cloth (tinted the tabard's background), its edge (tinted
+    the border) and the rod, stitching and wax seal on top. Herald blue
+    without a tabard.
 
       ns.Brand:AttachPortrait(frame)                 -- window portrait
       ns.Brand:Attach(host, size, point, opts)       -- anywhere else
+
 ]]
 local _, ns = ...
-local D = ns.Data
 local Brand = {}
 ns.Brand = Brand
 
 local MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-local GUILD_ART = "Interface\\GuildFrame\\GuildFrame"
-local BG_COORDS = { 0.63183594, 0.69238281, 0.61914063, 0.74023438 }
-local BORDER_COORDS = { 0.63183594, 0.69238281, 0.74414063, 0.86523438 }
+local MEDIA = "Interface\\AddOns\\NootropicGuildManager\\Media\\"
 
 Brand.icons = {}
 
-function Brand:Style()
-    return ns.DB:Settings().iconStyle or "emblem"
-end
+-- NGM's banner, always: the cloth in the guild tabard's background color,
+-- its edge in the border's (herald blue without a tabard). The same banner
+-- and colors as on ngmpeon.app (Core/Accent.lua Palette).
+function Brand:Style() return "banner" end
 
--- True when there's a guild tabard to draw.
-function Brand:CanShowEmblem()
-    if not IsInGuild() or not SetLargeGuildTabardTextures then return false end
-    if C_GuildInfo and C_GuildInfo.GetGuildTabardInfo then
-        local ok, info = pcall(C_GuildInfo.GetGuildTabardInfo, "player")
-        if ok and info == nil then return false end
-    end
-    return true
+local function Tint(tex, hex)
+    tex:SetVertexColor(tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255)
 end
 
 local IconMixin = {}
 
--- Small icons (the minimap button, the Guild & Communities tab, Options
--- previews) can't use the guild portrait's art: it's drawn for 60 pixels,
--- and its ring doubles the host's own frame. They get the guild's
--- background color and the emblem instead.
-local SMALL = 48
-
-function IconMixin:ShowEmblem(on)
-    local small = self.size < SMALL
-    self.Bg:SetShown(on)
-    self.Border:SetShown(on and not small)
-    self.Emblem:SetShown(on)
-    self.Icon:SetShown(not on)
-end
-
--- The guild's tabard background color, or a dark gray.
-local function TabardBackground()
-    if C_GuildInfo and C_GuildInfo.GetGuildTabardInfo then
-        local ok, info = pcall(C_GuildInfo.GetGuildTabardInfo, "player")
-        local c = ok and info and info.backgroundColor
-        if c and c.GetRGB then return c:GetRGB() end
-    end
-    return 0.15, 0.15, 0.15
-end
-
 function IconMixin:Apply()
-    local key = self.fixedStyle or Brand:Style()
-    if key == "emblem" and Brand:CanShowEmblem() then
-        local s = self.size / 60
-        self.Emblem:SetSize(56 * s, 64 * s) -- the game sets width from height (7:8)
-        local ok
-        if self.size < SMALL then
-            -- the game colors the emblem; the rest it would draw goes to
-            -- textures that are never shown
-            ok = pcall(SetLargeGuildTabardTextures, "player", self.Emblem, self.SpareBg, self.SpareBorder)
-            self.Bg:SetColorTexture(TabardBackground())
-            self.Bg:SetTexCoord(0, 1, 0, 1)
-        else
-            self.Bg:SetTexture(GUILD_ART)
-            self.Bg:SetTexCoord(unpack(BG_COORDS))
-            self.Border:SetTexture(GUILD_ART)
-            self.Border:SetTexCoord(unpack(BORDER_COORDS))
-            ok = pcall(SetLargeGuildTabardTextures, "player", self.Emblem, self.Bg, self.Border)
-        end
-        if ok then
-            self:ShowEmblem(true)
-            return
-        end
-    end
-    self:ShowEmblem(false)
-    local style = D:IconStyle(key)
-    self.Icon:SetTexture(style.icon or D.DEFAULT_ICON)
-    if style.fullArt then
-        -- `crop`: trim the medallion's own gold ring where the host already
-        -- draws a round border (the minimap button), so there's one ring
-        local c = self.crop or 0
-        self.Icon:SetTexCoord(c, 1 - c, c, 1 - c)
-    else
-        self.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) -- trim a game icon's border
-    end
+    local p = ns.Theme and ns.Theme.palette
+    Tint(self.Cloth, p and p.cloth or ns.Accent.HERALD.cloth)
+    Tint(self.Band, p and p.band or ns.Accent.HERALD.band)
+    -- `crop`: trim the banner's own gold ring where the host already draws
+    -- a round border (the minimap button), so there's one ring
+    local c = self.crop or 0
+    for _, t in ipairs(self.layers) do t:SetTexCoord(c, 1 - c, c, 1 - c) end
 end
 
 --[[
@@ -114,8 +52,7 @@ end
 function Brand:Attach(host, size, point, opts)
     opts = opts or {}
     local layer = opts.layer or "ARTWORK"
-    local s = size / 60
-    local icon = { host = host, size = size, fixedStyle = opts.style, crop = opts.crop }
+    local icon = { host = host, size = size, crop = opts.crop, layers = {} }
     for k, v in pairs(IconMixin) do icon[k] = v end
 
     -- Reference square everything is placed against.
@@ -125,27 +62,21 @@ function Brand:Attach(host, size, point, opts)
     slot:SetColorTexture(0, 0, 0, 0)
     icon.Slot = slot
 
-    icon.Icon = host:CreateTexture(nil, layer, nil, 1)
-    icon.Icon:SetAllPoints(slot)
-    icon.Bg = host:CreateTexture(nil, layer, nil, 1)
-    icon.Bg:SetAllPoints(slot)
-    icon.Emblem = host:CreateTexture(nil, layer, nil, 2)
-    icon.Emblem:SetSize(56 * s, 64 * s)
-    icon.Emblem:SetPoint("CENTER", slot, "CENTER", 0, 1 * s)
-    icon.SpareBg = host:CreateTexture(nil, layer)
-    icon.SpareBorder = host:CreateTexture(nil, layer)
-    icon.SpareBg:Hide()
-    icon.SpareBorder:Hide()
-    icon.Border = host:CreateTexture(nil, layer, nil, 3)
-    icon.Border:SetSize(size, 59 * s)
-    icon.Border:SetPoint("TOPLEFT", slot, "TOPLEFT", 0, -1 * s)
+    -- the round field and ring, the cloth, its edge, then the rod, stitching and seal
+    for n, name in ipairs({ "Base", "Cloth", "Band", "Top" }) do
+        local t = host:CreateTexture(nil, layer, nil, n)
+        t:SetTexture(MEDIA .. "Banner" .. name)
+        t:SetAllPoints(slot)
+        icon[name] = t
+        icon.layers[#icon.layers + 1] = t
+    end
 
     if opts.round ~= false and host.CreateMaskTexture then
         local mask = host:CreateMaskTexture()
         if mask then
             mask:SetTexture(MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             mask:SetAllPoints(slot)
-            for _, t in ipairs({ icon.Icon, icon.Bg, icon.Emblem, icon.Border }) do
+            for _, t in ipairs(icon.layers) do
                 if t.AddMaskTexture then t:AddMaskTexture(mask) end
             end
         end
@@ -174,16 +105,11 @@ function Brand:Refresh()
     ns:Fire("BRAND_CHANGED")
 end
 
-function Brand:SetStyle(key)
-    ns.DB:Settings().iconStyle = key
-    self:Refresh()
-end
-
 function Brand:Init()
-    -- The emblem isn't known until guild data arrives, and it can change.
-    local function queue()
-        if Brand:Style() == "emblem" then ns.Debounce("brand", 0.5, function() Brand:Refresh() end) end
-    end
+    -- the banner wears the guild's colors: repaint when they change
+    ns.Theme:OnAccent(function() Brand:Refresh() end)
+    -- the tabard isn't known until guild data arrives, and it can change
+    local function queue() ns.Debounce("accent", 0.5, function() ns.Theme:RefreshAccent() end) end
     ns:RegisterEvent("PLAYER_GUILD_UPDATE", queue)
     ns:RegisterEvent("GUILD_ROSTER_UPDATE", queue)
     queue()

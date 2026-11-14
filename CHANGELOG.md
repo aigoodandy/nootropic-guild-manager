@@ -2,6 +2,21 @@
 
 Every release is on the [releases page](https://github.com/keasbeexd/nootropic-guild-manager/releases) with a `-forever.zip` that WowUp installs. Versions 2.12 and newer sync with each other; older versions use older sync protocols and don't exchange data with them (2.12 still shows their version, so they're told to update).
 
+## 3.0.0
+
+NGM meets your guild's Discord, and looks like it belongs in the game. **3.0 syncs with 2.12**, so guildmates can update at their own pace.
+
+- **NGM Peon, your guild's herald (optional).** NGM Peon is a Discord bot and a dashboard at **ngmpeon.app** that carries word between the game and your guild's Discord: rank roles, events with sign-ups, a guild feed, Social Butterfly from Discord chat and voice, and more. The addon still works entirely on its own; add NGM Peon whenever your Discord should join in.
+- **Two codes carry it across.** The Guild Master (or an officer) types `/ngm discord` to make a code for NGM Peon (ranks, rank permissions, mains and alts, Tank / Healer / DPS, when the guild plays, the tabard's colors), and `/ngm peon` to bring NGM Peon's code back into the game (mains, roles, Discord names, champions and events), shared with the whole guild. The dashboard's Sync tab walks you through both, and the Guild Master is reminded after 3 days without a sync.
+- **Upcoming Events tab.** The guild's dungeons, raids and nights made on the NGM Peon dashboard: when, how long, who's coming and where to sign up in Discord. Shared with the guild like everything else.
+- **Champions from NGM Peon.** When your guild uses NGM Peon, the Hall of Fame's monthly champions come from it (counted from Blizzard's data for everyone), so the game and Discord always agree.
+- **The game's own look.** Blizzard's own windows, buttons, side tabs, scroll bars and fonts throughout (every alphabet shows), with the accents (headings, labels, the open tab, bars) in **your guild tabard's colors**, the same as on ngmpeon.app. Any tabard reads well: the colors are brightened or darkened just enough. Without a tabard: herald blue. Messages use the game's own red, green and gray.
+- **NGM's banner is the icon**, in your tabard's colors, on the window, the minimap button and the Guild & Communities tab. The icon and theme choices in Options are gone: it's always your guild's.
+- **The Guild & Communities tab** sits under Blizzard's own side tabs, spaced and sized like them, wherever they are.
+- **Leaner:** the /who and recruiting watchers stop whenever nothing they follow is on screen.
+- **Options > About** links to **ngmpeon.app** only: downloads, help, bug reports and NGM Peon.
+- **Sharing switches only for what's yours alone:** your recipes and when you usually play. Your spec, professions, statistics and guild chat time are always shared, since they're public anyway (Blizzard's API, inspecting you, guild chat), and everyone online near your level shows in Play Together.
+
 ## 2.12.0
 
 Sync, rebuilt from the ground up: lean, stricter, and fast in big guilds. **Everyone in the guild needs 2.12**: older versions don't sync with it (they still see your version, and are told to update).

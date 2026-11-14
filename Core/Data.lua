@@ -58,25 +58,12 @@ function D:SpecIcon(classFile, spec)
 end
 
 ------------------------------------------------------------------------
--- Addon icon choices (window portrait, minimap button, shortcuts)
+-- NGM's herald banner in herald blue (Media/Logo.tga, from docs/logo.svg,
+-- the same art as the README): the AddOns list and the welcome pages. The
+-- window, minimap button and shortcuts draw it in the guild's colors
+-- (UI/BrandIcon.lua).
 ------------------------------------------------------------------------
--- Your guild's tabard (the default), or the addon's own medallion
--- (Media/Logo.tga, drawn from docs/logo.svg, the same art as the README),
--- which is also what the tabard falls back to outside a guild or without
--- one. fullArt: it's round already, so it isn't cropped.
 D.LOGO = "Interface\\AddOns\\NootropicGuildManager\\Media\\Logo"
-D.ICON_STYLES = {
-    { key = "emblem",    label = "Guild Tabard",        icon = D.LOGO, fullArt = true },
-    { key = "nootropic", label = "Nootropic Medallion", icon = D.LOGO, fullArt = true },
-}
-D.DEFAULT_ICON = D.LOGO
-
-function D:IconStyle(key)
-    for _, s in ipairs(self.ICON_STYLES) do
-        if s.key == key then return s end
-    end
-    return self.ICON_STYLES[1]
-end
 
 ------------------------------------------------------------------------
 -- Minimap button click actions (Options > Minimap Button)
@@ -153,13 +140,10 @@ end
 D.MAX_LOG_LENGTH = 140 -- fits one addon message
 
 -- Options > About. Links are shown to copy (the game can't open web pages).
+-- One link: ngmpeon.app carries the rest (downloads, help, bug reports).
 D.LINKS = {
-    { label = "Keasbeexd's site", url = "https://keasbeexd.github.io/", icon = "Interface\\Icons\\INV_Misc_Book_09",
-      hint = "Other projects by the maintainer." },
-    { label = "Nootropic on Discord", url = "https://discord.gg/BCnPbyBSyb", icon = D.LOGO,
-      hint = "The guild's Discord: raids, events, LFG and help." },
-    { label = "Addon on GitHub", url = "https://github.com/keasbeexd/nootropic-guild-manager", icon = "Interface\\Icons\\INV_Gizmo_02",
-      hint = "Downloads, the full guide (README), release notes and the source." },
+    { label = "ngmpeon.app", url = "https://ngmpeon.app", icon = D.LOGO,
+      hint = "Downloads, help, bug reports and NGM Peon for your guild's Discord." },
 }
 
 ------------------------------------------------------------------------

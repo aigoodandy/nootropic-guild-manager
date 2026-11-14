@@ -37,7 +37,7 @@ RCV.cols = ns.Columns.New({
 -- Small helpers
 ------------------------------------------------------------------------
 local function Label(parent, text, font)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormalSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NGMFontLabelSmall")
     fs:SetText(text)
     return fs
 end
@@ -46,7 +46,7 @@ local function InputBox(parent, width, maxLetters, numeric)
     local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     eb:SetSize(width, 20)
     eb:SetAutoFocus(false)
-    eb:SetFontObject("GameFontHighlightSmall")
+    eb:SetFontObject("NGMFontTextSmall")
     if maxLetters then eb:SetMaxLetters(maxLetters) end
     if numeric then eb:SetNumeric(true) end
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -59,10 +59,10 @@ local function Check(parent, text)
     cb:SetSize(22, 22)
     local label = cb.Text or cb.text
     if not label then
-        label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label = cb:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
         label:SetPoint("LEFT", cb, "RIGHT", 2, 1)
     end
-    label:SetFontObject("GameFontHighlightSmall")
+    label:SetFontObject("NGMFontTextSmall")
     label:SetText(text)
     cb.Label = label
     return cb
@@ -140,7 +140,7 @@ function RCV:BuildSearchBar(page, frame)
     levelLabel:SetPoint("LEFT", zoneBox, "RIGHT", 14, 0)
     local minBox = InputBox(page, 26, 2, true)
     minBox:SetPoint("LEFT", levelLabel, "RIGHT", 8, 0)
-    local dash = Label(page, "-", "GameFontHighlightSmall")
+    local dash = Label(page, "-", "NGMFontTextSmall")
     dash:SetPoint("LEFT", minBox, "RIGHT", 4, 0)
     local maxBox = InputBox(page, 26, 2, true)
     maxBox:SetPoint("LEFT", dash, "RIGHT", 8, 0)
@@ -168,7 +168,7 @@ function RCV:BuildSearchBar(page, frame)
             return
         end
         local ok, err = ns.Recruit:Search()
-        if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+        if not ok and err then ns:Print("|cffff2020" .. err .. "|r") end
         RCV:Refresh()
     end)
     W.SecureOverlay(search, {
@@ -193,12 +193,12 @@ function RCV:BuildSearchBar(page, frame)
     self.filterBtn = filter
 
     -- Summary line: players, last search, and which filters are on
-    local filters = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local filters = page:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     filters:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -66)
     filters:SetJustifyH("RIGHT")
     filters:SetWordWrap(false)
     self.filterInfo = filters
-    local status = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local status = page:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     status:SetPoint("TOPLEFT", frame, "TOPLEFT", 80, -66)
     status:SetPoint("RIGHT", filters, "LEFT", -12, 0)
     status:SetJustifyH("LEFT")
@@ -217,15 +217,15 @@ function RCV:BuildFilterPanel(page, anchor)
     p:EnableMouse(true)
     p:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
         insets = { left = 3, right = 3, top = 3, bottom = 3 } })
-    p:SetBackdropColor(0.06, 0.05, 0.04, 0.97)
-    p:SetBackdropBorderColor(0.7, 0.6, 0.4, 1)
+    ns.Theme:Fill(p, ns.Theme.C.bg1, 0.97)
+    ns.Theme:EdgeColor(p, ns.Theme.C.edge)
     p:Hide()
     page:HookScript("OnHide", function() p:Hide() end)
     self.filterPanel = p
 
     local classLabel = Label(p, "Class")
     classLabel:SetPoint("TOPLEFT", 14, -16)
-    local classBtn = W.Button(p, "Any class", 150, 22)
+    local classBtn = W.Button(p, "Any class", 150, 22, "alt")
     classBtn:SetPoint("LEFT", classLabel, "RIGHT", 12, 0)
     classBtn:SetScript("OnClick", function(btn) RCV:ShowClassMenu(btn) end)
     self.classBtn = classBtn
@@ -251,7 +251,7 @@ function RCV:BuildFilterPanel(page, anchor)
     end)
     self.hideCheck = hide
 
-    local reset = W.Button(p, "Reset filters", 110, 20)
+    local reset = W.Button(p, "Reset filters", 110, 20, "alt")
     reset:SetPoint("BOTTOMLEFT", 12, 10)
     reset:SetScript("OnClick", function()
         local r = ns.Recruit:Settings()
@@ -326,7 +326,7 @@ function RCV:BuildList(page, inset)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    local empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    local empty = page:CreateFontString(nil, "OVERLAY", "NGMFontDim")
     empty:SetPoint("CENTER", scrollBox, "CENTER", 0, 20)
     empty:SetWidth(360)
     self.emptyText = empty
@@ -343,23 +343,23 @@ function RCV:BuildFooter(page, inset)
     f:SetHeight(FOOTER_H - 4)
     self.footer = f
 
-    local selNew = W.Button(f, "Select New", 92, 22)
+    local selNew = W.Button(f, "Select New", 92, 22, "alt")
     selNew:SetPoint("LEFT", 0, 0)
     selNew:SetScript("OnClick", function() ns.Recruit:SelectNew(RCV.list or {}) end)
     W.Tooltip(selNew, "Select new players", "Ticks everyone in the list nobody in the guild has whispered yet (people on the Do Not Whisper list are never ticked).")
-    local clear = W.Button(f, "Clear", 60, 22)
+    local clear = W.Button(f, "Clear", 60, 22, "alt")
     clear:SetPoint("LEFT", selNew, "RIGHT", 4, 0)
     clear:SetScript("OnClick", function() ns.Recruit:ClearSelection() end)
     W.Tooltip(clear, "Clear", "Unticks everyone.")
 
-    local clearNew = W.Button(f, "Clear New", 86, 22)
+    local clearNew = W.Button(f, "Clear New", 86, 22, "alt")
     clearNew:SetPoint("LEFT", clear, "RIGHT", 4, 0)
     clearNew:SetScript("OnClick", function()
         W.Confirm("Remove everyone you haven't contacted from the list?", function() ns.Recruit:ClearUncontacted() end)
     end)
     W.Tooltip(clearNew, "Clear New", "Removes players you haven't whispered or invited from the list. Contacted players are kept so you don't message them twice.")
 
-    self.sendInfo = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.sendInfo = f:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     self.sendInfo:SetPoint("LEFT", clearNew, "RIGHT", 10, 0)
     self.sendInfo:SetJustifyH("LEFT")
     self.sendInfo:SetWordWrap(false)
@@ -448,7 +448,7 @@ function RCV:OnResize()
 end
 
 local function Text(parent, justify)
-    local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     fs:SetJustifyH(justify or "LEFT")
     fs:SetWordWrap(false)
     return fs
@@ -474,7 +474,7 @@ local function BuildRow(row)
     row.ClassIcon = cells.name:CreateTexture(nil, "ARTWORK")
     row.ClassIcon:SetSize(16, 16)
     row.ClassIcon:SetPoint("LEFT", 6, 0)
-    row.Name = cells.name:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    row.Name = cells.name:CreateFontString(nil, "OVERLAY", "NGMFontLabel")
     row.Name:SetJustifyH("LEFT")
     row.Name:SetWordWrap(false)
     row.Name:SetPoint("LEFT", row.ClassIcon, "RIGHT", 5, 0)
@@ -516,13 +516,13 @@ end
 
 local function StatusLabel(p)
     local st = ns.Recruit:Status(p)
-    if st == "joined" then return "|cff40ff40Joined!|r" end
-    if st == "dnw" then return "|cffff5555Do not whisper|r" end
+    if st == "joined" then return "|cff20ff20Joined!|r" end
+    if st == "dnw" then return "|cffff2020Do not whisper|r" end
     local c = ns.Recruit:Contact(p)
     local by = c.by and ("|cff9d9d9d by|r |cffffffff" .. ns.ShortName(c.by) .. "|r") or ""
-    if st == "invited" then return "|cffffd100Invited|r" .. by end
-    if st == "replied" then return "|cff40ff40Replied|r |cff9d9d9d" .. ns.FormatAgo(c.replied) .. "|r" .. by end
-    if st == "whispered" then return "|cffb0b0ffWhispered|r |cff9d9d9d" .. ns.FormatAgo(c.whispered) .. "|r" .. by end
+    if st == "invited" then return (ns.GOLD .. "Invited|r") .. by end
+    if st == "replied" then return "|cff20ff20Replied|r |cff9d9d9d" .. ns.FormatAgo(c.replied) .. "|r" .. by end
+    if st == "whispered" then return (ns.BLUE .. "Whispered|r |cff9d9d9d") .. ns.FormatAgo(c.whispered) .. "|r" .. by end
     return "|cff9d9d9dNew|r"
 end
 RCV.StatusLabel = StatusLabel
@@ -548,7 +548,7 @@ function RCV:InitRow(row, p)
     for _, f in ipairs(ns.Recruit.queue) do if f == p.full then queued = true break end end
     row.Pick:SetChecked((ns.Recruit.selected[p.full] or queued) and true or false)
     row.Pick:SetEnabled(canPick and not queued)
-    if queued then row.Status:SetText("|cffffd100Queued|r") end
+    if queued then row.Status:SetText((ns.GOLD .. "Queued|r")) end
 end
 
 
@@ -563,18 +563,18 @@ function RCV:ShowRowTooltip(row, p)
     if p.race then GameTooltip:AddLine(p.race, 0.8, 0.8, 0.8) end
     local text, rule = ns.Recruit:TemplateFor(p)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("Message: " .. (rule and rule.name or "Default"), 1, 0.82, 0)
+    GameTooltip:AddLine("Message: " .. (rule and rule.name or "Default"), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3])
     local msg = ns.Recruit:Format(text, p)
     GameTooltip:AddLine(msg ~= "" and ("|cffff80ff" .. msg .. "|r") or "|cff9d9d9d(empty - write a message first)|r", 1, 1, 1, true)
     GameTooltip:AddLine(" ")
     local c = ns.Recruit:Contact(p)
-    GameTooltip:AddDoubleLine("Found", ns.FormatAgo(p.found), 1, 0.82, 0, 1, 1, 1)
-    if c.whispered then GameTooltip:AddDoubleLine("Whispered", ns.FormatAgo(c.whispered), 1, 0.82, 0, 1, 1, 1) end
+    GameTooltip:AddDoubleLine("Found", ns.FormatAgo(p.found), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], 1, 1, 1)
+    if c.whispered then GameTooltip:AddDoubleLine("Whispered", ns.FormatAgo(c.whispered), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], 1, 1, 1) end
     if c.reply then
-        GameTooltip:AddLine("Their reply:", 1, 0.82, 0)
+        GameTooltip:AddLine("Their reply:", ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3])
         GameTooltip:AddLine("\"" .. c.reply .. "\"", 0.4, 1, 0.4, true)
     end
-    if c.invited then GameTooltip:AddDoubleLine("Invited", ns.FormatAgo(c.invited), 1, 0.82, 0, 1, 1, 1) end
+    if c.invited then GameTooltip:AddDoubleLine("Invited", ns.FormatAgo(c.invited), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], 1, 1, 1) end
     local locked = ns.Recruit:LockedUntil(p)
     if locked then
         GameTooltip:AddLine(("%s whispered them, so nobody in the guild can whisper them again for %s."):format(
@@ -582,7 +582,7 @@ function RCV:ShowRowTooltip(row, p)
     elseif c.by and c.invited then
         GameTooltip:AddLine(("Already invited by %s."):format(ns.ShortName(c.by)), 1, 0.5, 0.5, true)
     end
-    if p.joined then GameTooltip:AddDoubleLine("Joined", ns.FormatAgo(p.joined), 1, 0.82, 0, 0.4, 1, 0.4) end
+    if p.joined then GameTooltip:AddDoubleLine("Joined", ns.FormatAgo(p.joined), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], 0.4, 1, 0.4) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("Click to tick or untick. Right-click for more options.", 0.5, 0.5, 0.5)
     GameTooltip:Show()
@@ -597,7 +597,7 @@ function RCV:ShowRowMenu(row, p)
           disabled = p.joined or dnw or not whispered or not ns.Recruit:CanInvite(),
           func = function()
               local ok, err = ns.Recruit:Invite(p.full)
-              if not ok and err then ns:Print("|cffff5555" .. err .. "|r") end
+              if not ok and err then ns:Print("|cffff2020" .. err .. "|r") end
           end },
         { divider = true },
         dnw and { text = "Take off Do Not Whisper list", func = function() ns.Recruit:RemoveDNW(p.full) end }
@@ -639,14 +639,14 @@ function RCV:BuildPanel(page, inset)
     -- wraps pushes the rest down instead of overlapping it.
     local dlabel = Label(panel, "Default message")
     dlabel:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    local dhint = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local dhint = panel:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     dhint:SetPoint("LEFT", dlabel, "RIGHT", 6, 0)
     dhint:SetText("(when no custom message fits)")
 
     local editorFrame, box = W.ScrollEditor(panel, D.WHISPER_MAX)
     editorFrame:SetPoint("TOPLEFT", dlabel, "BOTTOMLEFT", 2, -6)
     editorFrame:SetSize(IW - 4, 66)
-    box:SetFontObject("GameFontHighlightSmall")
+    box:SetFontObject("NGMFontTextSmall")
     box:SetWidth(IW - 22)
     box:HookScript("OnTextChanged", function(self, user)
         if user then ns.Recruit:SetDefault(self:GetText()) end
@@ -654,13 +654,13 @@ function RCV:BuildPanel(page, inset)
     end)
     self.editor = box
 
-    self.tokens = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.tokens = panel:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.tokens:SetPoint("TOPLEFT", editorFrame, "BOTTOMLEFT", -2, -6)
     self.tokens:SetWidth(IW)
     self.tokens:SetJustifyH("LEFT")
-    self.tokens:SetText("|cffffd100$first $name $class $level $race $zone $guild|r are filled in")
+    self.tokens:SetText((ns.GOLD .. "$first $name $class $level $race $zone $guild|r are filled in"))
 
-    self.preview = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.preview = panel:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     self.preview:SetPoint("TOPLEFT", self.tokens, "BOTTOMLEFT", 0, -6)
     self.preview:SetWidth(IW)
     self.preview:SetJustifyH("LEFT")
@@ -673,11 +673,11 @@ function RCV:BuildPanel(page, inset)
         "Pick a message by class, race, level or zone. The first matching message (top of the list wins) is used; everyone else gets the Default message.")
     self.useRulesCheck = use
 
-    local edit = W.Button(panel, "Custom Messages...", 150, 22)
+    local edit = W.Button(panel, "Custom Messages...", 150, 22, "alt")
     edit:SetPoint("TOPLEFT", use, "BOTTOMLEFT", 4, -4)
     edit:SetScript("OnClick", function() ns.MessagesView:Toggle() end)
     self.rulesButton = edit
-    self.rulesInfo = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.rulesInfo = panel:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.rulesInfo:SetPoint("LEFT", edit, "RIGHT", 8, 0)
 
     -- Replies: auto-invite and Do Not Whisper live in Options > Recruiting;
@@ -685,16 +685,16 @@ function RCV:BuildPanel(page, inset)
     local title2, line2 = W.SectionHeader(panel, "Replies")
     title2:SetPoint("TOPLEFT", edit, "BOTTOMLEFT", 0, -18)
     line2:SetPoint("RIGHT", panel, "RIGHT", -12, 0)
-    self.replyInfo = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.replyInfo = panel:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     self.replyInfo:SetPoint("TOPLEFT", title2, "BOTTOMLEFT", 0, -8)
     self.replyInfo:SetWidth(IW)
     self.replyInfo:SetJustifyH("LEFT")
     self.replyInfo:SetSpacing(3)
-    local replyBtn = W.Button(panel, "Reply Settings...", 140, 22)
+    local replyBtn = W.Button(panel, "Reply Settings...", 140, 22, "alt")
     replyBtn:SetPoint("TOPLEFT", self.replyInfo, "BOTTOMLEFT", 0, -8)
     replyBtn:SetScript("OnClick", function() ns.Options:Open("recruiting") end)
     W.Tooltip(replyBtn, "Reply settings", "Auto-invite keywords and the Do Not Whisper list, in Options > Recruiting.")
-    local view = W.Button(panel, "Do Not Whisper List", 150, 22)
+    local view = W.Button(panel, "Do Not Whisper List", 150, 22, "alt")
     view:SetPoint("LEFT", replyBtn, "RIGHT", 6, 0)
     view:SetScript("OnClick", function() ns.DNWView:Open() end)
     W.Tooltip(view, "Do Not Whisper list", "Who is on it for good, and who was whispered in the last 14 days (with the time left). Shared with everyone in the guild using the addon.")
@@ -711,10 +711,10 @@ function RCV:RefreshReplyInfo()
     if not (r and self.replyInfo) then return end
     local words = {}
     for _, k in ipairs(r.keywords or {}) do if ns.Trim(k) ~= "" then words[#words + 1] = k end end
-    local ON, OFF = "|cff40ff40on|r", "|cff9d9d9doff|r"
+    local ON, OFF = "|cff20ff20on|r", "|cff9d9d9doff|r"
     local invite = r.autoInvite and (ON .. ", Invite popup") or OFF
     local n = #ns.Recruit:DNWList()
-    self.replyInfo:SetText(("|cffffd100Auto-invite:|r %s%s\n|cffffd100Do Not Whisper:|r %s, %s on the list"):format(
+    self.replyInfo:SetText(((ns.GOLD .. "Auto-invite:|r %s%s\n" .. ns.GOLD .. "Do Not Whisper:|r %s, %s on the list")):format(
         invite, (r.autoInvite and #words > 0) and ("  |cff9d9d9d(" .. table.concat(words, ", ") .. ")|r") or "",
         r.dnwEnabled and ON or OFF, n == 1 and "1 person" or (n .. " people")))
     self:FitPanel()
@@ -733,8 +733,8 @@ function RCV:RefreshPreview()
     local sample = { short = "Thrall", full = "Thrall", classFile = "WARRIOR", className = "Warrior", level = 42,
         race = "Orc", zone = "Durotar" }
     local text = ns.Recruit:Format(r and r.default or "", sample)
-    self.preview:SetText("|cffffd100Preview:|r " .. (text ~= "" and ("|cffff80ff" .. text .. "|r") or "|cff9d9d9d(empty)|r")
-        .. "  |cff6d6d6d" .. ns.Recruit:LengthText(r and r.default or "") .. "|r")
+    self.preview:SetText((ns.GOLD .. "Preview:|r ") .. (text ~= "" and ("|cffff80ff" .. text .. "|r") or "|cff9d9d9d(empty)|r")
+        .. "  |cff6e6e6e" .. ns.Recruit:LengthText(r and r.default or "") .. "|r")
     self:FitPanel()
 end
 
@@ -845,10 +845,10 @@ end
 function RCV:SummaryText()
     local RC = ns.Recruit
     if not RC:Settings() then return "" end
-    if RC.searching then return "|cffffd100Searching:|r " .. (RC.pendingQuery or "") end
+    if RC.searching then return (ns.GOLD .. "Searching:|r ") .. (RC.pendingQuery or "") end
     local last = RC.last
     if last and last.timedOut then
-        return "|cffff8080No reply from /who. The server limits how often you can search - wait a few seconds.|r"
+        return "|cffff2020No reply from /who. The server limits how often you can search - wait a few seconds.|r"
     end
     local total, whispered, replied = 0, 0, 0
     for _, p in ipairs(RC:List()) do
@@ -856,19 +856,19 @@ function RCV:SummaryText()
         local st = RC:Status(p)
         if st == "whispered" then whispered = whispered + 1 elseif st == "replied" then replied = replied + 1 end
     end
-    local SEP = "  |cff6d6d6d-|r  "
+    local SEP = "  |cff6e6e6e-|r  "
     local parts = { total == 1 and "1 player" or (total .. " players") }
     if last then
-        parts[#parts + 1] = ("|cff40ff40%d new|r from last search"):format(last.new or 0)
+        parts[#parts + 1] = ("|cff20ff20%d new|r from last search"):format(last.new or 0)
     end
-    parts[#parts + 1] = ("|cffb0b0ff%d whispered|r"):format(whispered)
-    parts[#parts + 1] = ("|cff40ff40%d replied|r"):format(replied)
+    parts[#parts + 1] = ((ns.BLUE .. "%d whispered|r")):format(whispered)
+    parts[#parts + 1] = ("|cff20ff20%d replied|r"):format(replied)
     local text = table.concat(parts, SEP)
     if last and (last.skipped or 0) > 0 then
-        text = text .. SEP .. ("|cffff8080%d do-not-whisper skipped|r"):format(last.skipped)
+        text = text .. SEP .. ("|cffff2020%d do-not-whisper skipped|r"):format(last.skipped)
     end
     if last and (last.total or 0) > (last.shown or 0) then
-        text = text .. SEP .. "|cffff8080capped at 50 - narrow the range|r"
+        text = text .. SEP .. "|cffff2020capped at 50 - narrow the range|r"
     end
     return text
 end

@@ -12,7 +12,6 @@ local HV = {}
 ns.HallOfFameView = HV
 
 local GRAY = "|cff9d9d9d"
-local GOLD = "|cffffd100"
 local PERIODS = { { "all", "All time" }, { "month", "This month" }, { "last", "Last month" } }
 local TOP = 5
 local ROW_H = 16
@@ -62,18 +61,15 @@ end
 -- Page
 ------------------------------------------------------------------------
 local function Card(parent)
-    local c = CreateFrame("Frame", nil, parent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    -- as the dashboard's cards: a dark box with a notched edge, the title in
+    -- yellow upper case, names plain, yours in aqua, last month's in yellow
+    local c = CreateFrame("Frame", nil, parent)
     c:SetHeight(CARD_H)
-    if c.SetBackdrop then
-        c:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-                        edgeSize = 12, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
-        c:SetBackdropColor(0.05, 0.04, 0.03, 0.85)
-        c:SetBackdropBorderColor(0.5, 0.42, 0.25, 0.9)
-    end
+    ns.Theme:Box(c, ns.Theme.C.bg1, ns.Theme.C.edge, 4)
     c.Icon = c:CreateTexture(nil, "ARTWORK")
     c.Icon:SetSize(18, 18)
     c.Icon:SetPoint("TOPLEFT", 8, -7)
-    c.Title = c:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    c.Title = c:CreateFontString(nil, "OVERLAY", "NGMFontLabel")
     c.Title:SetPoint("LEFT", c.Icon, "RIGHT", 6, 0)
     c.Title:SetPoint("RIGHT", -8, 0)
     c.Title:SetJustifyH("LEFT")
@@ -81,26 +77,26 @@ local function Card(parent)
     c.rows = {}
     for i = 1, TOP do
         local r = {}
-        r.Rank = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        r.Rank = c:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
         r.Rank:SetPoint("TOPLEFT", 10, -28 - (i - 1) * ROW_H)
         r.Rank:SetWidth(16)
         r.Rank:SetJustifyH("RIGHT")
-        r.Name = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        r.Name = c:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
         r.Name:SetPoint("LEFT", r.Rank, "RIGHT", 6, 0)
         r.Name:SetJustifyH("LEFT")
         r.Name:SetWordWrap(false)
-        r.Value = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        r.Value = c:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
         r.Value:SetPoint("TOPRIGHT", -10, -28 - (i - 1) * ROW_H)
         r.Value:SetJustifyH("RIGHT")
         r.Name:SetPoint("RIGHT", r.Value, "LEFT", -6, 0)
         c.rows[i] = r
     end
-    c.Champ = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    c.Champ = c:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     c.Champ:SetPoint("TOPLEFT", 10, -28 - TOP * ROW_H - 4)
     c.Champ:SetPoint("RIGHT", -10, 0)
     c.Champ:SetJustifyH("LEFT")
     c.Champ:SetWordWrap(false)
-    c.You = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    c.You = c:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     c.You:SetPoint("BOTTOMLEFT", 10, 7)
     c.You:SetPoint("BOTTOMRIGHT", -10, 7)
     c.You:SetJustifyH("LEFT")
@@ -110,23 +106,23 @@ local function Card(parent)
     return c
 end
 
+local AQUA = "|cff40c0ff"
 local function NameText(p, mine)
-    local r, g, b = ns.ClassColor(p.e.classFile)
-    local hex = ("|cff%02x%02x%02x"):format(r * 255, g * 255, b * 255)
-    return hex .. p.e.short .. "|r" .. (p.key == mine and (GOLD .. " (you)|r") or "")
+    return p.key == mine and (AQUA .. p.e.short .. "|r") or p.e.short
 end
 
 function HV:FillCard(c, stat, data)
     local list = data.boards[stat.key]
     c.stat, c.list = stat, list
     W.SetIcon(c.Icon, stat.icon)
-    c.Title:SetText(stat.label)
+    c.Title:SetText(ns.Theme.Upper(stat.label))
     for i, r in ipairs(c.rows) do
         local p = list[i]
         if p then
             r.Rank:SetText(i .. ".")
             r.Name:SetText(NameText(p, data.mine))
-            r.Value:SetText(ns.HallOfFame.Format(stat, p.n))
+            local v = ns.HallOfFame.Format(stat, p.n)
+            r.Value:SetText(p.key == data.mine and (AQUA .. v .. "|r") or v)
         else
             r.Rank:SetText("")
             r.Name:SetText(i == 1 and (GRAY .. "Nobody yet|r") or "")
@@ -153,9 +149,9 @@ function HV:FillCard(c, stat, data)
         local names = {}
         for i, p in ipairs(champ.winners) do
             if i > 2 then names[#names + 1] = ("+%d"):format(#champ.winners - 2) break end
-            names[#names + 1] = NameText(p, data.mine)
+            names[#names + 1] = p.e.short
         end
-        c.Champ:SetText(GOLD .. "Last month:|r " .. table.concat(names, ", ") .. GRAY .. " (" .. ns.HallOfFame.Format(stat, champ.n) .. ")|r")
+        c.Champ:SetText(ns.GOLD .. "Last month: " .. table.concat(names, ", ") .. "|r" .. GRAY .. " (" .. ns.HallOfFame.Format(stat, champ.n) .. ")|r")
     elseif data.crown and (data.crown.state == "tallying" or data.crown.state == "due") then
         c.Champ:SetText(GRAY .. "Last month: tallying...|r")
     else
@@ -184,12 +180,15 @@ function HV.CrownText(c)
     if not c then return "" end
     local won, nextWon = HF.MonthName(c.won), HF.MonthName(c.nextWon)
     if c.state == "tallying" then
-        return ("|cffffd100%s is over!|r Points are being tallied: champions will be crowned %s (%s)."):format(won, HV.When(c.at), HV.In(c.at))
+        return ((ns.GOLD .. "%s is over!|r Points are being tallied: champions will be crowned %s (%s).")):format(won, HV.When(c.at), HV.In(c.at))
+    elseif c.state == "due" and HF:PeonCrowns() then
+        return ((ns.GOLD .. "%s's champions are crowned by NGM Peon.|r They show here once an officer brings them in (|cffffffff/ngm peon|r).")):format(won)
     elseif c.state == "due" then
-        return ("|cffffd100%s's points are tallied.|r Champions will be crowned as soon as an officer logs in."):format(won)
+        return ((ns.GOLD .. "%s's points are tallied.|r Champions will be crowned as soon as an officer logs in.")):format(won)
     elseif c.state == "crowned" then
-        local recount = HF:InRecount() and (" Late numbers can still change them until %s."):format(HV.When(c.at + HF.RECOUNT)) or ""
-        return ("|cffffd100%s's champions have been crowned!|r%s Next: %s's, %s (%s)."):format(won, recount, nextWon, HV.When(c.nextAt), HV.In(c.nextAt))
+        local recount = HF:PeonCrowns() and " Crowned by NGM Peon."
+            or HF:InRecount() and (" Late numbers can still change them until %s."):format(HV.When(c.at + HF.RECOUNT)) or ""
+        return ((ns.GOLD .. "%s's champions have been crowned!|r%s Next: %s's, %s (%s).")):format(won, recount, nextWon, HV.When(c.nextAt), HV.In(c.nextAt))
     end
     return ("Next champions (%s's) crowned %s (%s)."):format(nextWon, HV.When(c.nextAt), HV.In(c.nextAt))
 end
@@ -211,7 +210,7 @@ function HV:ShowCardTip(c)
         local names = {}
         for i, p in ipairs(c.champ.winners) do names[i] = p.e.short end
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine((#names > 1 and "Last month's champions (tied): " or "Last month's champion: ") .. table.concat(names, ", "), 1, 0.82, 0, true)
+        GameTooltip:AddLine((#names > 1 and "Last month's champions (tied): " or "Last month's champion: ") .. table.concat(names, ", "), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], true)
     end
     GameTooltip:Show()
 end
@@ -222,7 +221,7 @@ function HV:Build(frame)
     page:Hide()
     self.page, self.frame = page, frame
 
-    self.title = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    self.title = page:CreateFontString(nil, "OVERLAY", "NGMFontLabel")
     self.title:SetPoint("TOPLEFT", frame, "TOPLEFT", 80, -37)
 
     local periodBtn = W.Button(page, "", 120, 22)
@@ -281,22 +280,22 @@ function HV:Build(frame)
     scroll:SetScrollChild(content)
     self.content = content
 
-    self.totals = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    self.totals = content:CreateFontString(nil, "OVERLAY", "NGMFontText")
     self.totals:SetPoint("TOPLEFT", 0, 0)
     self.totals:SetJustifyH("LEFT")
     -- who's missing from the board: guildmates without the addon
-    self.crownLine = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.crownLine = content:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     self.crownLine:SetPoint("TOPLEFT", self.totals, "BOTTOMLEFT", 0, -6)
     self.crownLine:SetJustifyH("LEFT")
-    self.gap = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.gap = content:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.gap:SetPoint("TOPLEFT", self.crownLine, "BOTTOMLEFT", 0, -6)
     self.gap:SetJustifyH("LEFT")
-    self.gapButton = W.Button(content, "List them", 80, 18)
+    self.gapButton = W.Button(content, "List them", 80, 18, "alt")
     self.gapButton:SetPoint("LEFT", self.gap, "RIGHT", 8, 0)
     self.gapButton:SetScript("OnClick", function() ns.UI:SetSearch("is:missing") end)
     W.Tooltip(self.gapButton, "Not on the board yet", "Lists them on the Find tab. Right-click someone there (or open their profile) to remind them to install the addon.")
     self.cards = {}
-    self.note = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.note = content:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.note:SetJustifyH("LEFT")
 
     local function later() if page:IsVisible() then ns.Debounce("hofview", 0.3, function() HV:Refresh() end) end end
@@ -326,7 +325,7 @@ function HV:Refresh()
     local parts = {}
     for _, k in ipairs(TOTALS) do
         local s = ns.HallOfFame.BY_KEY[k]
-        parts[#parts + 1] = GOLD .. HV.Number(data.totals[k] or 0) .. "|r " .. s.label:lower()
+        parts[#parts + 1] = ns.GOLD .. HV.Number(data.totals[k] or 0) .. "|r " .. s.label:lower()
     end
     self.totals:SetWidth(width)
     self.totals:SetText("Together: " .. table.concat(parts, GRAY .. "  ·  |r"))
@@ -344,14 +343,17 @@ function HV:Refresh()
         top = top + 24
     end
 
-    local cols = math.max(1, math.floor((width + CARD_GAP) / (CARD_W + CARD_GAP)))
-    local cardW = math.floor((width - (cols - 1) * CARD_GAP) / cols)
+    -- the cards' edges sit outside them: keep 4 units clear all round
+    local inner = width - 8
+    local cols = math.max(1, math.floor((inner + CARD_GAP) / (CARD_W + CARD_GAP)))
+    local cardW = math.floor((inner - (cols - 1) * CARD_GAP) / cols)
+    top = top + 4
     for i, stat in ipairs(ns.HallOfFame.STATS) do
         local c = self.cards[i] or Card(self.content)
         self.cards[i] = c
         local col, row = (i - 1) % cols, math.floor((i - 1) / cols)
         c:ClearAllPoints()
-        c:SetPoint("TOPLEFT", col * (cardW + CARD_GAP), -(top + row * (CARD_H + CARD_GAP)))
+        c:SetPoint("TOPLEFT", 4 + col * (cardW + CARD_GAP), -(top + row * (CARD_H + CARD_GAP)))
         c:SetWidth(cardW)
         self:FillCard(c, stat, data)
         c:Show()

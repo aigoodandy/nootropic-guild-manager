@@ -55,7 +55,7 @@ end
 -- Small helpers
 ------------------------------------------------------------------------
 local function Label(parent, text, font)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormalSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NGMFontLabelSmall")
     fs:SetText(text)
     return fs
 end
@@ -64,7 +64,7 @@ local function InputBox(parent, width, maxLetters, numeric)
     local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     eb:SetSize(width, 20)
     eb:SetAutoFocus(false)
-    eb:SetFontObject("GameFontHighlightSmall")
+    eb:SetFontObject("NGMFontTextSmall")
     if maxLetters then eb:SetMaxLetters(maxLetters) end
     if numeric then eb:SetNumeric(true) end
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -89,6 +89,7 @@ end
 ------------------------------------------------------------------------
 function MV:Build()
     local f = CreateFrame("Frame", "NootropicGMMessagesFrame", UIParent, "BasicFrameTemplateWithInset")
+    ns.Theme:Skin(f)
     W.CombatSafeClose(f)
     f:SetSize(WIDTH, HEIGHT)
     f:SetPoint("CENTER", 0, 30)
@@ -105,7 +106,7 @@ function MV:Build()
     W.SetTitle(f, "Custom Recruitment Messages")
     self.frame = f
 
-    local intro = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local intro = f:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     intro:SetPoint("TOPLEFT", 16, -32)
     intro:SetPoint("RIGHT", -16, 0)
     intro:SetJustifyH("LEFT")
@@ -142,7 +143,7 @@ function MV:BuildList(f)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.listEmpty = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.listEmpty = box:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.listEmpty:SetPoint("CENTER")
     self.listEmpty:SetWidth(LIST_W - 30)
     self.listEmpty:SetText("No custom messages yet. Click New to make one.")
@@ -153,13 +154,13 @@ function MV:BuildList(f)
         local rule = ns.Messages:New()
         if rule then MV:Select(rule.id) end
     end)
-    local copy = W.Button(f, "Copy", 54, 22)
+    local copy = W.Button(f, "Copy", 54, 22, "alt")
     copy:SetPoint("LEFT", new, "RIGHT", 2, 0)
     copy:SetScript("OnClick", function()
         local rule = MV.selected and ns.Messages:Duplicate(MV.selected)
         if rule then MV:Select(rule.id) end
     end)
-    local del = W.Button(f, "Delete", 62, 22)
+    local del = W.Button(f, "Delete", 62, 22, "bad")
     del:SetPoint("LEFT", copy, "RIGHT", 2, 0)
     del:SetScript("OnClick", function()
         local rule = MV.selected and ns.Messages:Get(MV.selected)
@@ -178,15 +179,15 @@ function MV:BuildList(f)
     self.down:SetScript("OnClick", function() if MV.selected then ns.Messages:Move(MV.selected, 1) end end)
     self.copyBtn, self.delBtn = copy, del
 
-    local import = W.Button(f, "Import...", 70, 22)
+    local import = W.Button(f, "Import...", 70, 22, "alt")
     import:SetPoint("TOPLEFT", new, "BOTTOMLEFT", 0, -4)
     import:SetScript("OnClick", function() MV:ShowTransfer("import") end)
     W.Tooltip(import, "Import messages", "Paste messages someone exported (plain text) and add them to your list.")
-    local export = W.Button(f, "Export...", 70, 22)
+    local export = W.Button(f, "Export...", 70, 22, "alt")
     export:SetPoint("LEFT", import, "RIGHT", 2, 0)
     export:SetScript("OnClick", function() MV:ShowTransfer("export") end)
     W.Tooltip(export, "Export messages", "Shows all your messages as plain text to copy and share.")
-    local defaults = W.Button(f, "Class Defaults", 86, 22)
+    local defaults = W.Button(f, "Class Defaults", 86, 22, "alt")
     defaults:SetPoint("LEFT", export, "RIGHT", 2, 0)
     defaults:SetScript("OnClick", function()
         local n = ns.Messages:AddClassDefaults()
@@ -205,10 +206,10 @@ function MV:InitRow(row, item)
         row.Selected:SetAllPoints()
         row.Selected:SetTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight")
         row.Selected:SetBlendMode("ADD")
-        row.Selected:SetVertexColor(1, 0.82, 0, 0.5)
+        ns.Theme:Tint(row.Selected, ns.Theme.C.yellow, 0.5)
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         row:GetHighlightTexture():SetAlpha(0.35)
-        row.Num = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        row.Num = row:CreateFontString(nil, "OVERLAY", "NGMFontTitle")
         row.Num:SetPoint("LEFT", 4, 0)
         row.Num:SetWidth(20)
         row.On = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
@@ -218,12 +219,12 @@ function MV:InitRow(row, item)
             if row.rule then ns.Messages:Update(row.rule.id, "enabled", self:GetChecked() and true or false) end
         end)
         W.Tooltip(row.On, "Use this message", "Untick to keep it without using it.")
-        row.Name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        row.Name = row:CreateFontString(nil, "OVERLAY", "NGMFontLabel")
         row.Name:SetPoint("TOPLEFT", 50, -4)
         row.Name:SetPoint("RIGHT", -4, 0)
         row.Name:SetJustifyH("LEFT")
         row.Name:SetWordWrap(false)
-        row.Info = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        row.Info = row:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
         row.Info:SetPoint("TOPLEFT", row.Name, "BOTTOMLEFT", 0, -2)
         row.Info:SetPoint("RIGHT", -4, 0)
         row.Info:SetJustifyH("LEFT")
@@ -250,7 +251,7 @@ function MV:BuildEditor(f)
     self.editor = e
     local EW = WIDTH - LIST_W - 40
 
-    self.noSelection = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    self.noSelection = f:CreateFontString(nil, "OVERLAY", "NGMFontDim")
     self.noSelection:SetPoint("CENTER", e, "CENTER")
     self.noSelection:SetText("Select a message on the left, or click New.")
 
@@ -318,7 +319,7 @@ function MV:BuildEditor(f)
     lvlLabel:SetPoint("TOPLEFT", 0, y - 4)
     self.minLevel = InputBox(e, 30, 2, true)
     self.minLevel:SetPoint("TOPLEFT", 54, y)
-    local to = Label(e, "to", "GameFontHighlightSmall")
+    local to = Label(e, "to", "NGMFontTextSmall")
     to:SetPoint("LEFT", self.minLevel, "RIGHT", 6, 0)
     self.maxLevel = InputBox(e, 30, 2, true)
     self.maxLevel:SetPoint("LEFT", to, "RIGHT", 10, 0)
@@ -352,12 +353,12 @@ function MV:BuildEditor(f)
     -- Message text
     local msgLabel = Label(e, "Message")
     msgLabel:SetPoint("TOPLEFT", 0, y)
-    self.count = e:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.count = e:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.count:SetPoint("TOPRIGHT", e, "TOPRIGHT", 0, y)
     local ef, box = W.ScrollEditor(e, D.WHISPER_MAX)
     ef:SetPoint("TOPLEFT", 2, y - 16)
     ef:SetSize(EW - 6, 78)
-    box:SetFontObject("GameFontHighlightSmall")
+    box:SetFontObject("NGMFontTextSmall")
     box:SetWidth(EW - 24)
     box:HookScript("OnTextChanged", function(self, user)
         if user and MV.selected then ns.Messages:Update(MV.selected, "text", (self:GetText():gsub("[\r\n]+", " "))) end
@@ -366,19 +367,19 @@ function MV:BuildEditor(f)
     self.textBox = box
     y = y - 102
 
-    local tokens = e:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local tokens = e:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     tokens:SetPoint("TOPLEFT", 0, y)
-    tokens:SetText("|cffffd100$first  $name  $class  $level  $race  $zone  $guild|r are filled in for each player")
+    tokens:SetText((ns.GOLD .. "$first  $name  $class  $level  $race  $zone  $guild|r are filled in for each player"))
     y = y - 18
 
-    self.preview = e:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    self.preview = e:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     self.preview:SetPoint("TOPLEFT", 0, y)
     self.preview:SetWidth(EW - 4)
     self.preview:SetJustifyH("LEFT")
     self.preview:SetSpacing(2)
     y = y - 46
 
-    self.matchInfo = e:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    self.matchInfo = e:CreateFontString(nil, "OVERLAY", "NGMFontLabelSmall")
     self.matchInfo:SetPoint("TOPLEFT", 0, y)
     self.matchInfo:SetWidth(EW - 4)
     self.matchInfo:SetJustifyH("LEFT")
@@ -440,7 +441,7 @@ function MV:Refresh(loadTexts)
         local on = rule.classes[b.key] and true or false
         b.Icon:SetDesaturated(not on and next(rule.classes) ~= nil)
         b.Icon:SetAlpha((on or not next(rule.classes)) and 1 or 0.35)
-        if on then b:SetBackdropBorderColor(1, 0.82, 0, 1) else b:SetBackdropBorderColor(0.25, 0.25, 0.25, 1) end
+        if on then b:SetBackdropBorderColor(ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], 1) else b:SetBackdropBorderColor(0.25, 0.25, 0.25, 1) end
     end
     local anyRace = not next(rule.races)
     for _, b in ipairs(self.raceButtons) do
@@ -449,7 +450,7 @@ function MV:Refresh(loadTexts)
             tex:SetDesaturated(not on and not anyRace)
             tex:SetAlpha((on or anyRace) and 1 or 0.35)
         end
-        if on then b:SetBackdropBorderColor(1, 0.82, 0, 1) else b:SetBackdropBorderColor(0.25, 0.25, 0.25, 1) end
+        if on then b:SetBackdropBorderColor(ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], 1) else b:SetBackdropBorderColor(0.25, 0.25, 0.25, 1) end
     end
     self:RefreshEditorInfo()
 end
@@ -476,14 +477,14 @@ function MV:RefreshEditorInfo()
     local sample = example or { short = "Thrall", full = "Thrall", classFile = "WARRIOR", className = "Warrior", level = 42,
         race = "Orc", zone = "Durotar" }
     local out = ns.Recruit:Format(text, sample)
-    self.preview:SetText(("|cffffd100Preview%s:|r "):format(example and (" for " .. example.short) or "")
+    self.preview:SetText(((ns.GOLD .. "Preview%s:|r ")):format(example and (" for " .. example.short) or "")
         .. (out ~= "" and ("|cffff80ff" .. out .. "|r") or "|cff9d9d9d(write the message above)|r"))
     local r = ns.Recruit:Settings()
     local note = ""
     if not (r and r.useRules) then
-        note = ("  |cffff8080Custom messages are turned off on the %s tab.|r"):format(ns.TabName("recruit"))
+        note = ("  |cffff2020Custom messages are turned off on the %s tab.|r"):format(ns.TabName("recruit"))
     elseif not rule.enabled then
-        note = "  |cffff8080This message is switched off.|r"
+        note = "  |cffff2020This message is switched off.|r"
     elseif matches > wins then
         note = ("  |cff9d9d9d%d go to a message higher in the list.|r"):format(matches - wins)
     end
@@ -514,13 +515,13 @@ function MV:BuildTransfer()
     t:SetBackdrop({ bgFile = W.WHITE, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
         insets = { left = 3, right = 3, top = 3, bottom = 3 } })
     t:SetBackdropColor(0.04, 0.04, 0.04, 0.97)
-    t:SetBackdropBorderColor(1, 0.82, 0, 0.9)
+    ns.Theme:EdgeColor(t, ns.Theme.C.yellow, 0.9)
     t:Hide()
     self.transfer = t
 
-    t.Title = t:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    t.Title = t:CreateFontString(nil, "OVERLAY", "NGMFontTitle")
     t.Title:SetPoint("TOPLEFT", 16, -14)
-    t.Help = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    t.Help = t:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     t.Help:SetPoint("TOPLEFT", t.Title, "BOTTOMLEFT", 0, -6)
     t.Help:SetPoint("RIGHT", -16, 0)
     t.Help:SetJustifyH("LEFT")
@@ -528,7 +529,7 @@ function MV:BuildTransfer()
     local ef, box = W.ScrollEditor(t)
     ef:SetPoint("TOPLEFT", 18, -66)
     ef:SetPoint("BOTTOMRIGHT", -36, 76)
-    box:SetFontObject("GameFontHighlightSmall")
+    box:SetFontObject("NGMFontTextSmall")
     box:SetWidth(WIDTH - 90)
     box:HookScript("OnTextChanged", function(self, user)
         -- keep the export text intact if someone types in it
@@ -536,7 +537,7 @@ function MV:BuildTransfer()
     end)
     t.Edit, t.Box = ef, box
 
-    t.Result = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    t.Result = t:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     t.Result:SetPoint("BOTTOMLEFT", 18, 44)
     t.Result:SetPoint("RIGHT", -16, 0)
     t.Result:SetJustifyH("LEFT")
@@ -551,12 +552,12 @@ function MV:BuildTransfer()
     add:SetPoint("BOTTOMLEFT", 16, 12)
     add:SetScript("OnClick", function() MV:DoImport("add") end)
     W.Tooltip(add, "Add to my messages", "Adds the pasted messages after the ones you have.")
-    local replace = W.Button(t, "Replace All", 100, 22)
+    local replace = W.Button(t, "Replace All", 100, 22, "bad")
     replace:SetPoint("LEFT", add, "RIGHT", 4, 0)
     replace:SetScript("OnClick", function()
         W.Confirm("Delete all your custom messages and use the pasted ones instead?", function() MV:DoImport("replace") end)
     end)
-    local select = W.Button(t, "Select All", 100, 22)
+    local select = W.Button(t, "Select All", 100, 22, "alt")
     select:SetPoint("BOTTOMLEFT", 16, 12)
     select:SetScript("OnClick", function() box:SetFocus() box:HighlightText() end)
     t.AddBtn, t.ReplaceBtn, t.SelectBtn = add, replace, select
@@ -594,14 +595,14 @@ function MV:DoImport(mode)
     local n, problems = ns.Messages:Import(t.Box:GetText(), mode)
     local msg
     if n > 0 then
-        msg = ("|cff40ff40Imported %d message%s.|r"):format(n, n == 1 and "" or "s")
+        msg = ("|cff20ff20Imported %d message%s.|r"):format(n, n == 1 and "" or "s")
         local r = ns.Recruit:Settings()
         if r and not r.useRules then msg = msg .. (" Tick Use custom messages on the %s tab to use them."):format(ns.TabName("recruit")) end
     else
-        msg = "|cffff5555Nothing imported.|r"
+        msg = "|cffff2020Nothing imported.|r"
     end
     if problems and #problems > 0 then
-        msg = msg .. " |cffff8080" .. problems[1] .. (#problems > 1 and (" (+%d more)"):format(#problems - 1) or "") .. "|r"
+        msg = msg .. " |cffff2020" .. problems[1] .. (#problems > 1 and (" (+%d more)"):format(#problems - 1) or "") .. "|r"
     end
     t.Result:SetText(msg)
     if n > 0 then

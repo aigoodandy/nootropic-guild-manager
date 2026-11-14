@@ -2,6 +2,7 @@
 -- Run with tests/run.sh (it passes the repo root as arg[1]).
 local ROOT = arg[1]
 local ns = {}
+ns.GOLD, ns.ORANGE, ns.BLUE = "|cfffabd2f", "|cfffe8019", "|cff83a598" -- Core.lua sets these
 function ns:Print() end
 function ns.PlaySound() end
 function ns.ShortName(n) return (n:gsub("%-.*", "")) end

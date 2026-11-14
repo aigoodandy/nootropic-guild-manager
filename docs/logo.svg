@@ -1,99 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <title>Nootropic Guild Manager</title>
-  <desc>A gold-ringed medallion holding a foaming wooden ale tankard bound with gold bands, over a deep crimson field with rune marks.</desc>
-  <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff1b8"/>
-      <stop offset="0.35" stop-color="#f2c14e"/>
-      <stop offset="0.7" stop-color="#b07a1e"/>
-      <stop offset="1" stop-color="#6b4410"/>
-    </linearGradient>
-    <linearGradient id="goldFlip" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#ffe9a0"/>
-      <stop offset="0.5" stop-color="#c8902a"/>
-      <stop offset="1" stop-color="#5e3a0c"/>
-    </linearGradient>
-    <radialGradient id="field" cx="0.5" cy="0.42" r="0.62">
-      <stop offset="0" stop-color="#8a1c1c"/>
-      <stop offset="0.6" stop-color="#4d0d0f"/>
-      <stop offset="1" stop-color="#1c0406"/>
-    </radialGradient>
-    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#3b2010"/>
-      <stop offset="0.25" stop-color="#7a4a24"/>
-      <stop offset="0.55" stop-color="#9c6332"/>
-      <stop offset="1" stop-color="#3a1f0e"/>
-    </linearGradient>
-    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#6b4410"/>
-      <stop offset="0.4" stop-color="#ffd76a"/>
-      <stop offset="0.6" stop-color="#f2c14e"/>
-      <stop offset="1" stop-color="#5e3a0c"/>
-    </linearGradient>
-    <radialGradient id="foam" cx="0.45" cy="0.35" r="0.7">
-      <stop offset="0" stop-color="#fffdf4"/>
-      <stop offset="0.7" stop-color="#f1e6c8"/>
-      <stop offset="1" stop-color="#c9b88e"/>
-    </radialGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#ffcf5a" stop-opacity="0.45"/>
-      <stop offset="1" stop-color="#ffcf5a" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.6"/>
-    </filter>
-  </defs>
-
-  <!-- outer ring: gold with a dark groove and studs -->
-  <circle cx="128" cy="128" r="124" fill="#1a0f05"/>
-  <circle cx="128" cy="128" r="120" fill="url(#gold)"/>
-  <circle cx="128" cy="128" r="109" fill="#2a1606"/>
-  <circle cx="128" cy="128" r="105" fill="url(#goldFlip)"/>
-  <g fill="#fff1b8" stroke="#6b4410" stroke-width="1.5">
-    <circle cx="128" cy="13" r="4.5"/><circle cx="128" cy="243" r="4.5"/>
-    <circle cx="13" cy="128" r="4.5"/><circle cx="243" cy="128" r="4.5"/>
-    <circle cx="46.7" cy="46.7" r="3.5"/><circle cx="209.3" cy="46.7" r="3.5"/>
-    <circle cx="46.7" cy="209.3" r="3.5"/><circle cx="209.3" cy="209.3" r="3.5"/>
-  </g>
-
-  <!-- inner field with faint runes -->
-  <circle cx="128" cy="128" r="97" fill="url(#field)"/>
-  <circle cx="128" cy="128" r="97" fill="none" stroke="#000" stroke-opacity="0.55" stroke-width="4"/>
-  <g fill="none" stroke="#f2c14e" stroke-opacity="0.28" stroke-width="2.2" stroke-linecap="round">
-    <path d="M128 40 l-6 10 h12 z"/>
-    <path d="M60 92 l8 -4 l-2 9"/>
-    <path d="M196 92 l-8 -4 l2 9"/>
-    <path d="M70 178 q6 -8 12 0"/>
-    <path d="M174 178 q6 -8 12 0"/>
-    <circle cx="128" cy="128" r="84" stroke-dasharray="3 9"/>
-  </g>
-  <circle cx="128" cy="132" r="70" fill="url(#glow)"/>
-
-  <!-- the tankard -->
-  <g filter="url(#shadow)">
-    <!-- handle -->
-    <path d="M168 106 c28 0 34 14 34 30 c0 18 -8 32 -34 32" fill="none" stroke="#2a1606" stroke-width="17" stroke-linecap="round"/>
-    <path d="M168 106 c28 0 34 14 34 30 c0 18 -8 32 -34 32" fill="none" stroke="url(#band)" stroke-width="10" stroke-linecap="round"/>
-    <!-- body -->
-    <path d="M84 98 h86 l-4 88 q-1 10 -11 10 h-56 q-10 0 -11 -10 z" fill="url(#wood)" stroke="#1a0c04" stroke-width="3"/>
-    <!-- staves -->
-    <g stroke="#2a1606" stroke-opacity="0.6" stroke-width="2">
-      <path d="M105 100 l1 94"/><path d="M127 100 v95"/><path d="M149 100 l-1 94"/>
-    </g>
-    <!-- gold bands -->
-    <path d="M84.6 112 h84.8 l-0.5 10 h-83.8 z" fill="url(#band)" stroke="#3a2306" stroke-width="1.5"/>
-    <path d="M87 168 h80.2 l-0.4 10 h-79.4 z" fill="url(#band)" stroke="#3a2306" stroke-width="1.5"/>
-    <g fill="#fff1b8"><circle cx="93" cy="117" r="2"/><circle cx="161" cy="117" r="2"/><circle cx="95" cy="173" r="2"/><circle cx="159" cy="173" r="2"/></g>
-    <!-- foam, spilling over -->
-    <path d="M78 100 q-6 -14 8 -20 q4 -16 22 -12 q10 -14 26 -6 q14 -8 26 4 q18 0 16 18 q8 10 -2 18 q-4 6 -10 0 q-2 12 -10 6 q-6 -6 -12 0 q-8 6 -14 -2 q-8 6 -14 0 q-10 6 -14 -2 q-10 4 -14 -6 q-8 4 -8 2 z" fill="url(#foam)" stroke="#8a7a52" stroke-width="2"/>
-    <path d="M95 134 q-3 14 2 22" fill="none" stroke="#fffdf4" stroke-opacity="0.35" stroke-width="5" stroke-linecap="round"/>
-    <!-- foam drips -->
-    <path d="M100 108 q0 10 4 12 q4 -2 3 -12 z" fill="url(#foam)" stroke="#8a7a52" stroke-width="1.5"/>
-    <path d="M150 106 q-1 13 4 15 q4 -3 2 -15 z" fill="url(#foam)" stroke="#8a7a52" stroke-width="1.5"/>
-    <!-- bubbles -->
-    <g fill="#fffdf4" opacity="0.85"><circle cx="112" cy="76" r="3"/><circle cx="140" cy="70" r="2.2"/><circle cx="160" cy="84" r="2.6"/></g>
-  </g>
-
-  <!-- top highlight on the ring -->
-  <path d="M38 98 a96 96 0 0 1 180 0" fill="none" stroke="#fffbe6" stroke-opacity="0.35" stroke-width="3"/>
+  <title>NGM</title>
+  <desc>The herald's banner: a blue swallowtail banner on a gilt rod, stitched in gold and sealed in red wax with an N, on a dark round field with a gilt ring.</desc>
+  <circle cx="128" cy="128" r="124" fill="#1b1a18"/>
+  <circle cx="128" cy="128" r="118" fill="none" stroke="#c99a3e" stroke-width="6"/>
+  <circle cx="128" cy="128" r="108" fill="none" stroke="#c99a3e" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <rect x="62" y="44" width="132" height="14" fill="#c99a3e" stroke="#4a3412" stroke-width="3"/>
+  <path d="M76 58 H180 V214 L128 188 L76 214 Z" fill="#2a4f86" stroke="#12264a" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M85 66 H171 V199 L128 178 L85 199 Z" fill="none" stroke="#c99a3e" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <circle cx="128" cy="116" r="30" fill="#8f1a14" stroke="#2a0705" stroke-width="4"/>
+  <circle cx="128" cy="116" r="22" fill="none" stroke="#5e100c" stroke-width="4"/>
+  <path d="M116 131 V101 L140 131 V101" fill="none" stroke="#e0b155" stroke-width="6" stroke-linecap="square"/>
 </svg>

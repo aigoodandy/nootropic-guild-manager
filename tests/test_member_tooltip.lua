@@ -4,6 +4,7 @@
 -- Run with tests/run.sh (it passes the repo root as arg[1]).
 local ROOT = arg[1]
 local ns = {}
+ns.Theme = { C = { yellow = { 0.98, 0.74, 0.18 } } } -- UI/Theme.lua sets this
 local lines = {}
 GameTooltip = {
   AddLine = function(_, t) lines[#lines + 1] = t end,

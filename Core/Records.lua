@@ -33,6 +33,9 @@
       HX:<member>          left out of the Hall of Fame: "1" ("" = shown)
       HW:<month>           that month's champions: "quests=Name,Name;kills=Name"
       HA:<month>           that month's champions were announced: "<time>"
+      EV:<id>              an upcoming event from NGM Peon (Services/Events.lua):
+                           "kind;starts;minutes;coming;channel;server;title;description"
+                           (numbers base 36; "" = gone)
       DN:<player>          Do Not Whisper entry ("" = removed)
       RS:<player>          recruitment status (kept 14 days)
       IR:<member>          reminded to install the addon (kept 30 days)
@@ -80,6 +83,7 @@ S.TYPES = {
     HX = { scope = "guild",   officer = true, label = "Hidden from Hall of Fame" },
     HW = { scope = "guild",   officer = true, noAudit = true, label = "Hall of Fame champions" },
     HA = { scope = "guild",   officer = true, noAudit = true, label = "Champions announced" },
+    EV = { scope = "guild",   officer = true, noAudit = true, label = "Upcoming event" },
     HC = { scope = "officer", officer = true, noAudit = true, label = "Hall of Fame check" },
     JN = { scope = "officer", officer = true, noAudit = true, label = "Joined" },
     RK = { scope = "officer", officer = true, noAudit = true, label = "Rank since" },
@@ -98,7 +102,7 @@ function S.EventSig(typ, member, new)
     return typ .. "|" .. (member or "") .. "|" .. (new or "")
 end
 -- Types whose key is not about one member.
-local NO_MEMBER = { A = true, GS = true, HW = true, HA = true }
+local NO_MEMBER = { A = true, GS = true, HW = true, HA = true, EV = true }
 
 S.storeVersion = 0
 S.officers = {} -- name -> rank index when seen sending on the officer channel this session
@@ -350,14 +354,18 @@ S.Same, S.RosterEntry, S.IsGuildMaster = Same, RosterEntry, IsGuildMaster
 --   recruit  recruitment statuses (RS), only between members who may
 --            recruit (nobody else keeps them)                GUILD
 --   officer  officer records                                 OFFICER
+--   events   Upcoming Events (EV, 3.0): their own lane, so a 2.12 copy
+--            (which ignores lanes it doesn't know) never sees them in a
+--            fingerprint and never keeps re-checking over them      GUILD
 ------------------------------------------------------------------------
-S.LANES = { "guild", "recruit", "officer" }
-S.LANE_STORE = { guild = "guild", recruit = "guild", officer = "officer" }
-S.LANE_CHANNEL = { guild = "GUILD", recruit = "GUILD", officer = "OFFICER" }
+S.LANES = { "guild", "recruit", "officer", "events" }
+S.LANE_STORE = { guild = "guild", recruit = "guild", officer = "officer", events = "guild" }
+S.LANE_CHANNEL = { guild = "GUILD", recruit = "GUILD", officer = "OFFICER", events = "GUILD" }
 
 function S.LaneOf(key)
     local typ = key:match("^(%u+):")
     if typ == "RS" then return "recruit" end
+    if typ == "EV" then return "events" end
     local def = typ and S.TYPES[typ]
     return def and def.scope
 end
@@ -370,7 +378,7 @@ end
 function S:InLane(lane)
     if lane == "officer" then return ns.IsOfficer() end
     if lane == "recruit" then return self:MayRecruit() end
-    return lane == "guild"
+    return lane == "guild" or lane == "events"
 end
 
 -- Will guildmates accept other people's records of this lane from `name`?
@@ -568,9 +576,34 @@ S.NEW_KEYS_PER_WINDOW = 500   -- new records one non-officer may add...
 S.NEW_KEYS_WINDOW = 600       -- ...per 10 minutes
 local newKeys = {}            -- sender -> { count, since }
 
+-- Roles are only the addon's role keys; a main is "" or a plain name. A
+-- hand-made client could otherwise spread junk that rides into NGM Peon's
+-- update code (which refuses it, but it's never wanted anywhere).
+function S.ValidValue(typ, v)
+    v = v or ""
+    if typ == "RL" then
+        if v == "" then return true end
+        for part in (v .. ","):gmatch("([^,]*),") do
+            if part ~= "tank" and part ~= "healer" and part ~= "damage" then return false end
+        end
+        return true
+    elseif typ == "M" then
+        return v == "" or (#v <= 40 and not v:find("[,:\t]"))
+    elseif typ == "EV" then
+        if v == "" then return true end
+        if #v > 600 or v:find("[\t\n]") then return false end
+        local kind, starts, minutes, coming = v:match("^(%l+);(%w+);(%w+);(%w+);")
+        return (kind == "dungeon" or kind == "raid" or kind == "event") and tonumber(starts, 36) ~= nil
+            and tonumber(minutes, 36) ~= nil and tonumber(coming, 36) ~= nil
+    end
+    return true
+end
+
 function S:WithinLimits(typ, member, rest, rec, ctx, store)
     if #(rec.v or "") > self.MAX_VALUE then return false end
+    if not S.ValidValue(typ, rec.v) then return false end
     if (typ == "HW" or typ == "HA") and not rest:match("^%d%d%d%d%d%d$") then return false end
+    if typ == "EV" and not rest:match("^%w+$") then return false end
     -- reminders only about guildmates, holding the time they were sent
     if typ == "IR" then
         if not RosterEntry(member) then return false end
@@ -739,7 +772,8 @@ function S:Apply(key, rec, ctx)
     store[key] = rec
     self.storeVersion = self.storeVersion + 1
     self:Materialize(typ, key, member, rec)
-    if not def.noAudit and not ctx.migration and ns.IsOfficer() then
+    -- (GS:peonat is only when NGM Peon's code was last brought in: not an audit entry)
+    if not def.noAudit and key ~= "GS:peonat" and not ctx.migration and ns.IsOfficer() then
         self:Audit(typ, key, member, cur, rec)
     end
     self.stats.applied = self.stats.applied + 1

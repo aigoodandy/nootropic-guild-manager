@@ -343,7 +343,7 @@ end
 function RC:WhoMacro()
     local text, err = self:BeginSearch()
     if not text then
-        if err then ns:Print("|cffff5555" .. err .. "|r") end
+        if err then ns:Print("|cffff2020" .. err .. "|r") end
         return nil
     end
     return ((SLASH_WHO1 or "/who") .. " " .. text):sub(1, 255)
@@ -518,7 +518,7 @@ end
 function RC:LengthText(template)
     local n = self:LongestLength(template)
     if n <= D.WHISPER_MAX then return ("%d / %d"):format(n, D.WHISPER_MAX) end
-    return ("|cffff6060%d / %d|r (long names: first name only)"):format(n, D.WHISPER_MAX)
+    return ("|cffff2020%d / %d|r (long names: first name only)"):format(n, D.WHISPER_MAX)
 end
 
 local function SendWhisper(msg, target)
@@ -906,7 +906,7 @@ end
 
 function RC:RemoveDNW(full)
     if not self:MayRecruit() then
-        ns:Print("|cffff5555Only ranks the Guild Master lets recruit can take people off the Do Not Whisper list.|r")
+        ns:Print("|cffff2020Only ranks the Guild Master lets recruit can take people off the Do Not Whisper list.|r")
         return
     end
     if self:IsDNW(full) then

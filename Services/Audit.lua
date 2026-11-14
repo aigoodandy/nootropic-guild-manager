@@ -24,7 +24,7 @@ AU.CATEGORIES = {
     { key = "DN", label = "Do Not Whisper" },
 }
 
-local GREEN, RED, GRAY = "|cff40ff40", "|cffff6060", "|cff9d9d9d"
+local GREEN, RED, GRAY = "|cff20ff20", "|cffff2020", "|cff9d9d9d"
 
 -- Who made a change. Changes noticed in the guild roster (level-ups, note
 -- edits, renames) have no known author.

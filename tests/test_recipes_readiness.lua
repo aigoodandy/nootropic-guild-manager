@@ -81,10 +81,9 @@ assert(guild.sync.guild[key].v ~= "", "recipes not shared again")
 SH:Set("recipes", false)
 assert(guild.sync.guild[key].v == "", "recipes not cleared when sharing turned off")
 RCP:Capture(); assert(guild.sync.guild[key].v == "", "captured while sharing is off")
+-- spec, professions and Play Together are public: no switch, always shared
 guild.sync.guild["P:Me Self-R"] = { v = "Holy;;", t = 1, a = "Me Self-R" }
-SH:Set("report", false); assert(guild.sync.guild["P:Me Self-R"].v == "", "report not cleared")
-local before = reports; SH:Set("report", true); assert(reports == before + 1, "report not re-sent when turned back on")
-SH:Set("together", false); assert(SH:HiddenFromTogether("Me Self-R"), "together opt-out not published")
-SH:Set("together", true); assert(not SH:HiddenFromTogether("Me Self-R"))
+SH:Set("report", false); assert(SH:Get("report") and guild.sync.guild["P:Me Self-R"].v ~= "", "no switch for spec and professions")
+SH:Set("together", false); assert(SH:Get("together"), "no switch for Play Together")
 print("sharing switches: ok")
 print("OK")

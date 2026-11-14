@@ -209,7 +209,7 @@ function CS:BuildHeaders(headerFrame)
             grip:SetPoint("BOTTOMRIGHT", 4, 0)
             grip:SetFrameLevel(h:GetFrameLevel() + 5)
             grip.Line = grip:CreateTexture(nil, "OVERLAY")
-            grip.Line:SetColorTexture(1, 0.82, 0, 0.9)
+            ns.Theme:Paint(grip.Line, ns.Theme.C.yellow, 0.9)
             grip.Line:SetWidth(2)
             grip.Line:SetPoint("TOP", 0, -2)
             grip.Line:SetPoint("BOTTOM", 0, 2)
@@ -300,7 +300,7 @@ function CS:StartMove(c)
     self.headers[c.key]:SetAlpha(0.5)
     if not self.dropMarker then
         local m = self.header:CreateTexture(nil, "OVERLAY")
-        m:SetColorTexture(1, 0.82, 0, 1)
+        ns.Theme:Paint(m, ns.Theme.C.yellow, 1)
         m:SetWidth(3)
         self.dropMarker = m
     end

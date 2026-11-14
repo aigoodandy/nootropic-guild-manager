@@ -28,10 +28,7 @@ local DEFAULTS = {
         blizzRoster = true,          -- alts and tooltips on the game's guild roster
         showAddonCount = true,       -- "x using ... Guild Manager" at the bottom of the window
         whoWhisperButton = true,     -- recruitment whisper button on the game's /who results
-        shareReport = true,          -- share my spec and professions (Services/Sharing.lua)
         shareRecipes = true,         -- share my recipes
-        showInTogether = true,       -- appear in guildmates' Play Together lists
-        shareStats = true,           -- share my character statistics for the Hall of Fame
         playRange = 5,               -- Play Together: levels either side of yours (0 = any)
         overviewDays = 30,           -- Overview: count members online in this many days (0 = everyone)
         hofPeriod = "all",           -- Hall of Fame: "all", "month" or "last"
@@ -76,6 +73,13 @@ function DB:Init()
     if not st.tabardDefault then
         st.tabardDefault = true
         st.iconStyle = "emblem"
+    end
+    -- 3.0: the guild's tabard and the guild's theme are the defaults; anyone
+    -- who changed either while testing starts from them once more
+    if not st.guildLookDefault then
+        st.guildLookDefault = true
+        st.iconStyle = "emblem"
+        st.theme = nil
     end
     st.logoMigrated, st.titleUseGuild = nil, nil
     -- 2.6.1: every column but Second Name starts shown. Anyone still on the

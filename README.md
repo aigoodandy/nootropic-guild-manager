@@ -4,7 +4,7 @@ Your whole guild in one window, for **World of Warcraft: Forever**. Profiles,
 crafters, raid readiness, who to play with tonight, a guild census, a Hall
 of Fame and friendly recruiting, shared between everyone in the guild who runs it.
 
-<img src="docs/logo.svg" width="96" alt="Nootropic Guild Manager's gold-ringed medallion with a foaming ale tankard">
+<img src="docs/logo.svg" width="96" alt="NGM's herald banner: blue, on a gilt rod, sealed in red wax with an N">
 
 ![The Find tab: every guildmate with level, class, spec, main or alt, location, professions, rank and addon version](docs/screenshots/1-find.png)
 
@@ -231,8 +231,8 @@ Open from **Options > AddOns > Nootropic Guild Manager**, `/ngm options`, right-
 Options has four pages in the game's AddOns list:
 
 - **Nootropic Guild Manager** (main page)
-  - **Appearance**: the **addon icon** (your **Guild Tabard** by default, or the **Nootropic Medallion**; shown on the window, the minimap button and the Guild & Communities shortcut; the tabard falls back to the medallion outside a guild or without one), **show how many guildmates use the addon** (on by default), the **shortcut on the Guild & Communities window**, and **Show alts and profiles on the Guild roster** (on by default).
-  - **Sharing** (what your copy shares with the guild; all on by default): **Share my spec and professions**, **Share my recipes**, **Learn when I usually play** (this character), **Show me in Play Together** and **Share my statistics** (Hall of Fame). Turning one off stops sharing it and clears what was already shared. A **Show the Welcome Tour** button reopens the walkthrough.
+  - **Appearance**: always in your guild's colors: the addon's icon is NGM's herald banner in your tabard's colors, and the accents take them too, the same as on ngmpeon.app (herald blue without a tabard). Also: **show how many guildmates use the addon** (on by default), the **shortcut on the Guild & Communities window**, and **Show alts and profiles on the Guild roster** (on by default).
+  - **Sharing**: a switch only for what comes from your own copy of the addon and nowhere else: **Share my recipes** and **Learn when I usually play** (this character), both on by default. Turning one off stops sharing it and clears what was already shared. Your spec, professions, statistics (never gold) and guild chat time (never the words) are always shared, as they're public anyway (Blizzard's API, inspecting you, guild chat); likewise everyone online near your level shows in Play Together. A **Show the Welcome Tour** button reopens the walkthrough.
   - **Minimap Button**: show/hide it (also `/ngm minimap`), and choose what left-click, right-click and shift-click do (Find, Play Together, Recruitment, Audit, Options, show/hide window, or nothing). Drag the button to move it around the edge of the minimap; the spot is saved. The game's own AddOns menu button on the minimap (where this addon is also listed) is Blizzard's and can't be moved.
   - **Reset**: window size and position, and list columns (roster and recruitment list).
   - **Sync and Commands**: sync stats with a **Sync Now** button, **Open Guild Manager**, and the most useful commands.
@@ -300,10 +300,10 @@ The dot next to the version number in the window shows sync at a glance: green i
 Everything is saved per guild in `WTF/Account/<account>/SavedVariables/NootropicGuildManager.lua`, along with your settings. **Private notes never leave your computer**; shared data syncs as described above.
 
 What is shared:
-- With everyone running the addon (each part can be switched off in **Options > Sharing**, except the basics like your version): each player's own professions and spec, mains/alts, spec/profession overrides, Discord names, roles, when each person usually plays (only the learned summary), the recipes they know, their raid readiness, the Do Not Whisper list, recruitment statuses (the last 14 days), which addon version each person runs, and the Guild Master's permissions.
+- With everyone running the addon (your recipes and play hours can be switched off in **Options > Sharing**; the rest is public anyway): each player's own professions and spec, mains/alts, spec/profession overrides, Discord names, roles, when each person usually plays (only the learned summary), the recipes they know, their raid readiness, the Do Not Whisper list, recruitment statuses (the last 14 days), which addon version each person runs, and the Guild Master's permissions.
 - With officers only: Officer Log entries (140 characters max; deleting one deletes it for every officer) and the audit trail.
 
-Each of 1.x, 2.0, 2.1 and 2.12 uses its own sync protocol, so guildmates on different ones don't exchange data (2.12 still shows older copies' version, so they're told to update); everyone should run the latest release. When you first load 2.0, data from removed features (reviews, ratings, map dots, polls, stats, goals, kudos, About me, status, pronouns, tab settings) is deleted from your saved data. Loading 2.1 does the same for tags, tag assignments, tag icons and the tag permissions.
+Each of 1.x, 2.0, 2.1 and 2.12 uses its own sync protocol, so guildmates on different ones don't exchange data (2.12 still shows older copies' version, so they're told to update); 3.0 uses 2.12's, so the two sync with each other (2.12 just doesn't show Upcoming Events). Everyone should run the latest release. When you first load 2.0, data from removed features (reviews, ratings, map dots, polls, stats, goals, kudos, About me, status, pronouns, tab settings) is deleted from your saved data. Loading 2.1 does the same for tags, tag assignments, tag icons and the tag permissions.
 
 A note on trust: every copy of the addon checks each change it receives against the guild roster: the sender must be allowed to make it, only officers can pass on other people's changes, and permission settings only count from the Guild Master. Officer data only travels on the officer channel. Every change is also recorded in the Audit tab with its author.
 

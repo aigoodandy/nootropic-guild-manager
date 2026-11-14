@@ -1,7 +1,7 @@
 --[[
     Nootropic Guild Manager - Widgets
-    Small reusable builders that use Blizzard's own textures and templates so
-    the addon looks like part of the default interface.
+    Small reusable builders. Since 3.0 they wear the theme (UI/Theme.lua):
+    NGM Peon's colours and fonts, so the addon and the dashboard look alike.
 ]]
 local _, ns = ...
 local D = ns.Data
@@ -30,7 +30,7 @@ function W.SetTitle(frame, text)
         frame.TitleContainer.TitleText:SetText(text)
     else
         if not frame._title then
-            frame._title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            frame._title = frame:CreateFontString(nil, "OVERLAY", "NGMFontLabel")
             frame._title:SetPoint("TOP", 0, -5)
         end
         frame._title:SetText(text)
@@ -47,10 +47,13 @@ function W.TryCreate(frameType, name, parent, ...)
     return CreateFrame(frameType, name, parent)
 end
 
-function W.Button(parent, text, width, height)
+-- style: nil (the main action: the theme's accent), "alt" (a secondary
+-- one: neutral gray) or "bad" (deletes or undoes something: red)
+function W.Button(parent, text, width, height, style)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     b:SetSize(width or 90, height or 22)
     b:SetText(text)
+    ns.Theme:SkinButton(b, style)
     return b
 end
 
@@ -69,12 +72,11 @@ function W.Tooltip(frame, title, ...)
 end
 
 function W.SectionHeader(parent, text)
-    local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetText(text)
-    local line = parent:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(1, 0.82, 0, 0.22)
-    line:SetHeight(1)
-    line:SetPoint("LEFT", title, "RIGHT", 6, 0)
+    local title = parent:CreateFontString(nil, "OVERLAY", "NGMFontLabel")
+    title:SetText(ns.Theme.Upper(text))
+    -- the dashboard's heading: the title, then a dashed rule to the edge
+    local line = ns.Theme:Dashes(parent)
+    line:SetPoint("LEFT", title, "RIGHT", 10, 0)
     line:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
     return title, line
 end
@@ -86,21 +88,20 @@ function W.ColumnHeader(parent, label, width, justify)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(width, 24)
 
-    local TEX = "Interface\\FriendsFrame\\WhoFrame-ColumnTabs"
-    local l = b:CreateTexture(nil, "BACKGROUND")
-    l:SetTexture(TEX); l:SetTexCoord(0, 0.078125, 0, 0.75)
-    l:SetSize(5, 24); l:SetPoint("TOPLEFT")
-    local r = b:CreateTexture(nil, "BACKGROUND")
-    r:SetTexture(TEX); r:SetTexCoord(0.90625, 0.96875, 0, 0.75)
-    r:SetSize(4, 24); r:SetPoint("TOPRIGHT")
-    local m = b:CreateTexture(nil, "BACKGROUND")
-    m:SetTexture(TEX); m:SetTexCoord(0.078125, 0.90625, 0, 0.75)
-    m:SetPoint("TOPLEFT", l, "TOPRIGHT"); m:SetPoint("BOTTOMRIGHT", r, "BOTTOMLEFT")
+    -- as the dashboard's table headers: small faint upper case, a line under
+    local under = b:CreateTexture(nil, "BACKGROUND")
+    local lc = ns.Theme.C.line
+    ns.Theme:Paint(under, lc)
+    under:SetHeight(2)
+    under:SetPoint("BOTTOMLEFT", 2, 0)
+    under:SetPoint("BOTTOMRIGHT", -2, 0)
 
-    local text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local text = b:CreateFontString(nil, "OVERLAY", "NGMFontLabelSmall")
     text:SetJustifyH(justify or "LEFT")
     text:SetWordWrap(false)
-    text:SetText(label)
+    text:SetText(ns.Theme.Upper(label))
+    local fc = ns.Theme.C.faint
+    ns.Theme:Ink(text, fc)
     b.Text = text
 
     local arrow = b:CreateTexture(nil, "OVERLAY")
@@ -109,11 +110,9 @@ function W.ColumnHeader(parent, label, width, justify)
     arrow:SetPoint("RIGHT", -6, -1)
     arrow:Hide()
 
-    b:SetHighlightTexture("Interface\\PaperDollInfoFrame\\UI-Character-Tab-Highlight", "ADD")
-    local hl = b:GetHighlightTexture()
-    hl:ClearAllPoints()
-    hl:SetPoint("TOPLEFT", 2, 3)
-    hl:SetPoint("BOTTOMRIGHT", -2, -3)
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetColorTexture(1, 1, 1, 0.06)
+    hl:SetAllPoints(b)
 
     -- Narrow columns use the full width for their label (the sort arrow overlaps).
     function b:SetColumnWidth(w)
@@ -155,7 +154,7 @@ function W.Pill(parent, height, padding)
     p.Icon:SetPoint("LEFT", 2, 0)
     p.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     p.Icon:Hide()
-    p.Text = p:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    p.Text = p:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
     p.Text:SetPoint("CENTER", 0, 0)
 
     local function Fit(self)
@@ -175,8 +174,8 @@ function W.Pill(parent, height, padding)
     function p:SetLabel(text)
         self.Icon:Hide()
         self.Text:SetText(text)
-        self:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
-        self:SetBackdropBorderColor(0.45, 0.45, 0.45, 0.9)
+        ns.Theme:Fill(self, ns.Theme.C.bg1, 0.9)
+        ns.Theme:EdgeColor(self, ns.Theme.C.edge, 0.9)
         self.Text:SetTextColor(0.8, 0.8, 0.8)
         Fit(self)
     end
@@ -454,7 +453,7 @@ function W.ScrollEditor(parent, maxLetters)
         end)
         frame:SetScript("OnMouseDown", function() box:SetFocus() end)
     end
-    box:SetFontObject("GameFontHighlight")
+    box:SetFontObject("NGMFontText")
     if maxLetters then box:SetMaxLetters(maxLetters) end
     box:HookScript("OnEscapePressed", function(self) self:ClearFocus() end)
     frame:HookScript("OnSizeChanged", function(self, w) box:SetWidth(math.max(20, (w or self:GetWidth()) - 18)) end)
@@ -533,13 +532,21 @@ local function EnsureWatcher()
             end
         end
     end)
+    -- follows the hosts (a window being dragged) only while one is on
+    -- screen: with none showing it stops itself, and a host showing again
+    -- starts it (SecureOverlay), so nothing runs while the windows are shut
     local elapsed = 0
-    watcher:SetScript("OnUpdate", function(_, dt)
+    watcher:SetScript("OnUpdate", function(self, dt)
         elapsed = elapsed + (dt or 0)
         if elapsed < 0.1 then return end
         elapsed = 0
         if InCombatLockdown() then return end
-        for _, b in ipairs(overlays) do Place(b) end
+        local any = false
+        for _, b in ipairs(overlays) do
+            Place(b)
+            if b.host:IsVisible() then any = true end
+        end
+        if not any then self:Hide() end
     end)
 end
 
@@ -582,6 +589,7 @@ function W.SecureOverlay(host, opts)
     for _, script in ipairs({ "OnShow", "OnHide", "OnEnable", "OnDisable", "OnSizeChanged" }) do
         if host:HasScript(script) then host:HookScript(script, b.Update) end
     end
+    if host:HasScript("OnShow") then host:HookScript("OnShow", function() if watcher then watcher:Show() end end) end
     overlays[#overlays + 1] = b
     host.secure = b
     EnsureWatcher()

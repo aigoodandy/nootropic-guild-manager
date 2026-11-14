@@ -43,7 +43,7 @@ assert(c.profs.Mining == 1 and c.profs.Tailoring == 1, "Mining counted once for 
 assert(c.sharing == 2)
 assert(c.heat[10] == 2, "Monday 20-22: Big Main (merged) and Quiet One")
 assert(c.heat[12 + 10] == 1, "Tuesday 20-22: Big Main via the alt")
-assert(#c.heatNames[10] == 1 and c.heatNames[10][1].short == "Big Main", "hidden person counted, not named")
+assert(#c.heatNames[10] == 2, "everyone sharing their hours is named (an old Play Together hide no longer hides)")
 assert(c.heatMax == 2)
 
 -- everyone

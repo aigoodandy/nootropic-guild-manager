@@ -35,7 +35,7 @@ function AV:Build(frame)
     end)
     self.searchBox = search
 
-    local kind = W.Button(page, "All changes", 130, 22)
+    local kind = W.Button(page, "All changes", 130, 22, "alt")
     kind:SetPoint("LEFT", search, "RIGHT", 10, 0)
     kind:SetScript("OnClick", function(btn) AV:ShowCategoryMenu(btn) end)
     self.kindButton = kind
@@ -45,10 +45,10 @@ function AV:Build(frame)
     group:SetPoint("LEFT", kind, "RIGHT", 8, 0)
     local glabel = group.Text or group.text
     if type(glabel) ~= "table" then
-        glabel = group:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        glabel = group:CreateFontString(nil, "OVERLAY", "NGMFontTextSmall")
         glabel:SetPoint("LEFT", group, "RIGHT", 2, 1)
     end
-    glabel:SetFontObject("GameFontHighlightSmall")
+    glabel:SetFontObject("NGMFontTextSmall")
     glabel:SetText("Group changes")
     group:SetChecked(true)
     group:SetScript("OnClick", function() AV:Refresh() end)
@@ -63,9 +63,9 @@ function AV:Build(frame)
     who:Hide()
     self.memberPill = who
 
-    self.retention = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.retention = page:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.retention:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -38)
-    self.count = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    self.count = page:CreateFontString(nil, "OVERLAY", "NGMFontLabelSmall")
     self.count:SetPoint("RIGHT", self.retention, "LEFT", -12, 0)
 
     local inset = frame.Inset
@@ -92,7 +92,7 @@ function AV:Build(frame)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     self.scrollBox = scrollBox
 
-    self.empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    self.empty = page:CreateFontString(nil, "OVERLAY", "NGMFontDim")
     self.empty:SetPoint("CENTER", scrollBox, "CENTER", 0, 20)
     self.empty:SetWidth(420)
 
@@ -129,7 +129,7 @@ end
 AV.INSET = 34
 
 local function Text(parent, font)
-    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "NGMFontTextSmall")
     fs:SetJustifyH("LEFT")
     fs:SetWordWrap(false)
     return fs
@@ -144,7 +144,7 @@ function AV:InitRow(row, e)
         row.Stripe:SetColorTexture(1, 1, 1, 0.035)
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         row:GetHighlightTexture():SetAlpha(0.35)
-        row.When = Text(row, "GameFontDisableSmall")
+        row.When = Text(row, "NGMFontDimSmall")
         row.Who = Text(row)
         row.Member = Text(row)
         row.Change = Text(row)
@@ -167,8 +167,8 @@ function AV:InitRow(row, e)
                 local who = (g.memberCount > 1 and en.member) and (ns.ShortName(en.member) .. ": ") or ""
                 GameTooltip:AddLine(who .. en.desc, 1, 1, 1, true)
             end
-            GameTooltip:AddDoubleLine("Changed by", ns.Audit.Who(g.author), 1, 0.82, 0, 1, 1, 1)
-            GameTooltip:AddDoubleLine("When", ns.FormatDate(g.t), 1, 0.82, 0, 1, 1, 1)
+            GameTooltip:AddDoubleLine("Changed by", ns.Audit.Who(g.author), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], 1, 1, 1)
+            GameTooltip:AddDoubleLine("When", ns.FormatDate(g.t), ns.Theme.C.yellow[1], ns.Theme.C.yellow[2], ns.Theme.C.yellow[3], 1, 1, 1)
             if g.memberCount == 1 then GameTooltip:AddLine("Click to open " .. ns.ShortName(g.member) .. "'s profile.", 0.5, 0.5, 0.5) end
             GameTooltip:Show()
         end)
@@ -197,7 +197,7 @@ function AV:InitRow(row, e)
         row.Member:SetText(e.memberCount .. " characters")
         row.Member:SetTextColor(0.9, 0.9, 0.9)
     else
-        row.Member:SetText("|cff6d6d6d-|r")
+        row.Member:SetText("|cff6e6e6e-|r")
     end
     row.Change:SetText(ns.Audit:Summary(e))
 end

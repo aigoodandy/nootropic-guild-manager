@@ -23,6 +23,7 @@ IP.queue = {} -- { { full, reply }, ... } waiting behind the one shown
 
 function IP:Build()
     local f = CreateFrame("Frame", "NootropicGMInvitePrompt", UIParent, "BasicFrameTemplateWithInset")
+    ns.Theme:Skin(f)
     W.CombatSafeClose(f)
     f:SetSize(380, 214)
     f:SetPoint("TOP", 0, -160)
@@ -39,14 +40,14 @@ function IP:Build()
     W.SetTitle(f, "Guild Invite")
     self.frame = f
 
-    local text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local text = f:CreateFontString(nil, "OVERLAY", "NGMFontText")
     text:SetPoint("TOPLEFT", 18, -34)
     text:SetPoint("TOPRIGHT", -18, -34)
     text:SetJustifyH("CENTER")
     text:SetSpacing(3)
     self.text = text
 
-    self.more = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    self.more = f:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.more:SetPoint("TOPRIGHT", -30, -6)
 
     -- the game confirms a sent invite in a system message
@@ -79,11 +80,11 @@ function IP:Build()
     W.Tooltip(invite, "Copy the invite", "Selects the /ginvite command so you can copy it (Ctrl+C), then press Enter, paste it (Ctrl+V) and press Enter. WoW: Forever only accepts guild invites you type yourself.")
     self.inviteButton = invite
 
-    self.hint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    self.hint = f:CreateFontString(nil, "OVERLAY", "NGMFontLabelSmall")
     self.hint:SetPoint("BOTTOM", 0, 48)
     self.hint:SetWidth(350)
 
-    local later = W.Button(f, "Not now", 110, 24)
+    local later = W.Button(f, "Not now", 110, 24, "alt")
     later:SetPoint("BOTTOMLEFT", f, "BOTTOM", 6, 14)
     later:SetScript("OnClick", function() IP:Next() end)
 
@@ -97,7 +98,7 @@ function IP:SelectCommand()
     if not full then return end
     local ok, err = ns.Recruit:CanInviteNow(full)
     if not ok then
-        if err then ns:Print("|cffff5555" .. err .. "|r") end
+        if err then ns:Print("|cffff2020" .. err .. "|r") end
         return
     end
     self.box:SetText(self.command or "")
@@ -130,9 +131,9 @@ end
 function IP:Render()
     local name = ns.ShortName(self.full)
     if self.reply and self.reply ~= "" then
-        self.text:SetText(("|cffffd100%s|r replied:\n\"%s\"\n\nInvite them to the guild?"):format(name, self.reply))
+        self.text:SetText(((ns.GOLD .. "%s|r replied:\n\"%s\"\n\nInvite them to the guild?")):format(name, self.reply))
     else
-        self.text:SetText(("Invite |cffffd100%s|r to the guild?"):format(name))
+        self.text:SetText((("Invite " .. ns.GOLD .. "%s|r to the guild?")):format(name))
     end
     local n = #self.queue
     self.more:SetText(n > 0 and (n == 1 and "1 more waiting" or (n .. " more waiting")) or "")
