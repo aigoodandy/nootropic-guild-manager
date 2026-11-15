@@ -341,7 +341,9 @@ function UI:TabIcon(id)
 end
 
 function UI:IsTabAvailable(id)
-    if id == UI.TAB_RECRUIT then return ns.DB:HasPerm("recruit") end
+    -- recruiting follows the game's Invite Member setting for your rank (as
+    -- whispers and invites do: Services/Recruit.lua), not an addon permission
+    if id == UI.TAB_RECRUIT then return ns.Recruit and ns.Recruit:MayRecruit() or false end
     return not OFFICER_TABS[id] or ns.IsOfficer()
 end
 
