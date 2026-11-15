@@ -76,7 +76,7 @@ function EV:Refresh()
     local y = EDGE
     self.empty:SetShown(#list == 0)
     self.empty:SetWidth(inner)
-    self.empty:SetText("No upcoming events yet. Events are created on the " .. ns.GOLD .. "NGM Peon dashboard|r (Create Events tab), and reach the game when an officer brings in NGM Peon's code (" .. ns.GOLD .. "/ngm peon|r).")
+    self.empty:SetText("No upcoming events yet. Events are created on the " .. ns.GOLD .. "NGM Peon dashboard|r (/ngm dashboard in Discord, Create Events tab), and reach the game when an officer brings in NGM Peon's code (" .. ns.GOLD .. "/ngm peon|r).")
     for i, ev in ipairs(list) do
         local c = self.cards[i] or Card(self.content)
         self.cards[i] = c
@@ -107,6 +107,6 @@ function EV:Refresh()
     self.note:ClearAllPoints()
     self.note:SetPoint("TOPLEFT", EDGE, -(#list == 0 and (EDGE + 30) or y))
     self.note:SetWidth(inner)
-    self.note:SetText("Times are your own. Sign up in Discord, with the buttons on each event's post. New events are created on the " .. ns.GOLD .. "NGM Peon dashboard|r (Create Events tab).")
+    self.note:SetText("Times are your own. Sign up in Discord, with the buttons on each event's post. New ones reach the game when an officer brings in NGM Peon's code (" .. ns.GOLD .. "/ngm peon|r).")
     self.content:SetSize(width, y + 40)
 end

@@ -359,11 +359,12 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
     ns:Print(("  |cffffffff/ngm recruit|r  - open the %s tab"):format(ns.TabName("recruit")))
     ns:Print("  |cffffffff/ngm options|r  - open the options")
-    ns:Print("  |cffffffff/ngm discord|r  - Guild Master: the update code for NGM Peon (in Discord: /ngm dashboard, Sync tab, step 2)")
-    ns:Print("  |cffffffff/ngm discord all|r  - the same, with everything (not just what changed)")
-    ns:Print("  |cffffffff/ngm discord setup|r  - the short code for /ngm-guild setup in Discord")
-    ns:Print("  |cffffffff/ngm peon|r  - bring in the code from NGM Peon (in Discord: /ngm dashboard, Sync tab, step 3)")
     ns:Print("  |cffffffff/ngm events|r  - the guild's upcoming events from NGM Peon, and where to sign up")
+    ns:Print(ns.GOLD .. "NGM Peon|r (your guild's Discord, ngmpeon.app):")
+    ns:Print("  |cffffffff/ngm link|r  - in Discord, not here: link your characters for your rank role")
+    ns:Print("  |cffffffff/ngm discord setup|r  - Guild Master, once: the code for /ngm-guild setup in Discord")
+    ns:Print("  |cffffffff/ngm discord|r  - Guild Master: what changed in game, for the Sync tab, step 2 (/ngm dashboard in Discord); add |cffffffffall|r for everything")
+    ns:Print("  |cffffffff/ngm peon|r  - bring in the Sync tab's step 3 code (best done by an officer)")
     ns:Print("  |cffffffff/ngm diag|r  - troubleshooting: version, sync, and the addon's hooks into game windows")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
 end
@@ -417,6 +418,8 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns.UI:OpenTab(ns.UI.TAB_HOF)
     elseif cmd == "peon" then
         ns.PeonPasteView:Open()
+    elseif cmd == "link" or cmd == "dashboard" then
+        ns:Print(("|cffffffff/ngm %s|r is an NGM Peon command: type it in your guild's Discord server, not in game."):format(cmd))
     elseif cmd == "events" or cmd == "calendar" or cmd == "cal" then
         ns.UI:OpenTab(ns.UI.TAB_EVENTS)
     elseif cmd == "discord" then

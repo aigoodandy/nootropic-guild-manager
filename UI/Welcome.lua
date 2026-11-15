@@ -40,7 +40,7 @@ local function Pages()
               .. GRAY .. "On the game's own Guild roster you'll also see alt markers, richer tooltips and Profile on the right-click menu.|r" },
         { key = "events", icon = TAB_ICONS[7], title = "Upcoming Events",
           text = "The guild's events for the next 30 days: dungeons, raids and guild nights, with the time (your own), how long, and how many are coming.\n\n"
-              .. ("Sign up in " .. ns.GOLD .. "Discord|r, with the buttons on each event's post: the tab says which channel. Events are created on the " .. ns.GOLD .. "NGM Peon dashboard|r.") },
+              .. ("Sign up in " .. ns.GOLD .. "Discord|r, with the buttons on each event's post: the tab says which channel. Events are created on the " .. ns.GOLD .. "NGM Peon dashboard|r (/ngm dashboard in Discord).") },
         { key = "overview", icon = TAB_ICONS[5], title = "Overview",
           text = "The guild at a glance: how many of each class, level and profession, counting the people who've played lately.\n\n"
               .. (ns.GOLD .. "When we play|r is a week heatmap from the hours guildmates share: hover a block to see who usually plays then. Click any bar to list those members on the Find tab.") },
@@ -79,7 +79,8 @@ local function Pages()
     end
     list[#list + 1] = { key = "done", icon = D.LOGO, full = true, title = "You're All Set",
         text = ("Open the window any time with " .. ns.GOLD .. "/ngm|r or the minimap button.\n\n")
-            .. ("Options has everything from this tour, plus an " .. ns.GOLD .. "About|r page with links to the Nootropic Discord and the addon's page.\n\n")
+            .. ("Options has everything from this tour, plus an " .. ns.GOLD .. "About|r page with links (ngmpeon.app, bugs and ideas).\n\n")
+            .. ("Guild on Discord? With " .. ns.GOLD .. "NGM Peon|r, type " .. ns.GOLD .. "/ngm link|r there for your rank role" .. (ns.DB:IsGuildMaster() and ("; to set it up, start with " .. ns.GOLD .. "/ngm discord setup|r") or "") .. ".\n\n")
             .. ("Want this tour again? " .. ns.GOLD .. "/ngm welcome|r.") }
     return list
 end
