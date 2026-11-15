@@ -157,6 +157,18 @@ do
     assert(got3.months == 1 and got3.taken == 2 and got3.refused == 2, ("%d %d %d"):format(got3.months, got3.taken, got3.refused))
     assert(held["GS:peon"].v == "1" and held["HW:202610"].v == "quests=Pip Moss;kills=Marc Priest")
     assert(held["CN:Marc Priest"].v == "keasbeexd;")
+    -- NGM Peon carries the newest release on the has line; without it, nothing changes
+    local p4 = "us\nNootropic\nhas\t" .. DC.B36(1794540000) .. "\t3.0.9\nhours\t" .. DC.B36(pc.hoursHash)
+    assert(DC:ParsePeon("NGMP1." .. DC.Base64Url(p4) .. "." .. DC.Adler32(p4)).release == "3.0.9")
+    assert(DC:ParsePeon(code).release == nil)
+    local checked = 0
+    ns.Roster = { IsRelease = function(v) return v:match("^%d+%.%d+[%.%d]*$") ~= nil end, CheckVersion = function() checked = checked + 1 end }
+    assert(DC:ApplyPeon("NGMP1." .. DC.Base64Url(p4) .. "." .. DC.Adler32(p4)))
+    assert(guildData.peon.release == "3.0.9" and checked == 1)
+    local p5 = "us\nNootropic\nhas\t" .. DC.B36(1794540000) .. "\t3.1.0-beta1\nhours\t" .. DC.B36(pc.hoursHash)
+    assert(DC:ApplyPeon("NGMP1." .. DC.Base64Url(p5) .. "." .. DC.Adler32(p5)))
+    assert(guildData.peon.release == "3.0.9" and checked == 1, "a test build isn't a release")
+    ns.Roster = nil
 end
 
 -- the next update code: changes since NGM Peon's word (less a week), and no grid when NGM Peon has the same

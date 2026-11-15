@@ -2,6 +2,11 @@
 
 Every release is on the [releases page](https://github.com/keasbeexd/nootropic-guild-manager/releases) with a `-forever.zip` that WowUp installs. Versions 2.12 and newer sync with each other; older versions use older sync protocols and don't exchange data with them (2.12 still shows their version, so they're told to update).
 
+## 3.0.2
+
+- **You're told when a new version is out:** at login and /reload, as soon as you hear of it, and every hour after while you're behind, with where to get it (CurseForge, Wago or GitHub). The addon can't go online itself, so it hears of new versions three ways: guildmates who already updated, anyone running NGM in your party or raid, and NGM Peon's code (/ngm peon), which carries the newest release.
+- Test builds don't count: someone testing an unreleased version never makes the guild think an update is out.
+
 ## 3.0.1
 
 - **Recruiters see the Recruitment tab again.** It follows your rank's **Invite Member** setting in the game, the same as whispers and invites already did; in 3.0.0 only officers saw it.

@@ -258,7 +258,10 @@ function DC:ParsePeon(code)
     local out = { region = lines[1], guild = lines[2], records = {}, events = {} }
     for i = 3, #lines do
         local f = ns.Split(lines[i], "\t")
-        if f[1] == "has" then out.has = tonumber(f[2] or "", 36)
+        if f[1] == "has" then
+            out.has = tonumber(f[2] or "", 36)
+            -- the newest NGM on GitHub, as NGM Peon last checked (NGM Peon adds it)
+            out.release = f[3] ~= "" and f[3] or nil
         elseif f[1] == "hours" then out.hoursHash = tonumber(f[2] or "", 36)
         elseif f[1] == "E" and #f >= 7 then
             -- an upcoming event (Services/Events.lua): where to sign up and who's coming
@@ -323,6 +326,11 @@ function DC:ApplyPeon(code)
     g.peon = g.peon or {}
     if not g.peon.has or c.has > g.peon.has then g.peon.has = c.has end
     g.peon.hoursHash = c.hoursHash
+    -- the newest release: tells you if you're behind (Services/Roster.lua)
+    if c.release and ns.Roster and ns.Roster.IsRelease(c.release) and #c.release <= 20 then
+        g.peon.release = c.release
+        ns.Roster:CheckVersion()
+    end
     -- when the guild last brought NGM Peon's code in (for the reminder); officers share it
     if ns.Sync.CanWrite and ns.Sync:CanWrite("GS:peonat") then ns.Sync:Set("GS:peonat", tostring(ns.DB:Now())) end
     -- Upcoming Events (shared with the guild by an officer)
