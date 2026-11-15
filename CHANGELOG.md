@@ -2,6 +2,10 @@
 
 Every release is on the [releases page](https://github.com/keasbeexd/nootropic-guild-manager/releases) with a `-forever.zip` that WowUp installs. Versions 2.12 and newer sync with each other; older versions use older sync protocols and don't exchange data with them (2.12 still shows their version, so they're told to update).
 
+## 3.0.4
+
+- **Officers are reminded too.** When nobody has brought NGM Peon's code into the game for 3 days, officers get the same once-a-day nudge as the Guild Master (`/ngm peon`, Sync tab step 3), so new events and roles don't wait on one person.
+
 ## 3.0.3
 
 - **Clearer next steps for NGM Peon.** Every step says where it happens: the dashboard opens with `/ngm dashboard` in your Discord, and its Sync tab steps are numbered to match. `/ngm help` lists the NGM Peon commands in order, with who runs each. Typing `/ngm link` or `/ngm dashboard` in game tells you to type it in Discord instead.
