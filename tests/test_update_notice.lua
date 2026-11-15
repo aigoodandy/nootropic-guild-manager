@@ -44,4 +44,50 @@ R:StartVersionCheck()
 assert(#timers == 1 and timers[1][1] == 15 and ticker and ticker[1] == 3600)
 R:StartVersionCheck()
 assert(#timers == 1, "started once")
+
+-- NGM Peon's word on the newest release (/ngm peon) counts too
+guild.peon = { release = "3.2.0" }
+assert(R:NewestVersion() == "3.2.0" and R:CheckVersion() == true and printed[#printed]:find("NGM 3.2.0 is out"))
+guild.peon = { release = "4.0.0-test1" }
+assert(R:NewestVersion() == "3.1.0", "a test build from anywhere doesn't count")
+guild.peon = nil
+
+-- your party or raid, outside the guild too
+local sent, events, now, group = {}, {}, 1000, "PARTY"
+C_ChatInfo = { RegisterAddonMessagePrefix = function() end, SendAddonMessage = function(p, m, c) sent[#sent + 1] = { p, m, c } end }
+function ns:RegisterEvent(e, fn) events[e] = fn end
+function GetTime() return now end
+function IsInRaid() return group == "RAID" end
+function IsInGroup() return group ~= nil end
+function GetNumGroupMembers() return 2 end
+ns.NormalizeName = function(n) return n end
+ns.PlayerFullName = function() return "Me" end
+ns.version = "3.0.1"
+R.toldNewer = nil
+R:StartGroupVersion()
+assert(events.CHAT_MSG_ADDON and events.GROUP_ROSTER_UPDATE, "listening")
+-- joining a group: you say your version (released copies only, once a minute)
+events.GROUP_ROSTER_UPDATE()
+assert(#sent == 1 and sent[1][1] == "NGMVer" and sent[1][2] == "V\t3.0.1" and sent[1][3] == "PARTY")
+assert(R:SayVersion() == false, "once a minute")
+ns.version = "3.0.2-test1"; now = now + 61
+assert(R:SayVersion() == false, "test builds don't say")
+ns.version = "3.0.1"
+-- hearing a newer release from the group: told
+local n = #printed
+events.CHAT_MSG_ADDON(nil, "NGMVer", "V\t3.5.0", "PARTY", "Stranger")
+assert(R.heard["3.5.0"] and #printed == n + 1 and printed[#printed]:find("NGM 3.5.0 is out"))
+-- odd, test-build, whispered and your own messages are ignored
+events.CHAT_MSG_ADDON(nil, "NGMVer", "V\t9.0.0-beta", "PARTY", "Stranger")
+events.CHAT_MSG_ADDON(nil, "NGMVer", "V\t9.0.0", "WHISPER", "Stranger")
+events.CHAT_MSG_ADDON(nil, "NGMVer", "V\t9.0.0", "RAID", "Me")
+events.CHAT_MSG_ADDON(nil, "NotOurs", "V\t9.0.0", "RAID", "Stranger")
+assert(not R.heard["9.0.0"] and not R.heard["9.0.0-beta"] and R:NewestVersion() == "3.5.0")
+-- someone behind you: answered so they learn it too
+group = "RAID"; ns.version = "3.6.0"
+events.CHAT_MSG_ADDON(nil, "NGMVer", "V\t3.0.0", "RAID", "Old Timer")
+assert(#sent == 2 and sent[2][2] == "V\t3.6.0" and sent[2][3] == "RAID")
+-- not in a group: nothing to say
+group = nil; now = now + 61
+assert(R:SayVersion() == false)
 print("OK")

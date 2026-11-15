@@ -4,7 +4,7 @@ Every release is on the [releases page](https://github.com/keasbeexd/nootropic-g
 
 ## 3.0.2
 
-- **You're told when a new version is out:** at login and /reload, as soon as a guildmate runs it, and every hour after while you're behind, with where to get it (CurseForge, Wago or GitHub). The addon can't go online itself, so it learns about new versions from guildmates who already updated.
+- **You're told when a new version is out:** at login and /reload, as soon as you hear of it, and every hour after while you're behind, with where to get it (CurseForge, Wago or GitHub). The addon can't go online itself, so it hears of new versions three ways: guildmates who already updated, anyone running NGM in your party or raid, and NGM Peon's code (/ngm peon), which carries the newest release.
 - Test builds don't count: someone testing an unreleased version never makes the guild think an update is out.
 
 ## 3.0.1
