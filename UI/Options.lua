@@ -576,14 +576,13 @@ function O:BuildAbout()
         .. (ns.GOLD .. "For officers|r  an audit of every change (joins, leaves, promotions, level-ups), an officer log, and Guild Master permissions."))
     L:Text("Everything is shared with guildmates running the addon, so the more of the guild uses it, the more it knows. NGM Peon (optional) carries it to your guild's Discord and back.", "NGMFontDimSmall")
 
-    L:Header("Website")
+    L:Header("Links")
     L:Text("Click the link, press |cffffffffCtrl+C|r, and paste it into your browser.", "NGMFontDimSmall", 4)
     for _, link in ipairs(D.LINKS) do LinkRow(L, link) end
 
     L:Header("Credits")
     L:Text(("Maintained by " .. ns.GOLD .. "Keasbeexd|r for " .. ns.GOLD .. "<Nootropic>|r.\n")
-        .. ("Built on the original Nootropic Guild Manager by " .. ns.GOLD .. "aigoodandy|r, with permission.\n")
-        .. "Bug reports and ideas are welcome: see ngmpeon.app.")
+        .. "Built on the original Nootropic Guild Manager by " .. ns.GOLD .. "aigoodandy|r, with permission.")
     L:Finish()
     return outer
 end
