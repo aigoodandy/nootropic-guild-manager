@@ -2,6 +2,10 @@
 
 Every release is on the [releases page](https://github.com/keasbeexd/nootropic-guild-manager/releases) with a `-forever.zip` that WowUp installs. Versions 2.12 and newer sync with each other; older versions use older sync protocols and don't exchange data with them (2.12 still shows their version, so they're told to update).
 
+## 3.0.1
+
+- **Recruiters see the Recruitment tab again.** It follows your rank's **Invite Member** setting in the game, the same as whispers and invites already did; in 3.0.0 only officers saw it.
+
 ## 3.0.0
 
 NGM meets your guild's Discord, and looks like it belongs in the game. **3.0 syncs with 2.12**, so guildmates can update at their own pace.
