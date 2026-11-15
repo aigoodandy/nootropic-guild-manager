@@ -57,7 +57,7 @@ function V:Build()
         if key == "C" and IsControlKeyDown() then
             C_Timer.After(0.05, function() eb:ClearFocus() end)
             V.hint:SetText(V.mode == "setup" and "|cff20ff20Copied.|r Paste it into /ngm-guild setup in Discord."
-                or "|cff20ff20Copied.|r Paste it on ngmpeon.app, Sync tab, step 2.")
+                or "|cff20ff20Copied.|r Now type /ngm dashboard in Discord: Sync tab, step 2.")
         end
     end)
     self.box = box
@@ -99,7 +99,7 @@ function V:Open(mode)
     else
         W.SetTitle(self.frame, "Update NGM Peon")
         self.steps:SetText((ns.GOLD .. "1.|r Copy this code.\n")
-            .. (ns.GOLD .. "2.|r On |cffffffffngmpeon.app|r, open the |cffffffffSync|r tab: step 2.\n")
+            .. (ns.GOLD .. "2.|r Type |cffffffff/ngm dashboard|r in Discord: |cffffffffSync|r tab, step 2.\n")
             .. (ns.GOLD .. "3.|r Paste it, then sign in with Battle.net."))
         local changes = ("%d main / alt and Tank / Healer / DPS record%s"):format(count or 0, count == 1 and "" or "s")
         if everything then
