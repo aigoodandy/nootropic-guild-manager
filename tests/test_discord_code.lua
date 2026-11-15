@@ -209,7 +209,15 @@ flags[2] = { officer = true, invite = false } -- a rank's permissions changed in
 assert(DC:Remind(1000000 + 5 * 86400 + 120) and told[#told]:find("ranks changed", 1, true), "ranks changed: told at once")
 assert(not DC:Remind(1000000 + 5 * 86400 + 180), "the same change: once")
 gm = false
-assert(DC:ReminderText(1000000 + 30 * 86400) == nil, "only the Guild Master")
+assert(DC:ReminderText(1000000 + 30 * 86400) == nil, "not an officer: nothing")
+-- an officer: only NGM Peon to the game (step 3), and only once NGM Peon's code has come in
+ns.IsOfficer = function() return true end
+assert(DC:ReminderText(1000000 + 30 * 86400) == nil, "an officer before NGM Peon's code: nothing")
+ns.Sync.Value = function(_, k) return k == "GS:peon" and "1" or nil end
+local off = assert(DC:ReminderText(1000000 + 30 * 86400))
+assert(off:find("Discord to the game", 1, true) and not off:find("Game to Discord", 1, true) and not off:find("ranks", 1, true), off)
+ns.Sync.Value = function() return nil end
+ns.IsOfficer = nil
 gm = true
 guildData = {}
 assert(DC:ReminderText(1000000 + 30 * 86400) == nil, "a guild not using NGM Peon: nothing")

@@ -344,27 +344,36 @@ end)
 ------------------------------------------------------------------------
 -- Slash commands
 ------------------------------------------------------------------------
+-- Only what your rank can use: officer and Guild Master commands are left
+-- out for everyone else (the commands still say why if typed).
 local function PrintHelp()
+    local gm = ns.DB and ns.DB.IsGuildMaster and ns.DB:IsGuildMaster()
+    local officer = ns.IsOfficer and ns.IsOfficer()
+    local recruiter = ns.Recruit and ns.Recruit.MayRecruit and ns.Recruit:MayRecruit()
     ns:Print("commands:")
     ns:Print("  |cffffffff/ngm|r  - open or close the window")
     ns:Print("  |cffffffff/ngm find <text>|r  - open with a search")
     ns:Print("  |cffffffff/ngm sync|r  - check your data against the guild now, and show sync status")
-    ns:Print(("  |cffffffff/ngm audit|r  - open the %s tab (officers)"):format(ns.TabName("audit")))
+    if officer then ns:Print(("  |cffffffff/ngm audit|r  - open the %s tab"):format(ns.TabName("audit"))) end
     ns:Print("  |cffffffff/ngm welcome|r  - the welcome tour (what's where, your sharing choices)")
     ns:Print("  |cffffffff/ngm craft <name>|r  - who in the guild can craft it")
     ns:Print(("  |cffffffff/ngm play|r  - the %s tab: who's around near your level"):format(ns.TabName("together")))
     ns:Print(("  |cffffffff/ngm overview|r  - the %s tab: classes, levels, professions and when the guild plays"):format(ns.TabName("overview")))
     ns:Print(("  |cffffffff/ngm hof|r  - the %s tab: guild leaderboards from everyone's statistics"):format(ns.TabName("hof")))
-    ns:Print("  |cffffffff/ngm dnw|r  - the Do Not Whisper list and who was whispered recently")
+    if recruiter then
+        ns:Print(("  |cffffffff/ngm recruit|r  - open the %s tab"):format(ns.TabName("recruit")))
+        ns:Print("  |cffffffff/ngm dnw|r  - the Do Not Whisper list and who was whispered recently")
+    end
     ns:Print("  |cffffffff/ngm minimap|r  - show or hide the minimap button")
-    ns:Print(("  |cffffffff/ngm recruit|r  - open the %s tab"):format(ns.TabName("recruit")))
     ns:Print("  |cffffffff/ngm options|r  - open the options")
     ns:Print("  |cffffffff/ngm events|r  - the guild's upcoming events from NGM Peon, and where to sign up")
     ns:Print(ns.GOLD .. "NGM Peon|r (your guild's Discord, ngmpeon.app):")
     ns:Print("  |cffffffff/ngm link|r  - in Discord, not here: link your characters for your rank role")
-    ns:Print("  |cffffffff/ngm discord setup|r  - Guild Master, once: the code for /ngm-guild setup in Discord")
-    ns:Print("  |cffffffff/ngm discord|r  - Guild Master: what changed in game, for the Sync tab, step 2 (/ngm dashboard in Discord); add |cffffffffall|r for everything")
-    ns:Print("  |cffffffff/ngm peon|r  - bring in the Sync tab's step 3 code (best done by an officer)")
+    if gm then
+        ns:Print("  |cffffffff/ngm discord setup|r  - once: the code for /ngm-guild setup in Discord")
+        ns:Print("  |cffffffff/ngm discord|r  - what changed in game, for the Sync tab, step 2 (/ngm dashboard in Discord); add |cffffffffall|r for everything")
+    end
+    if officer then ns:Print("  |cffffffff/ngm peon|r  - bring in the Sync tab's step 3 code, for the whole guild") end
     ns:Print("  |cffffffff/ngm diag|r  - troubleshooting: version, sync, and the addon's hooks into game windows")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
 end

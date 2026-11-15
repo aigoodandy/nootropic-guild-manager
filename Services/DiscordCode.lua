@@ -188,7 +188,7 @@ function DC:ForMyGuild(mode)
     local guild = GetGuildInfo and GetGuildInfo("player")
     if not guild then return nil, "You're not in a guild." end
     if not (ns.DB.IsGuildMaster and ns.DB:IsGuildMaster()) then
-        return nil, "Only the Guild Master can make the setup code: only their game sees every rank's settings."
+        return nil, "Only the Guild Master can make codes for NGM Peon: only their game sees every rank's settings. Ask them to do it (Sync tab, step 2)."
     end
     local region = self:Region()
     if not region then return nil, "NGM Peon serves the US and EU regions only, for now." end
@@ -343,21 +343,25 @@ end
 -- two are out of step: 3 days or more since the last update code (game to
 -- Discord) or since anyone in the guild brought in NGM Peon's code (Discord
 -- to the game; GS:peonat, written by the officer who did), or the ranks
--- changed in game since. Once a day (ranks: once per change), never in combat.
+-- changed in game since. Officers are told the second part only (only the
+-- Guild Master can do the first). Once a day (ranks: once per change),
+-- never in combat.
 ------------------------------------------------------------------------
 DC.REMIND_AFTER = 3 * 86400
 
 -- The reminder's text now and why ("ranks", "never" or "days"), or nil.
 function DC:ReminderText(now)
     now = now or ns.DB:Now()
-    if not (ns.DB.IsGuildMaster and ns.DB:IsGuildMaster()) then return nil end
+    local isGM = ns.DB.IsGuildMaster and ns.DB:IsGuildMaster()
+    if not isGM and not (ns.IsOfficer and ns.IsOfficer()) then return nil end
     local g = ns.DB:Guild()
     if not g then return nil end
     local peon = g.peon or {}
-    if not (peon.made or ns.Sync:Value("GS:peon") == "1") then return nil end -- not using NGM Peon
+    -- not using NGM Peon (an officer only knows once its code has come in)
+    if not ((isGM and peon.made) or ns.Sync:Value("GS:peon") == "1") then return nil end
     local toDiscord = "Type |cffffffff/ngm discord|r and paste it on NGM Peon's dashboard (in Discord: |cffffffff/ngm dashboard|r, Sync tab, step 2)."
     local ranks = self:MyRanks()
-    if ranks and peon.ranks and self.RankSignature(ranks) ~= peon.ranks then
+    if isGM and ranks and peon.ranks and self.RankSignature(ranks) ~= peon.ranks then
         return "your guild's ranks changed since you last updated NGM Peon. " .. toDiscord, "ranks", self.RankSignature(ranks)
     end
     -- what's overdue, each way (best done daily; told after REMIND_AFTER)
@@ -367,7 +371,7 @@ function DC:ReminderText(now)
     local got = ago(rec and tonumber(rec.v))
     local late = self.REMIND_AFTER / 86400
     local lines = {}
-    if not sent or sent >= late then
+    if isGM and (not sent or sent >= late) then
         lines[#lines + 1] = ("  " .. ns.GOLD .. "Game to Discord|r: ") .. (sent and ("last done %d days ago. "):format(sent) or "not done yet. ") .. toDiscord
     end
     if not got or got >= late then
