@@ -29,6 +29,7 @@ R.altIndex = {} -- main fullName -> sorted list of alt fullNames
 local EMPTY = {}
 
 function R:Init()
+    R:StartVersionCheck()
     local function queue() ns.Debounce("roster", 0.25, function() R:Rebuild() end) end
     ns:RegisterEvent("GUILD_ROSTER_UPDATE", queue)
     ns:RegisterEvent("PLAYER_GUILD_UPDATE", queue)
@@ -526,12 +527,18 @@ end
 ------------------------------------------------------------------------
 -- Addon versions
 ------------------------------------------------------------------------
--- The newest version of the addon anyone in the guild runs (including you).
+-- A released version ("3.0.1"), not a test build ("3.0.1-test2") or a
+-- copy run from the source ("dev"): only released ones count as "out".
+function R.IsRelease(v)
+    return type(v) == "string" and v:match("^%d+%.%d+[%.%d]*$") ~= nil
+end
+
+-- The newest released version anyone in the guild runs (including you).
 function R:NewestVersion()
     local newest = ns.version
     local g = ns.DB:Guild()
     for _, m in pairs(g and g.members or {}) do
-        if type(m) == "table" and m.version and ns.CompareVersions(m.version, newest) > 0 then newest = m.version end
+        if type(m) == "table" and R.IsRelease(m.version) and ns.CompareVersions(m.version, newest) > 0 then newest = m.version end
     end
     return newest
 end
@@ -545,12 +552,27 @@ function R:IsOutdated(e)
 end
 
 -- /ngm diag: how the addon sees you, and what version record it has for you.
--- Tells you (once per session) when a guildmate has a newer version.
-function R:CheckVersion()
+-- Tells you when a newer release is out (a guildmate runs it: the addon
+-- can't go online itself): at login and /reload, as soon as a guildmate's
+-- newer version arrives, and every hour after while you're behind.
+-- reminder: the hourly call, which repeats the message; otherwise once per
+-- version per session.
+R.REMIND_EVERY = 3600
+function R:CheckVersion(reminder)
     local newest = self:NewestVersion()
-    if self.toldNewer ~= newest and ns.CompareVersions(newest, ns.version) > 0 then
-        self.toldNewer = newest
-        ns:Print(("A newer version (%s) is in use in your guild. You have %s."):format(newest, ns.version))
+    if ns.CompareVersions(newest, ns.version) <= 0 then return false end
+    if self.toldNewer == newest and not reminder then return false end
+    self.toldNewer = newest
+    ns:Print(("%sNGM %s is out|r (you have %s). Update it from CurseForge, Wago or GitHub: |cffffffffngmpeon.app|r"):format(ns.GOLD or "|cffffd100", newest, ns.version))
+    return true
+end
+
+-- At login (once the guild's saved data is in) and every hour.
+function R:StartVersionCheck()
+    if self.versionTicker or not C_Timer then return end
+    C_Timer.After(15, function() R:CheckVersion() end)
+    if C_Timer.NewTicker then
+        self.versionTicker = C_Timer.NewTicker(R.REMIND_EVERY, function() R:CheckVersion(true) end)
     end
 end
 
