@@ -327,6 +327,13 @@ A note on trust: every copy of the addon checks each change it receives against 
 | `/ngm minimap` | show or hide the minimap button |
 | `/ngm reset` | reset the window size and position |
 
+## Bugs and ideas
+
+- **Something broken?** [Report a bug](https://github.com/keasbeexd/nootropic-guild-manager/issues/new?template=bug.yml): in game, on ngmpeon.app or in Discord.
+- **Got an idea?** [Suggest a feature](https://github.com/keasbeexd/nootropic-guild-manager/issues/new?template=feature.yml).
+- **Questions or help:** ask on the [Nootropic Discord](https://discord.gg/BCnPbyBSyb).
+- **Security problems:** please don't post them publicly. Message keasbeexd on the Discord instead.
+
 ## Code layout
 
 ```
