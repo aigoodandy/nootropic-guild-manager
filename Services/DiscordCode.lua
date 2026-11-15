@@ -188,7 +188,7 @@ function DC:ForMyGuild(mode)
     local guild = GetGuildInfo and GetGuildInfo("player")
     if not guild then return nil, "You're not in a guild." end
     if not (ns.DB.IsGuildMaster and ns.DB:IsGuildMaster()) then
-        return nil, "Only the Guild Master can make the setup code: only their game sees every rank's settings."
+        return nil, "Only the Guild Master can make codes for NGM Peon: only their game sees every rank's settings. Ask them to do it (Sync tab, step 2)."
     end
     local region = self:Region()
     if not region then return nil, "NGM Peon serves the US and EU regions only, for now." end

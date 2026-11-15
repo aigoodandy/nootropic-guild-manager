@@ -5,6 +5,7 @@ Every release is on the [releases page](https://github.com/keasbeexd/nootropic-g
 ## 3.0.4
 
 - **Officers are reminded too.** When nobody has brought NGM Peon's code into the game for 3 days, officers get the same once-a-day nudge as the Guild Master (`/ngm peon`, Sync tab step 3), so new events and roles don't wait on one person.
+- `/ngm help` lists only what your rank can use: `/ngm discord` for the Guild Master, `/ngm peon` and `/ngm audit` for officers, recruiting for ranks that may invite. Someone else typing `/ngm discord` is told to ask the Guild Master.
 
 ## 3.0.3
 
