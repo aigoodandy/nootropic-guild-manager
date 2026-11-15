@@ -17,10 +17,10 @@ game can't do. Every copy of the addon shares what its player knows
 the more of your guild runs it, the more it knows. It was made for the
 **<Nootropic>** guild and is free for any guild to use.
 
-**Coming next: NGM Peon**, a Discord bot that syncs your guild between the
-game and your Discord server: rank roles, join/leave/promotion posts,
-activity across guild chat, Discord and voice, and the Hall of Fame. See
-[ngmpeon.app](https://ngmpeon.app).
+**NGM Peon** (optional, free) brings your Discord along: a bot and
+dashboard at [ngmpeon.app](https://ngmpeon.app) with rank, class and
+Tank / Healer / DPS roles, events with sign-ups (listed in game too), a
+guild feed and the Hall of Fame. The addon works fine without it.
 
 ## Features
 
@@ -36,6 +36,8 @@ activity across guild chat, Discord and voice, and the Hall of Fame. See
 - **Hall of Fame** — guild leaderboards from everyone's character
   statistics: quests, kills, dungeon bosses, deaths and more, all time or by
   month.
+- **Upcoming Events** — the guild's dungeons, raids and nights from NGM
+  Peon: when, who's coming and where to sign up in Discord.
 - **Profiles** — spec, roles, professions with skill levels, Discord,
   usual play hours, raid readiness (Onyxia attunement, the
   Barrow Deeps key) and your own private notes.
@@ -91,7 +93,7 @@ Whichever you pick, it offers each new release as an update.
 
 ## First launch
 
-The first time you log in with the addon (and once after updating to 2.5.0), a short **welcome tour** opens: a page for each tab (Find, Play Together, Who Can Craft?, Profiles and Raids, and Recruitment or Audit if your rank uses them), then your **sharing choices**, your **profile basics** (Discord name and roles), a **permissions** page for the Guild Master, and where to find things later. Skip it any time; reopen it from **Options** or with `/ngm welcome`.
+The first time you log in with the addon, a short **welcome tour** opens: a page for each tab (Find, Play Together, Who Can Craft?, Profiles and Raids, and Recruitment or Audit if your rank uses them), then your **sharing choices**, your **profile basics** (Discord name and roles), a **permissions** page for the Guild Master, and where to find things later. Skip it any time; reopen it from **Options** or with `/ngm welcome`.
 
 ## Opening it
 
@@ -238,7 +240,7 @@ Options has four pages in the game's AddOns list:
   - **Sync and Commands**: sync stats with a **Sync Now** button, **Open Guild Manager**, and the most useful commands.
 - **Recruiting** (saved per guild, except the hourly cap): the **recruitment whisper button on /who results** (on by default), **Whispers per hour** (40 by default, for all your characters), **Auto-Invite** (Invite popup on a keyword reply, up to 6 keywords) and **Do Not Whisper** (on/off, up to 6 words, and the shared list). The Recruitment tab shows how these are set under **Replies**, with a **Reply Settings...** button that opens this page.
 - **Officers**: **Permissions** (Guild Master, whole guild) and **Audit History** (keep 30, 60 or 90 days on your copy). Members see this page but can't change it.
-- **About**: what the addon does, credits, and links to copy (the game can't open web pages): the maintainer's site, the **Nootropic Discord** and the addon's GitHub page.
+- **About**: what the addon does, credits, and links to copy (the game can't open web pages): **ngmpeon.app** and **Bugs and ideas** (the GitHub forms for bug reports and feature ideas).
 
 The window's tabs run down its right side like the character panel's; hover one for its name. Tabs you can't use (Recruitment without your rank's Invite Member setting, Audit for non-officers) are hidden.
 
@@ -317,11 +319,15 @@ A note on trust: every copy of the addon checks each change it receives against 
 | `/ngm play` | open the Play Together tab |
 | `/ngm overview` | open the Overview tab |
 | `/ngm hof` | open the Hall of Fame tab |
+| `/ngm events` | open the Upcoming Events tab |
 | `/ngm craft <name>` | who in the guild can craft it (the Who Can Craft? window) |
 | `/ngm recruit` | open the Recruitment tab |
 | `/ngm options` | open the options |
 | `/ngm diag` | report what the Guild & Communities shortcut, the guild roster hooks and the /who whisper buttons and the Invite prompt can see, and which name and version the addon uses for you |
 | `/ngm sync` | sync now and show sync stats |
+| `/ngm discord` | Guild Master: the update code for NGM Peon (ngmpeon.app, Sync tab, step 2); `/ngm discord all` sends everything |
+| `/ngm discord setup` | the short code for `/ngm-guild setup` in Discord |
+| `/ngm peon` | bring in the code from NGM Peon (ngmpeon.app, Sync tab, step 3) |
 | `/ngm audit` | open the Audit tab (officers) |
 | `/ngm dnw` | the Do Not Whisper window (the list, and who was whispered in the last 14 days) |
 | `/ngm minimap` | show or hide the minimap button |
