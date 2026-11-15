@@ -325,9 +325,9 @@ A note on trust: every copy of the addon checks each change it receives against 
 | `/ngm options` | open the options |
 | `/ngm diag` | report what the Guild & Communities shortcut, the guild roster hooks and the /who whisper buttons and the Invite prompt can see, and which name and version the addon uses for you |
 | `/ngm sync` | sync now and show sync stats |
-| `/ngm discord` | Guild Master: the update code for NGM Peon (ngmpeon.app, Sync tab, step 2); `/ngm discord all` sends everything |
+| `/ngm discord` | Guild Master: the update code for NGM Peon (in Discord: `/ngm dashboard`, Sync tab, step 2); `/ngm discord all` sends everything |
 | `/ngm discord setup` | the short code for `/ngm-guild setup` in Discord |
-| `/ngm peon` | bring in the code from NGM Peon (ngmpeon.app, Sync tab, step 3) |
+| `/ngm peon` | bring in the code from NGM Peon (in Discord: `/ngm dashboard`, Sync tab, step 3) |
 | `/ngm audit` | open the Audit tab (officers) |
 | `/ngm dnw` | the Do Not Whisper window (the list, and who was whispered in the last 14 days) |
 | `/ngm minimap` | show or hide the minimap button |

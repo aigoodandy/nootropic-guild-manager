@@ -248,7 +248,7 @@ end
 -- code -> { region, guild, has, hoursHash, records = { {key, t, a, v} } }, or nil and why
 function DC:ParsePeon(code)
     code = (code or ""):gsub("%s+", "")
-    if code == "" then return nil, "Paste the code from NGM Peon's dashboard (ngmpeon.app, Sync tab, step 3)." end
+    if code == "" then return nil, "Paste the code from NGM Peon (in Discord: /ngm dashboard, Sync tab, step 3)." end
     local body, sum = code:match("^NGMP1%.([A-Za-z0-9_%-]+)%.(%x%x%x%x%x%x%x%x)$")
     if not body then return nil, "That isn't a code from NGM Peon. It starts with NGMP1." end
     local payload = DC.Base64UrlDecode(body)
@@ -355,7 +355,7 @@ function DC:ReminderText(now)
     if not g then return nil end
     local peon = g.peon or {}
     if not (peon.made or ns.Sync:Value("GS:peon") == "1") then return nil end -- not using NGM Peon
-    local toDiscord = "Type |cffffffff/ngm discord|r and paste it on |cffffffffngmpeon.app|r (Sync tab, step 2)."
+    local toDiscord = "Type |cffffffff/ngm discord|r and paste it on NGM Peon's dashboard (in Discord: |cffffffff/ngm dashboard|r, Sync tab, step 2)."
     local ranks = self:MyRanks()
     if ranks and peon.ranks and self.RankSignature(ranks) ~= peon.ranks then
         return "your guild's ranks changed since you last updated NGM Peon. " .. toDiscord, "ranks", self.RankSignature(ranks)
@@ -372,7 +372,7 @@ function DC:ReminderText(now)
     end
     if not got or got >= late then
         lines[#lines + 1] = ("  " .. ns.GOLD .. "Discord to the game|r: ") .. (got and ("last done %d days ago. "):format(got) or "not done yet. ")
-            .. "Copy the Sync tab's step 3 code, type |cffffffff/ngm peon|r and press Bring In."
+            .. "Copy the code from the Sync tab, step 3 (in Discord: |cffffffff/ngm dashboard|r), type |cffffffff/ngm peon|r and press Bring In."
     end
     if #lines == 0 then return nil end
     return "time to sync with NGM Peon (best done daily).\n" .. table.concat(lines, "\n"), "days"
