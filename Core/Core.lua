@@ -369,10 +369,8 @@ local function PrintHelp()
     ns:Print("  |cffffffff/ngm events|r  - the guild's upcoming events from NGM Peon, and where to sign up")
     ns:Print(ns.GOLD .. "NGM Peon|r (your guild's Discord, ngmpeon.app):")
     ns:Print("  |cffffffff/ngm link|r  - in Discord, not here: link your characters for your rank role")
-    if gm then
-        ns:Print("  |cffffffff/ngm discord setup|r  - once: the code for /ngm-guild setup in Discord")
-        ns:Print("  |cffffffff/ngm discord|r  - what changed in game, for the Sync tab, step 2 (/ngm dashboard in Discord); add |cffffffffall|r for everything")
-    end
+    if gm then ns:Print("  |cffffffff/ngm discord setup|r  - once: the code for /ngm-guild setup in Discord") end
+    if officer then ns:Print("  |cffffffff/ngm discord|r  - what changed in game, for the Sync tab, step 2 (/ngm dashboard in Discord); add |cffffffffall|r for everything") end
     if officer then ns:Print("  |cffffffff/ngm peon|r  - bring in the Sync tab's step 3 code, for the whole guild") end
     ns:Print("  |cffffffff/ngm diag|r  - troubleshooting: version, sync, and the addon's hooks into game windows")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
