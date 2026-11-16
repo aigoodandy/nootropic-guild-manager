@@ -306,6 +306,17 @@ do
     held2 = {}
     DC:DesktopAtLogin()
     assert(printed[#printed] and printed[#printed]:find("2 changes", 1, true), tostring(printed[#printed]))
+    -- after Reload and Sync it always answers, even with nothing new
+    local n = #printed
+    DC:DesktopAtLogin()
+    assert(#printed == n, "a plain reload with nothing new: quiet")
+    ReloadUI = function() end
+    InCombatLockdown = function() return false end
+    _G.NGMPeonDesktop.codes = { code }
+    DC:ReloadAndSync()
+    DC:DesktopAtLogin()
+    assert(#printed == n + 1 and printed[#printed]:find("nothing new", 1, true), tostring(printed[#printed]))
+    assert(guildData.peon.reloadSync == nil, "said once")
     _G.NGMPeonDesktop = nil
 end
 
