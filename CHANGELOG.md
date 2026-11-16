@@ -6,6 +6,7 @@ Every release is on the [releases page](https://github.com/keasbeexd/nootropic-g
 
 - **Officers can send step 2.** An officer can now type `/ngm discord` and paste the code on NGM Peon's dashboard (Sync tab, step 2), signing in with Battle.net, so mains, Tank / Healer / DPS and When we play don't wait on the Guild Master. Rank names and permissions still come in only from the Guild Master's code (only their game sees every rank's settings), and `/ngm discord setup` stays the Guild Master's.
 - The once-a-day reminder tells officers about step 2 as well, counting from the last code NGM Peon got from anyone in the guild.
+- **Install reminders know alts.** Remind someone on their main and their alts show "(reminded)" too, not "(missing)", in the Find tab, tooltips and profiles. "(reminded)" stays clickable to send the reminder again (an hour after the last one, so a double click doesn't send it twice).
 
 ## 3.0.5
 

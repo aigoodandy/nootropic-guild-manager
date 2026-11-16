@@ -7,15 +7,19 @@
 
       IR:<member> = "<time>"   who reminded them (the record's author) and when
 
-    Shared, so the whole guild sees who's been asked: nobody is reminded
-    twice within 30 days (the record expires then). Sent only by your click,
-    never automatically. The text is yours to change (Settings().installReminder).
+    Shared, so the whole guild sees who's been asked (the record expires
+    after 30 days). A reminder to one of a player's characters counts for
+    their mains and alts too, so the others show as reminded. It can be sent
+    again (an hour after the last one, so two clicks don't send it twice).
+    Sent only by your click, never automatically. The text is yours to
+    change (Settings().installReminder).
 ]]
 local _, ns = ...
 local IR = {}
 ns.InstallReminder = IR
 
 IR.KEEP = 30 * 86400
+IR.AGAIN = 3600 -- a reminder can be sent again an hour after the last
 IR.DEFAULT = "Hi $first! Our guild uses Nootropic Guild Manager, a free addon: see who can craft what, "
     .. "who's on near your level, guild profiles and our Hall of Fame. Get it on CurseForge, Wago or WowUp "
     .. "(search Nootropic Guild Manager), then type /ngm."
@@ -30,13 +34,33 @@ function IR:SetText(text)
     ns.DB:Settings().installReminder = (text ~= "" and text ~= self.DEFAULT) and text or nil
 end
 
--- When and by whom `full` was last reminded (within 30 days): t, by. Or nil.
-function IR:Reminded(full)
+local function Own(full)
     local rec = full and ns.Sync:Get("IR:" .. full)
     if not rec or (rec.v or "") == "" then return nil end
-    if rec.t < ns.DB:Now() - self.KEEP then return nil end
-    return rec.t, rec.a
+    if rec.t < ns.DB:Now() - IR.KEEP then return nil end
+    return rec
 end
+
+-- When and by whom `full` (or another of the same player's characters) was
+-- last reminded, within 30 days: t, by, and which character got it. Or nil.
+function IR:Reminded(full)
+    if not full then return nil end
+    local best, via = Own(full), full
+    local DB = ns.DB
+    if DB.RootOf and DB.GetAltsOf then
+        local root = DB:RootOf(full)
+        local family = DB:GetAltsOf(root)
+        family[#family + 1] = root
+        for _, name in ipairs(family) do
+            local rec = name ~= full and Own(name)
+            if rec and (not best or rec.t > best.t) then best, via = rec, name end
+        end
+    end
+    if not best then return nil end
+    return best.t, best.a, via
+end
+
+local function Who(by) return (by == ns.PlayerFullName()) and "You" or ns.ShortName(by or "?") end
 
 -- Can you remind `e` right now? true, or false and why (for menus and tooltips).
 function IR:Can(e)
@@ -44,9 +68,8 @@ function IR:Can(e)
     if e.isSelf then return false, "That's you." end
     if e.hasAddon then return false, "Already uses the addon." end
     local t, by = self:Reminded(e.full)
-    if t then
-        local who = (by == ns.PlayerFullName()) and "You" or ns.ShortName(by or "?")
-        return false, ("%s reminded them %s."):format(who, ns.FormatAgo(t))
+    if t and t > ns.DB:Now() - self.AGAIN then
+        return false, ("%s reminded them %s. It can be sent again an hour after."):format(Who(by), ns.FormatAgo(t))
     end
     if not e.online then return false, "Only while they're online (it's a whisper)." end
     return true
@@ -55,9 +78,10 @@ end
 -- One line for tooltips: "Reminded by Marc 3 days ago", or nil.
 function IR:StatusLine(e)
     if not e or e.hasAddon then return nil end
-    local t, by = self:Reminded(e.full)
+    local t, by, via = self:Reminded(e.full)
     if not t then return nil end
-    return ("Reminded to install by %s %s"):format(ns.ShortName(by or "?"), ns.FormatAgo(t))
+    return ("Reminded to install by %s %s%s"):format(ns.ShortName(by or "?"), ns.FormatAgo(t),
+        via ~= e.full and (" (on " .. ns.ShortName(via) .. ")") or "")
 end
 
 function IR:Message(e)
@@ -85,7 +109,9 @@ end
 function IR:Preview(e)
     local ok, why = self:Can(e)
     if not ok then return why end
-    return "They'll get:\n|cffff80ff" .. self:Message(e) .. "|r\n\nOnce per 30 days, for the whole guild. Change the text in Options > Install Reminder."
+    local status = self:StatusLine(e)
+    return (status and (status .. ". Click to send it again.\n\n") or "") .. "They'll get:\n|cffff80ff" .. self:Message(e)
+        .. "|r\n\nThe whole guild sees who was reminded. Change the text in Options > Install Reminder."
 end
 
 -- Menu items for a member (Find tab and the game's roster), or nil when
@@ -93,7 +119,8 @@ end
 function IR:MenuItem(e)
     if not e or e.hasAddon or e.isSelf then return nil end
     local ok, why = self:Can(e)
-    return { text = "Remind to install the addon", disabled = not ok,
-             tooltip = { title = "Remind to install the addon", text = self:Preview(e) },
+    local label = self:Reminded(e.full) and "Remind again to install the addon" or "Remind to install the addon"
+    return { text = label, disabled = not ok,
+             tooltip = { title = label, text = self:Preview(e) },
              func = function() IR:Send(e) end }
 end

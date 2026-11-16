@@ -835,8 +835,8 @@ local function BuildRow(row)
     row.Version = Text(cells.version)
     row.Version:SetPoint("LEFT", 6, 0)
     row.Version:SetPoint("RIGHT", -4, 0)
-    -- "(missing)" is a button while they can be reminded: one click whispers
-    -- them the install reminder (Services/InstallReminder.lua)
+    -- "(missing)" or "(reminded)" is a button while they can be reminded: one
+    -- click whispers them the install reminder (Services/InstallReminder.lua)
     local remind = CreateFrame("Button", nil, cells.version)
     remind:SetPoint("TOPLEFT", 0, 0)
     remind:SetPoint("BOTTOMRIGHT", 0, 0)
@@ -849,7 +849,7 @@ local function BuildRow(row)
     remind:SetScript("OnEnter", function(btn)
         local e = btn:GetParent():GetParent():GetParent().entry
         GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Click to remind them to install the addon")
+        GameTooltip:AddLine(ns.InstallReminder:Reminded(e and e.full) and "Click to remind them again" or "Click to remind them to install the addon")
         GameTooltip:AddLine(ns.InstallReminder:Preview(e), 1, 1, 1, true)
         GameTooltip:Show()
     end)
@@ -971,7 +971,8 @@ function RV:InitRow(row, e)
         row.Remind:SetShown(canRemind and true or false)
         if not e.hasAddon then
             if ns.InstallReminder:Reminded(e.full) then
-                row.Version:SetText("|cff6e6e6e(reminded)|r")
+                -- reminded (maybe on another of their characters); clickable to send again
+                row.Version:SetText(canRemind and "|cff66bbff(reminded)|r" or "|cff6e6e6e(reminded)|r")
             elseif canRemind then
                 row.Version:SetText("|cff66bbff(missing)|r") -- clickable: online, not reminded yet
             else
