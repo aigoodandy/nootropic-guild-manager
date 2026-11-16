@@ -7,6 +7,7 @@ ignore:
   - tests
   - preview.png
   - CHANGELOG.md
+  - SECURITY.md
   - .github
   - .gitattributes
   - .luajit
