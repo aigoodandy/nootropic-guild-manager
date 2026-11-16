@@ -216,7 +216,7 @@ function TV:Refresh()
     for _, e in ipairs(lists.online) do data[#data + 1] = e end
     data[#data + 1] = { header = ("Usually on around now %s(%d)|r"):format(GRAY, #lists.usual) .. GRAY .. "  offline, but they often play at this hour|r" }
     if #lists.usual == 0 then
-        data[#data + 1] = { header = GRAY .. "Nobody else usually plays at this hour (only guildmates using the addon share their hours).|r" }
+        data[#data + 1] = { header = GRAY .. "Nobody else usually plays at this hour (only guildmates using the NGM Addon share their hours).|r" }
     end
     for _, e in ipairs(lists.usual) do data[#data + 1] = e end
     local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition

@@ -172,10 +172,10 @@ function RV:Refresh()
     local n = 0
     for _ in pairs(crafters) do n = n + 1 end
     if self.member then
-        self.empty:SetText(#list == 0 and ((text ~= "" and "No matching recipes." or "They haven't shared any recipes yet.") .. "\n\n" .. GRAY .. "Recipes are shared when they open a profession window with the addon running.|r") or "")
+        self.empty:SetText(#list == 0 and ((text ~= "" and "No matching recipes." or "They haven't shared any recipes yet.") .. "\n\n" .. GRAY .. "Recipes are shared when they open a profession window with the NGM Addon running.|r") or "")
     elseif #text < 2 then
         self.empty:SetText(n == 0
-            and ("Nobody has shared recipes yet.\n\n" .. GRAY .. "Recipes are shared automatically when a guildmate with the addon opens one of their profession windows.|r")
+            and ("Nobody has shared recipes yet.\n\n" .. GRAY .. "Recipes are shared automatically when a guildmate with the NGM Addon opens one of their profession windows.|r")
             or ("Type at least two letters of a recipe or item name.\n\n" .. GRAY .. "Searching recipes shared by " .. n .. " guildmate" .. (n == 1 and "" or "s") .. ".|r"))
     else
         self.empty:SetText(#list == 0 and "Nobody in the guild has shared that recipe." or "")

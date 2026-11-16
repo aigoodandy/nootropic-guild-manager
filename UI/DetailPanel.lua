@@ -220,7 +220,7 @@ function DP:Build()
     end)
     remind:SetScript("OnEnter", function(btn)
         GameTooltip:SetOwner(btn, "ANCHOR_TOP")
-        GameTooltip:AddLine("Remind to install the addon")
+        GameTooltip:AddLine("Remind to install the NGM Addon")
         GameTooltip:AddLine(ns.InstallReminder:Preview(DP.entry), 1, 1, 1, true)
         GameTooltip:Show()
     end)
@@ -606,7 +606,7 @@ function DP:BuildProfSection(parent)
     s.Recipes = SmallButton(s, "Recipes", 110)
     s.Recipes:SetPoint("TOPRIGHT", 0, 2)
     s.Recipes:SetScript("OnClick", function() if DP.entry then ns.RecipesView:Open({ member = DP.entry.full }) end end)
-    W.Tooltip(s.Recipes, "Recipes", "Every recipe they've shared. Recipes are shared automatically when they open a profession window with the addon running.")
+    W.Tooltip(s.Recipes, "Recipes", "Every recipe they've shared. Recipes are shared automatically when they open a profession window with the NGM Addon running.")
     self.prof = s
 end
 
@@ -677,7 +677,7 @@ function DP:RefreshRaids(e)
     s.Note:ClearAllPoints()
     s.Note:SetPoint("TOPLEFT", 0, y - 6)
     s.Note:SetText(done and "Worked out by their own addon from completed quests and the items in their bags. Hover a line for details."
-        or "Unknown: they don't use the addon (or haven't logged in since it was updated). The game doesn't let addons check anyone else's quests or bags.")
+        or "Unknown: they don't use the NGM Addon (or haven't logged in since it was updated). The game doesn't let addons check anyone else's quests or bags.")
     s:SetHeight(-y + 6 + math.ceil(s.Note:GetStringHeight()) + 4)
 end
 
@@ -1462,10 +1462,10 @@ function DP:Refresh(forceText)
     self.remindButton:SetShown(canRemind)
     self.footer:SetPoint("BOTTOMRIGHT", canRemind and -134 or -14, 10)
     if e.hasAddon then
-        self.footer:SetText("|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t Uses the addon"
+        self.footer:SetText("|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t Uses the NGM Addon"
             .. (e.version and (" (" .. e.version .. ")") or "") .. " - synced " .. ns.FormatAgo(e.syncedAt))
     else
-        self.footer:SetText(ns.InstallReminder:StatusLine(e) or "Doesn't use the addon yet.")
+        self.footer:SetText(ns.InstallReminder:StatusLine(e) or "Doesn't use the NGM Addon yet.")
         self.remindButton:SetEnabled((ns.InstallReminder:Can(e)))
     end
 

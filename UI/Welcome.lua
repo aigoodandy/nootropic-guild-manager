@@ -32,7 +32,7 @@ local function Pages()
     local list = {
         { key = "welcome", icon = D.LOGO, full = true, title = "Welcome to Nootropic Guild Manager",
           text = "Your whole guild in one window, built for WoW: Forever.\n\n"
-              .. "Every guildmate running the addon shares what their own copy knows: spec, professions, recipes, raid attunements and when they usually play. The more of the guild uses it, the more it knows.\n\n"
+              .. "Every guildmate running the NGM Addon shares what their own copy knows: spec, professions, recipes, raid attunements and when they usually play. The more of the guild uses it, the more it knows.\n\n"
               .. "This short tour shows what's where and lets you choose what you share. It takes about a minute." },
         { key = "find", icon = TAB_ICONS[1], title = "Find",
           text = "Search the whole guild by name, class, spec, profession, Discord or notes. Every main is grouped with their alts.\n\n"
@@ -70,7 +70,7 @@ local function Pages()
                 .. "Profiles also get an Officer tab with the officer log, the character's history, when they joined and since when they've held their rank." }
     end
     list[#list + 1] = { key = "sharing", icon = "Interface\\Icons\\INV_Letter_15", title = "What You Share",
-        text = "Two things only your copy of the addon knows: your recipes and when you usually play. Keep them to yourself if you like; change it any time in Options > Sharing." }
+        text = "Two things only your copy of the NGM Addon knows: your recipes and when you usually play. Keep them to yourself if you like; change it any time in Options > Sharing." }
     list[#list + 1] = { key = "profile", icon = "Interface\\Icons\\INV_Misc_Note_01", title = "Your Profile",
         text = "A few basics guildmates see on your profile. All optional; you can edit them later from your profile's Edit button." }
     if ns.DB:IsGuildMaster() then

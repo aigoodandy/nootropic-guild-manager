@@ -697,7 +697,7 @@ function RCV:BuildPanel(page, inset)
     local view = W.Button(panel, "Do Not Whisper List", 150, 22, "alt")
     view:SetPoint("LEFT", replyBtn, "RIGHT", 6, 0)
     view:SetScript("OnClick", function() ns.DNWView:Open() end)
-    W.Tooltip(view, "Do Not Whisper list", "Who is on it for good, and who was whispered in the last 14 days (with the time left). Shared with everyone in the guild using the addon.")
+    W.Tooltip(view, "Do Not Whisper list", "Who is on it for good, and who was whispered in the last 14 days (with the time left). Shared with everyone in the guild using the NGM Addon.")
     self.panelLast = replyBtn
 
     -- Grow the scroll area to fit (the preview's height changes with the text).

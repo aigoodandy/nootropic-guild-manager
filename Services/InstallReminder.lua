@@ -64,7 +64,7 @@ local function Who(by) return (by == ns.PlayerFullName()) and "You" or ns.ShortN
 function IR:Can(e)
     if not e then return false, "Unknown member." end
     if e.isSelf then return false, "That's you." end
-    if e.hasAddon then return false, "Already uses the addon." end
+    if e.hasAddon then return false, "Already uses the NGM Addon." end
     local t, by = self:Reminded(e.full)
     if t then return false, ("%s reminded them %s."):format(Who(by), ns.FormatAgo(t)) end
     if not e.online then return false, "Only while they're online (it's a whisper)." end
@@ -96,7 +96,7 @@ function IR:Send(e)
     if msg == "" then return false, "The reminder text is empty." end
     ns.Recruit.SendWhisper(msg, ns.ChatName(e.full))
     ns.Sync:Set("IR:" .. e.full, tostring(ns.DB:Now()))
-    ns:Print(("Reminded %s to install the addon."):format(e.short))
+    ns:Print(("Reminded %s to install the NGM Addon."):format(e.short))
     return true
 end
 
@@ -113,7 +113,7 @@ end
 function IR:MenuItem(e)
     if not e or e.hasAddon or e.isSelf then return nil end
     local ok, why = self:Can(e)
-    return { text = "Remind to install the addon", disabled = not ok,
-             tooltip = { title = "Remind to install the addon", text = self:Preview(e) },
+    return { text = "Remind to install the NGM Addon", disabled = not ok,
+             tooltip = { title = "Remind to install the NGM Addon", text = self:Preview(e) },
              func = function() IR:Send(e) end }
 end

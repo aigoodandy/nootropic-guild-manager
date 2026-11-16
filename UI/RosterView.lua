@@ -423,13 +423,13 @@ function RV:BuildToolbar(page, frame)
     local filter = MenuButton(page, "Filter", 96, "right")
     filter:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -32)
     filter:SetScript("OnClick", function() RV:TogglePanel(RV.filterPanel) end)
-    W.Tooltip(filter, "Filter", "Online only, mains or alts, class, rank, and guildmates using the addon.")
+    W.Tooltip(filter, "Filter", "Online only, mains or alts, class, rank, and guildmates using the NGM Addon.")
     self.filterBtn = filter
 
     local craft = W.Button(page, "Who Can Craft?", 120, 22)
     craft:SetPoint("RIGHT", filter, "LEFT", -6, 0)
     craft:SetScript("OnClick", function() ns.RecipesView:Open() end)
-    W.Tooltip(craft, "Who can craft it?", "Search the recipes guildmates share and see who can make it. Recipes are shared automatically when someone with the addon opens one of their profession windows. Also /ngm craft <name>.")
+    W.Tooltip(craft, "Who can craft it?", "Search the recipes guildmates share and see who can make it. Recipes are shared automatically when someone with the NGM Addon opens one of their profession windows. Also /ngm craft <name>.")
 
     -- summary line
     local clear = CreateFrame("Button", nil, page)
@@ -552,7 +552,7 @@ function RV:BuildFilterPanel(page)
         W.ShowMenu(btn, items)
     end)
 
-    local addon = Check(p, "Only guildmates using the addon")
+    local addon = Check(p, "Only guildmates using the NGM Addon")
     addon:SetPoint("TOPLEFT", 10, -118)
     addon:SetScript("OnClick", function(self)
         RV:Filters().addonOnly = self:GetChecked() and true or nil
@@ -628,7 +628,7 @@ function RV:RefreshFilterInfo()
     if f.kind then add(KIND_LABELS[f.kind]:lower()) end
     if f.classFile then add(("|c%s%s|r"):format(ns.ClassHex(f.classFile), D:ClassName(f.classFile))) end
     if f.rank then add(f.rank) end
-    if f.addonOnly then add("using the addon") end
+    if f.addonOnly then add("using the NGM Addon") end
     self.filterInfo:SetText(table.concat(parts, "  |cff6e6e6e-|r  "))
     self.clearBtn:SetShown(#parts > 0)
     self.filterBtn:SetText(filterCount > 0 and ("Filter (%d)"):format(filterCount) or "Filter")
@@ -849,7 +849,7 @@ local function BuildRow(row)
     remind:SetScript("OnEnter", function(btn)
         local e = btn:GetParent():GetParent():GetParent().entry
         GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Click to remind them to install the addon")
+        GameTooltip:AddLine("Click to remind them to install the NGM Addon")
         GameTooltip:AddLine(ns.InstallReminder:Preview(e), 1, 1, 1, true)
         GameTooltip:Show()
     end)
@@ -1021,7 +1021,7 @@ function RV:AddMemberLines(e)
     if e.hasAddon then
         GameTooltip:AddDoubleLine("Addon version", e.version or "?", 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
     else
-        GameTooltip:AddLine(ns.InstallReminder:StatusLine(e) or "Not reminded to install the addon yet", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine(ns.InstallReminder:StatusLine(e) or "Not reminded to install the NGM Addon yet", 0.5, 0.5, 0.5)
     end
     if e.note and e.note ~= "" then GameTooltip:AddLine(e.note, 0.85, 0.85, 0.85, true) end
 end
@@ -1144,7 +1144,7 @@ function RV:Refresh()
     local SEP = "  |cff6e6e6e-|r  "
     local summary = (total == 1 and "1 member" or (total .. " members")) .. SEP
         .. ("|cff20ff20%d online|r"):format(online) .. SEP
-        .. (withAddon == 1 and "1 using the addon" or (withAddon .. " using the addon"))
+        .. (withAddon == 1 and "1 using the NGM Addon" or (withAddon .. " using the NGM Addon"))
     if #list ~= total then summary = summary .. SEP .. ((ns.GOLD .. "showing %d|r")):format(#list) end
     self.countText:SetText(summary)
 

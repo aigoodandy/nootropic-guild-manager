@@ -215,17 +215,17 @@ function O:BuildMain()
 
     L:Header("How It Works")
     L:Text(("Open the window with |cffffffff/ngm|r or the minimap button. Its tabs: " .. ns.GOLD .. "Find|r (search the guild), " .. ns.GOLD .. "Play Together|r (who's around near your level), " .. ns.GOLD .. "Recruitment|r and, for officers, " .. ns.GOLD .. "Audit|r. Click anyone for their profile: spec, professions and recipes, raid readiness, contact info and your private notes."))
-    L:Text(("Everyone running the addon shares what their own copy knows: spec, professions, recipes (when they open a profession window), raid attunements and when they usually play. The more of the guild uses it, the more it knows. Private notes never leave your computer. The " .. ns.GOLD .. "About|r page below has links and credits."), "NGMFontDimSmall")
+    L:Text(("Everyone running the NGM Addon shares what their own copy knows: spec, professions, recipes (when they open a profession window), raid attunements and when they usually play. The more of the guild uses it, the more it knows. Private notes never leave your computer. The " .. ns.GOLD .. "About|r page below has links and credits."), "NGMFontDimSmall")
     L:Space(4)
 
     L:Header("Appearance")
-    self.addonCountCheck = L:Check("Show how many guildmates use the addon",
+    self.addonCountCheck = L:Check("Show how many guildmates use the NGM Addon",
         "The \"x using ... Guild Manager\" text at the bottom of the window.", function(on)
             ns.DB:Settings().showAddonCount = on
             ns:Fire("SETTINGS_CHANGED")
         end)
     self.communitiesCheck = L:Check("Shortcut on the Guild & Communities window",
-        "A side tab with the addon icon.", function(on) ns.Communities:SetEnabled(on) end)
+        "A side tab with the NGM Addon icon.", function(on) ns.Communities:SetEnabled(on) end)
     self.blizzRosterCheck = L:Check("Show alts and profiles on the Guild roster",
         "On the game's Guild & Communities roster: this addon's details in the tooltip, and Profile and Main / Alt in the right-click menu. Alt+click a member for their profile.",
         function(on) ns.GuildRoster:SetEnabled(on) end)
@@ -239,7 +239,7 @@ function O:BuildMain()
     self.learnCheck = L:Check("Learn when I usually play",
         "Notes the hour every 10 minutes while you play (last 4 weeks, this computer only) and shares just the summary, shown as \"Usually online\" on your profile. Off: nothing is noted or shared. (This character.)",
         function(on) ns.Profile:SetLearn(on) end)
-    L:Text("Only what comes from your own copy of the addon has a switch. Your spec, professions, statistics (never gold) and guild chat time (never the words) are always shared: they're public anyway, from Blizzard and the game.", "NGMFontDimSmall")
+    L:Text("Only what comes from your own copy of the NGM Addon has a switch. Your spec, professions, statistics (never gold) and guild chat time (never the words) are always shared: they're public anyway, from Blizzard and the game.", "NGMFontDimSmall")
     local wy = L:Row(30)
     local tour = W.Button(L.panel, "Show the Welcome Tour", 190, 24, "alt")
     tour:SetPoint("TOPLEFT", 18, wy)
@@ -249,7 +249,7 @@ function O:BuildMain()
 
     -- Install reminder: the whisper "Remind to install the addon" sends
     L:Header("Install Reminder")
-    L:Text(("What guildmates without the addon get when you click " .. ns.GOLD .. "Remind to install the addon|r on their profile or right-click menu. ")
+    L:Text(("What guildmates without the NGM Addon get when you click " .. ns.GOLD .. "Remind to install the NGM Addon|r on their profile or right-click menu. ")
         .. (ns.GOLD .. "$first|r, " .. ns.GOLD .. "$name|r and " .. ns.GOLD .. "$guild|r are filled in. Add your Discord invite if you'd like it to cover that too. Once per 30 days per player (alts count), for the whole guild. Saved as you type."))
     local ry = L:Row(84)
     local ef, box = W.ScrollEditor(L.panel, 255)
@@ -370,7 +370,7 @@ function O:BuildRecruiting()
 
     L:Header("Auto-Invite")
     self.autoCheck = L:Check("Invite popup when they reply with a keyword",
-        "Only replies from players you whispered from the addon are checked. WoW: Forever only lets you send guild invites yourself, so this pops up an Invite button to click.", function(on)
+        "Only replies from players you whispered from the NGM Addon are checked. WoW: Forever only lets you send guild invites yourself, so this pops up an Invite button to click.", function(on)
             local r = ns.Recruit:Settings()
             if r then r.autoInvite = on end
             RecruitChanged()
@@ -385,7 +385,7 @@ function O:BuildRecruiting()
 
     L:Header("Do Not Whisper")
     self.dnwCheck = L:Check("Add people to the Do Not Whisper list",
-        "When someone answers the addon's whisper with one of these words, nobody in the guild whispers or invites them again. Replies after you've whispered them yourself don't count.",
+        "When someone answers the NGM Addon's whisper with one of these words, nobody in the guild whispers or invites them again. Replies after you've whispered them yourself don't count.",
         function(on)
             local r = ns.Recruit:Settings()
             if r then r.dnwEnabled = on end
@@ -403,7 +403,7 @@ function O:BuildRecruiting()
     local view = W.Button(L.panel, "View List", 100, 22, "alt")
     view:SetPoint("TOPLEFT", 290, y)
     view:SetScript("OnClick", function() ns.DNWView:Open() end)
-    W.Tooltip(view, "Do Not Whisper list", "Who is on it for good, and who was whispered in the last 14 days (with the time left). Shared with everyone in the guild using the addon.")
+    W.Tooltip(view, "Do Not Whisper list", "Who is on it for good, and who was whispered in the last 14 days (with the time left). Shared with everyone in the guild using the NGM Addon.")
     self.dnwView = view
     L:Finish()
     return outer
@@ -589,7 +589,7 @@ function O:BuildAbout()
         .. (ns.GOLD .. "Upcoming Events|r  the guild's dungeons, raids and nights from NGM Peon: when, who's coming and where to sign up.\n")
         .. (ns.GOLD .. "Recruitment|r  friendly whispers to players without a guild, a guild-wide 14-day lockout and a shared Do Not Whisper list.\n")
         .. (ns.GOLD .. "For officers|r  an audit of every change (joins, leaves, promotions, level-ups), an officer log, and Guild Master permissions."))
-    L:Text("Everything is shared with guildmates running the addon, so the more of the guild uses it, the more it knows. NGM Peon (optional) carries it to your guild's Discord and back.", "NGMFontDimSmall")
+    L:Text("Everything is shared with guildmates running the NGM Addon, so the more of the guild uses it, the more it knows. NGM Peon (optional) carries it to your guild's Discord and back.", "NGMFontDimSmall")
 
     L:Header("Links")
     L:Text("Click the link, press |cffffffffCtrl+C|r, and paste it into your browser.", "NGMFontDimSmall", 4)
