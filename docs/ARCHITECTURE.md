@@ -109,7 +109,7 @@ Hall of Fame extras (Services/HallOfFame.lua): `social` is a count of 15-minute 
 | `HB:<period>` | NGM Peon's Hall of Fame for `all`, `month` or `last`: `<month>;<card>:<name>~<n>,.../_t:<card>~<n>,...` (top 5 per card, base 36; from `/ngm peon`). A guild using NGM Peon shows these instead of its own boards | guild | officers |
 | `HA:<month>` | that month's champions were announced in guild chat (the time; author = who announced) | guild | officers |
 | `HC:<member>` | Hall of Fame numbers checked against the game on inspect: `<time>;ok` or `<time>;bad;key=claimed/real,...` | officer | officers |
-| `IR:<member>` | when they were reminded to install the addon (the time; the record's author is who reminded them; kept 30 days; counts for their mains and alts too, and can be sent again after an hour) | guild | anyone in the guild |
+| `IR:<member>` | when they were reminded to install the addon (the time; the record's author is who reminded them; kept 30 days; counts for their mains and alts too) | guild | anyone in the guild |
 | `PS:<member>` | sharing choices others must respect (`together` = leave me out of Play Together) | guild | the member only |
 | `DN:<player>` | `time;what they said` ("" = removed) | guild | anyone adds; removing needs **recruit** |
 | `RS:<player>` | `whispered;replied;invited;reply` (kept 14 days) | guild | anyone in the guild |
