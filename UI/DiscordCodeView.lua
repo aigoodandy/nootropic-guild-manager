@@ -1,7 +1,8 @@
 --[[
     Nootropic Guild Manager - /ngm discord: codes for NGM Peon
-    Shows the Guild Master the code to paste on NGM Peon's dashboard (the
-    update code: ranks and what changed in game) or into /ngm-guild setup in
+    Shows the Guild Master or an officer the code to paste on NGM Peon's
+    dashboard (the update code: ranks and what changed in game; an officer's
+    ranks are left out) or, the Guild Master only, into /ngm-guild setup in
     Discord (/ngm discord setup: the short setup code). Copying works like the invite prompt: the code is selected for
     you to press Ctrl+C; the addon never touches the clipboard or chat box.
 
@@ -102,11 +103,13 @@ function V:Open(mode)
             .. (ns.GOLD .. "2.|r Type |cffffffff/ngm dashboard|r in Discord: |cffffffffSync|r tab, step 2.\n")
             .. (ns.GOLD .. "3.|r Paste it, then sign in with Battle.net."))
         local changes = ("%d main / alt and Tank / Healer / DPS record%s"):format(count or 0, count == 1 and "" or "s")
+        local gm = ns.DB:IsGuildMaster()
+        local extra = gm and "your ranks and When we play" or "When we play (ranks come from the Guild Master's code)"
         if everything then
-            self.what:SetText("Everything: your ranks, When we play, and " .. changes .. ".")
+            self.what:SetText("Everything: " .. extra .. ", and " .. changes .. ".")
         else
-            self.what:SetText(("Holds %s changed in game since %s (NGM Peon skips any it already has), plus your ranks and When we play. "
-                .. "|cffffffff/ngm discord all|r sends everything."):format(changes, date("%b %d", since or 0)))
+            self.what:SetText(("Holds %s changed in game since %s (NGM Peon skips any it already has), plus %s. "
+                .. "|cffffffff/ngm discord all|r sends everything."):format(changes, date("%b %d", since or 0), extra))
         end
     end
     self.box:SetText(code)

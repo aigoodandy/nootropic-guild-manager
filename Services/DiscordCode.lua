@@ -12,7 +12,8 @@
     tests/test_discord_code.lua checks both sides make the same code.
 
     The code proves nothing by itself: NGM Peon still has the Guild Master
-    sign in with Battle.net.
+    sign in with Battle.net (the update code: the Guild Master or an officer;
+    an officer's ranks are left out).
 
     NGM2, the update code (pasted on the dashboard's Sync tab, step 2), is NGM1's
     lines, an empty line, then what changed in game:
@@ -162,12 +163,16 @@ function DC:Region()
 end
 
 -- The code for the player's own guild. Only the Guild Master's game is
--- sure to see every rank's settings, so only the Guild Master makes it.
+-- sure to see every rank's settings, so only the Guild Master makes the
+-- setup code. An officer may make the update code: NGM Peon takes
+-- everything in it but the ranks (their game may not see every rank's
+-- settings, so those it doesn't know go as "--").
 -- The guild's ranks as the game has them: { { name, officer, invite } }, or nil and why.
-function DC:MyRanks()
+function DC:MyRanks(guess)
     local ranks = {}
     for _, r in ipairs(ns.DB:GuildRanks()) do
         local f = r.index == 0 and { officer = true, invite = true } or ns.Sync:RankFlags(r.index)
+        if not f and guess then f = { officer = false, invite = false } end
         if not f then
             return nil, "The game isn't sharing your ranks' settings right now. Open the guild window's rank settings once, then try again."
         end
@@ -187,12 +192,16 @@ end
 function DC:ForMyGuild(mode)
     local guild = GetGuildInfo and GetGuildInfo("player")
     if not guild then return nil, "You're not in a guild." end
-    if not (ns.DB.IsGuildMaster and ns.DB:IsGuildMaster()) then
-        return nil, "Only the Guild Master can make codes for NGM Peon: only their game sees every rank's settings. Ask them to do it (Sync tab, step 2)."
+    local gm = ns.DB.IsGuildMaster and ns.DB:IsGuildMaster()
+    if not gm and mode == "setup" then
+        return nil, "Only the Guild Master can make the setup code: only their game sees every rank's settings."
+    end
+    if not gm and not (ns.IsOfficer and ns.IsOfficer()) then
+        return nil, "Only the Guild Master or an officer can make codes for NGM Peon. Ask one of them (Sync tab, step 2)."
     end
     local region = self:Region()
     if not region then return nil, "NGM Peon serves the US and EU regions only, for now." end
-    local ranks, why = self:MyRanks()
+    local ranks, why = self:MyRanks(not gm)
     if not ranks then return nil, why end
     if mode == "setup" then return self:Make(region, guild, ranks) end
     -- the update code: only what changed since NGM Peon last had it all
@@ -214,7 +223,7 @@ function DC:ForMyGuild(mode)
     local tabard = (bg and border) and { bg = bg, border = border, emblem = emblem } or nil
     local code = self:MakeUpdate(region, guild, ranks, { since = since, upto = upto, hours = hours, records = records, tabard = tabard })
     g.peon.made = upto
-    g.peon.ranks = self.RankSignature(ranks)
+    if gm then g.peon.ranks = self.RankSignature(ranks) end
     return code, nil, since == 0, #records, since
 end
 
@@ -356,13 +365,14 @@ function DC:ApplyPeon(code)
 end
 
 ------------------------------------------------------------------------
--- The reminder: the Guild Master of a guild using NGM Peon is told when the
--- two are out of step: 3 days or more since the last update code (game to
--- Discord) or since anyone in the guild brought in NGM Peon's code (Discord
--- to the game; GS:peonat, written by the officer who did), or the ranks
--- changed in game since. Officers are told the second part only (only the
--- Guild Master can do the first). Once a day (ranks: once per change),
--- never in combat.
+-- The reminder: the Guild Master and officers of a guild using NGM Peon are
+-- told when the two are out of step: 3 days or more since NGM Peon last had
+-- an update code (game to Discord: the newest it said it has, or this
+-- player's own last code) or since anyone in the guild brought in NGM Peon's
+-- code (Discord to the game; GS:peonat, written by the officer who did).
+-- The Guild Master is also told when the ranks changed in game since (only
+-- their code brings ranks in). Once a day (ranks: once per change), never in
+-- combat.
 ------------------------------------------------------------------------
 DC.REMIND_AFTER = 3 * 86400
 
@@ -375,7 +385,7 @@ function DC:ReminderText(now)
     if not g then return nil end
     local peon = g.peon or {}
     -- not using NGM Peon (an officer only knows once its code has come in)
-    if not ((isGM and peon.made) or ns.Sync:Value("GS:peon") == "1") then return nil end
+    if not (peon.made or ns.Sync:Value("GS:peon") == "1") then return nil end
     local toDiscord = "Type |cffffffff/ngm discord|r and paste it on NGM Peon's dashboard (in Discord: |cffffffff/ngm dashboard|r, Sync tab, step 2)."
     local ranks = self:MyRanks()
     if isGM and ranks and peon.ranks and self.RankSignature(ranks) ~= peon.ranks then
@@ -383,12 +393,13 @@ function DC:ReminderText(now)
     end
     -- what's overdue, each way (best done daily; told after REMIND_AFTER)
     local function ago(t) return t and math.floor((now - t) / 86400) or nil end
-    local sent = ago(peon.made)
+    local last = math.max(peon.made or 0, peon.has or 0)
+    local sent = last > 0 and ago(last) or nil
     local rec = ns.Sync:Get("GS:peonat") -- when anyone in the guild last brought in NGM Peon's code
     local got = ago(rec and tonumber(rec.v))
     local late = self.REMIND_AFTER / 86400
     local lines = {}
-    if isGM and (not sent or sent >= late) then
+    if not sent or sent >= late then
         lines[#lines + 1] = ("  " .. ns.GOLD .. "Game to Discord|r: ") .. (sent and ("last done %d days ago. "):format(sent) or "not done yet. ") .. toDiscord
     end
     if not got or got >= late then

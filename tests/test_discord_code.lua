@@ -31,7 +31,12 @@ local code = DC:ForMyGuild("setup")
 assert(code and code:find("^NGM1%."), tostring(code))
 gm = false
 local none, why = DC:ForMyGuild()
-assert(none == nil and why:find("Guild Master"))
+assert(none == nil and why:find("Guild Master or an officer"), why)
+-- an officer: never the setup code
+ns.IsOfficer = function() return true end
+none, why = DC:ForMyGuild("setup")
+assert(none == nil and why:find("Only the Guild Master"), why)
+ns.IsOfficer = nil
 gm, flags[2] = true, nil
 none, why = DC:ForMyGuild()
 assert(none == nil and why:find("settings"))
@@ -92,6 +97,15 @@ guildData.peon.has = now - 100
 local _, _, all3 = DC:ForMyGuild("all")
 assert(all3 == true, "/ngm discord all: everything")
 assert(DC:ForMyGuild("setup"):find("^NGM1%."), "/ngm discord setup: the short code")
+-- an officer: the update code (ranks their game can't see go as "--"), and the
+-- Guild Master's rank signature is left alone
+gm, ns.IsOfficer, flags[2] = false, function() return true end, nil
+local sig = guildData.peon.ranks
+local offCode = assert(DC:ForMyGuild("all"))
+local offBody = DC.Base64UrlDecode(offCode:match("^NGM2%.([^.]+)%."))
+assert(offBody:find("\nOI:Officer\n", 1, true) and offBody:find("\n--:Member\n", 1, true), "an unknown rank's settings: --")
+assert(guildData.peon.ranks == sig, "an officer's code doesn't change the rank signature")
+gm, ns.IsOfficer, flags[2] = true, nil, { officer = false, invite = false }
 -- the tabard's colours go in the update code (both of them: test 15 lost the border)
 ns.Accent = { Tabard = function() return "111111", "6a2c91", "3fae4a" end }
 local withColours = DC.Base64UrlDecode(DC:ForMyGuild("all"):match("^NGM2%.([^.]+)%."))
@@ -217,10 +231,17 @@ gm = false
 assert(DC:ReminderText(1000000 + 30 * 86400) == nil, "not an officer: nothing")
 -- an officer: only NGM Peon to the game (step 3), and only once NGM Peon's code has come in
 ns.IsOfficer = function() return true end
+local gmMade = guildData.peon.made
+guildData.peon.made = nil -- this officer never made a code
 assert(DC:ReminderText(1000000 + 30 * 86400) == nil, "an officer before NGM Peon's code: nothing")
 ns.Sync.Value = function(_, k) return k == "GS:peon" and "1" or nil end
 local off = assert(DC:ReminderText(1000000 + 30 * 86400))
-assert(off:find("Discord to the game", 1, true) and not off:find("Game to Discord", 1, true) and not off:find("ranks", 1, true), off)
+assert(off:find("Discord to the game", 1, true) and off:find("Game to Discord", 1, true) and not off:find("ranks", 1, true), off)
+-- game to Discord counts from the newest NGM Peon has, whoever sent it
+guildData.peon.has = 1000000 + 29 * 86400
+off = assert(DC:ReminderText(1000000 + 30 * 86400))
+assert(not off:find("Game to Discord", 1, true), off)
+guildData.peon.has, guildData.peon.made = nil, gmMade
 ns.Sync.Value = function() return nil end
 ns.IsOfficer = nil
 gm = true

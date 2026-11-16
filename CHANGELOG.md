@@ -2,6 +2,12 @@
 
 Every release is on the [releases page](https://github.com/keasbeexd/nootropic-guild-manager/releases) with a `-forever.zip` that WowUp installs. Versions 2.12 and newer sync with each other; older versions use older sync protocols and don't exchange data with them (2.12 still shows their version, so they're told to update).
 
+## 3.0.6
+
+- **Officers can send step 2.** An officer can now type `/ngm discord` and paste the code on NGM Peon's dashboard (Sync tab, step 2), signing in with Battle.net, so mains, Tank / Healer / DPS and When we play don't wait on the Guild Master. Rank names and permissions still come in only from the Guild Master's code (only their game sees every rank's settings), and `/ngm discord setup` stays the Guild Master's.
+- The once-a-day reminder tells officers about step 2 as well, counting from the last code NGM Peon got from anyone in the guild.
+- **Install reminders know alts.** Remind someone on their main and their alts show "(reminded)" too, not "(missing)", in the Find tab, tooltips and profiles (which character got it is in the tooltip). Still once per 30 days for the whole player.
+
 ## 3.0.5
 
 - **The Hall of Fame matches NGM Peon.** In a guild using NGM Peon, the Hall of Fame tab shows NGM Peon's leaderboards: Blizzard's statistics for the whole guild, addon or not, the same as on its dashboard and in Discord. They come in with `/ngm peon`, and an officer's copy shares them with the guild. Without NGM Peon, nothing changes.

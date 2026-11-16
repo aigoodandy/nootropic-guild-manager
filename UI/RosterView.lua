@@ -971,6 +971,7 @@ function RV:InitRow(row, e)
         row.Remind:SetShown(canRemind and true or false)
         if not e.hasAddon then
             if ns.InstallReminder:Reminded(e.full) then
+                -- reminded, maybe on another of their characters (never clickable)
                 row.Version:SetText("|cff6e6e6e(reminded)|r")
             elseif canRemind then
                 row.Version:SetText("|cff66bbff(missing)|r") -- clickable: online, not reminded yet

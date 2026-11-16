@@ -1,4 +1,5 @@
--- Test: install reminders (who can be reminded, once per 30 days guild-wide,
+-- Test: install reminders (who can be reminded, once per 30 days per player,
+-- alts counting,
 -- the record others see) and Discord names shown with an @.
 -- Run with tests/run.sh (it passes the repo root as arg[1]).
 local ROOT = arg[1]
@@ -54,8 +55,18 @@ assert(t == NOW and by == "Marc Priest")
 local ok, why = IR:Can(grud)
 assert(not ok and why:find("You reminded them"), why)
 assert(IR:Preview(grud) == why, "after sending, the tooltip says why it's greyed out")
-assert(not IR:Send(grud) and #whispers == 1, "never twice")
+assert(not IR:Send(grud) and #whispers == 1, "not twice within the hour")
 assert(IR:StatusLine(grud):find("^Reminded to install by Marc Priest"))
+-- an alt of a reminded main shows reminded, and can't be reminded again
+local alts = { ["Grud Sama"] = { "Grud Alt" } }
+ns.DB.RootOf = function(_, f) return f == "Grud Alt" and "Grud Sama" or f end
+ns.DB.GetAltsOf = function(_, f) local t = {} for i, v in ipairs(alts[f] or {}) do t[i] = v end return t end
+local alt = { full = "Grud Alt", short = "Grud Alt", online = true }
+local at, aby, via = IR:Reminded("Grud Alt")
+assert(at == NOW and aby == "Marc Priest" and via == "Grud Sama", "the main's reminder counts")
+assert(IR:StatusLine(alt):find("(on Grud Sama)", 1, true), IR:StatusLine(alt))
+assert(not IR:Can(alt) and not IR:Send(alt) and #whispers == 1, "not again for 30 days")
+ns.DB.RootOf, ns.DB.GetAltsOf = nil, nil
 -- another guildmate's reminder arrives; 31 days later it's gone
 ns.Sync:OnMessage(table.concat({ ns.Sync.PROTO, "R", "IR:Offline Guy", tostring(NOW - 31 * 86400), "Grud Sama", "", tostring(NOW - 31 * 86400) }, "\t"), "GUILD", "Grud Sama")
 assert(not IR:Reminded("Offline Guy"), "expired after 30 days")
