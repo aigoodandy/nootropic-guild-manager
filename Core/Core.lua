@@ -234,7 +234,7 @@ function ns.Safe(fn, where)
             if not reported[msg] then
                 reported[msg] = true
                 ns:Print(("|cffff2020error in %s:|r %s"):format(where or "a handler", msg))
-                ns:Print("Please send that line to the addon author. Everything else keeps working.")
+                ns:Print("Please send that line to the NGM Addon's author. Everything else keeps working.")
             end
         end
     end
@@ -375,7 +375,7 @@ local function PrintHelp()
     if ns.DiscordCode and ns.DiscordCode:DesktopInstalled() then
         ns:Print("  |cffffffff/ngm reload|r  - Reload and Sync: reloads your UI so NGM Desktop sends your changes and brings NGM Peon's news in")
     end
-    ns:Print("  |cffffffff/ngm diag|r  - troubleshooting: version, sync, and the addon's hooks into game windows")
+    ns:Print("  |cffffffff/ngm diag|r  - troubleshooting: version, sync, and the NGM Addon's hooks into game windows")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
 end
 

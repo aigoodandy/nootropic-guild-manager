@@ -918,7 +918,7 @@ function S:StatusLines()
     if self:GuildBroken() then
         out[#out + 1] = self.relay
             and ("|cffff2020Your guild messages don't arrive|r (a game issue); sending through %s%s."):format(self.relay, self.relayAcked and "" or ", waiting for them to answer")
-            or "|cffff2020Your guild messages don't arrive|r (a game issue), and no officer running the addon is online to send them through."
+            or "|cffff2020Your guild messages don't arrive|r (a game issue), and no officer running the NGM Addon is online to send them through."
     end
     local ranks = {}
     for _, r in ipairs(ns.DB:GuildRanks()) do

@@ -43,7 +43,7 @@ assert(lines[1] == "Faldorn Xzar" and lines[2] == "Trial" and lines[3] == "Level
 lines = {}
 RV:AddMemberLines({ isAlt = true, mainShort = "Mykkie", profs = {} })
 assert(lines[1] == "Alt of = Mykkie", "alt of whom")
-assert(lines[#lines] == "Not reminded to install the addon yet", "no addon, not reminded")
+assert(lines[#lines] == "Not reminded to install the NGM Addon yet", "no addon, not reminded")
 lines = {}
 RV:AddMemberLines({ profs = {}, reminded = true })
 assert(lines[#lines] == "Reminded to install by Marc 1 day ago", "no addon, reminded")

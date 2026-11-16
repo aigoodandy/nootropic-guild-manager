@@ -235,7 +235,7 @@ function HV:Build(frame)
         end
         W.ShowMenu(btn, items)
     end)
-    W.Tooltip(periodBtn, "Period", "All time, or just this month or last month (UTC). A member's first month counts from when they installed the addon.")
+    W.Tooltip(periodBtn, "Period", "All time, or just this month or last month (UTC). A member's first month counts from when they installed the NGM Addon.")
     self.periodButton = periodBtn
 
     -- officers: post last month's champions to guild chat (one click, never automatic)
@@ -293,7 +293,7 @@ function HV:Build(frame)
     self.gapButton = W.Button(content, "List them", 80, 18, "alt")
     self.gapButton:SetPoint("LEFT", self.gap, "RIGHT", 8, 0)
     self.gapButton:SetScript("OnClick", function() ns.UI:SetSearch("is:missing") end)
-    W.Tooltip(self.gapButton, "Not on the board yet", "Lists them on the Find tab. Right-click someone there (or open their profile) to remind them to install the addon.")
+    W.Tooltip(self.gapButton, "Not on the board yet", "Lists them on the Find tab. Right-click someone there (or open their profile) to remind them to install the NGM Addon.")
     self.cards = {}
     self.note = content:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     self.note:SetJustifyH("LEFT")
@@ -376,11 +376,11 @@ function HV:Refresh()
         note = "Nobody has shared their statistics yet. Each member's own addon shares them a little after they log in."
     else
         note = "From the game's own statistics (the Statistics page of the achievement window), shared by each member's addon. "
-            .. "Members without the addon aren't listed. Gold is never shared."
+            .. "Members without the NGM Addon aren't listed. Gold is never shared."
     end
     note = note .. " A person's main and alts count as one."
     if period ~= "all" then
-        note = note .. (data.peon and " Months run in UTC." or " Months run in UTC; a member's first month counts from when they installed the addon.")
+        note = note .. (data.peon and " Months run in UTC." or " Months run in UTC; a member's first month counts from when they installed the NGM Addon.")
     end
     if (data.hidden or 0) > 0 then
         note = note .. (" %d left out by officers."):format(data.hidden)

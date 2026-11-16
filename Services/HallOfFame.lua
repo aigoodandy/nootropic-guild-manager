@@ -34,7 +34,7 @@ HF.PUBLISH_EVERY = 600 -- shared again at most every 10 minutes (and at login)
 -- key, statistic id(s), label, icon. A list of ids is added up.
 HF.STATS = {
     { key = "champs",   label = "Most Champion Wins", icon = "Interface\\Icons\\INV_Crown_01", computed = true, noChampion = true,
-      tip = "Champion titles: each card's leader for a month (all of them, on a tie) wins its title. Recorded by officers' copies of the addon a few days into the next month, so nobody can award themselves one." },
+      tip = "Champion titles: each card's leader for a month (all of them, on a tie) wins its title. Recorded by officers' copies of the NGM Addon a few days into the next month, so nobody can award themselves one." },
     { key = "social",   label = "Social Butterfly", icon = "Interface\\Icons\\Spell_Holy_MindVision", rate = 8, since = 1793491200,
       format = function(n) return ("%.1f h"):format(n / 4) end,
       tip = "Hours spent in guild chat conversations: 15-minute blocks where you and at least one guildmate both spoke (8 blocks a day at most). Only the count is shared, never what was said." },
