@@ -262,6 +262,13 @@ function DC:ParsePeon(code)
             out.has = tonumber(f[2] or "", 36)
             -- the newest NGM on GitHub, as NGM Peon last checked (NGM Peon adds it)
             out.release = f[3] ~= "" and f[3] or nil
+            -- NGM Peon's Hall of Fame: "all=<v>|month=<v>|last=<v>" (Services/HallOfFame.lua)
+            if f[4] and f[4] ~= "" and #f[4] <= 12000 then
+                out.fame = {}
+                for p, v in f[4]:gmatch("(%l+)=([^|]*)") do
+                    if (p == "all" or p == "month" or p == "last") and ns.Sync.ValidValue("HB", v) then out.fame[p] = v end
+                end
+            end
         elseif f[1] == "hours" then out.hoursHash = tonumber(f[2] or "", 36)
         elseif f[1] == "E" and #f >= 7 then
             -- an upcoming event (Services/Events.lua): where to sign up and who's coming
@@ -326,6 +333,16 @@ function DC:ApplyPeon(code)
     g.peon = g.peon or {}
     if not g.peon.has or c.has > g.peon.has then g.peon.has = c.has end
     g.peon.hoursHash = c.hoursHash
+    -- NGM Peon's Hall of Fame: an officer shares it with the guild (HB:<period>);
+    -- anyone else keeps it for themselves
+    if c.fame then
+        g.peon.fame = { at = ns.DB:Now() }
+        for p, v in pairs(c.fame) do
+            g.peon.fame[p] = v
+            if ns.Sync.CanWrite and ns.Sync:CanWrite("HB:" .. p) then ns.Sync:Set("HB:" .. p, v) end
+        end
+        out.fame = true
+    end
     -- the newest release: tells you if you're behind (Services/Roster.lua)
     if c.release and ns.Roster and ns.Roster.IsRelease(c.release) and #c.release <= 20 then
         g.peon.release = c.release

@@ -115,4 +115,27 @@ ns.Sharing:Set("stats", false)
 assert(ns.Sharing:Get("stats") == true, "no switch for statistics")
 
 assert(HV.Number(1234567) == "1,234,567" and HV.Number(12) == "12" and HV.Number(123) == "123")
+
+-- A guild using NGM Peon shows NGM Peon's boards (Blizzard's numbers for
+-- everyone), shared by an officer as HB:<period>
+local hb = "202611;quests:No Addon-R~2s,Big Main-R~1c/kills:Gone Player~a/_t:quests~5s,kills~a,bosses~0,deaths~0"
+local d = HF.DecodePeon(hb)
+assert(d.month == 202611 and #d.boards.quests == 2 and d.boards.quests[1].n == 100 and d.totals.quests == 208)
+assert(HF.DecodePeon("nope") == nil)
+assert(ns.Sync.ValidValue("HB", hb) and not ns.Sync.ValidValue("HB", "x;y") and not ns.Sync.ValidValue("HB", "202611;a\tb"))
+local realValue, realGet = ns.Sync.Value, ns.Sync.Get
+ns.Sync.Value = function(self, k) if k == "GS:peon" then return "1" end return realValue(self, k) end
+ns.Sync.Get = function(self, k) if k == "HB:all" or k == "HB:month" then return { v = hb, t = NOW - 3600 } end return realGet(self, k) end
+local pb = HF:Boards("all", 202611)
+assert(pb.peon and pb.peon.at == NOW - 3600 and pb.noAddon == 0)
+assert(pb.boards.quests[1].e.full == "No Addon-R" and pb.boards.quests[1].n == 100, "people without the addon are on NGM Peon's boards")
+assert(pb.boards.quests[2].key == "Big Main-R" and pb.boards.kills[1].e.short == "Gone Player", "someone not in the roster still shows by name")
+assert(pb.totals.quests == 208)
+-- "this month" worked out in an earlier month: the addon's own boards show instead
+assert(HF:Boards("month", 202612).peon == nil)
+assert(HF:Boards("last", 202611).peon == nil, "no last-month board brought in: the addon's own")
+-- without NGM Peon crowning: the addon's own, always
+ns.Sync.Value = realValue
+assert(HF:Boards("all", 202611).peon == nil)
+ns.Sync.Get = realGet
 print("OK")

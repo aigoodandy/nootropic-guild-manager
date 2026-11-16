@@ -79,6 +79,7 @@ function V:BringIn()
         lines[#lines + 1] = ((ns.ORANGE .. "%d not taken|r: your rank can only bring in your own. An officer can bring in the rest.")):format(got.refused)
     end
     lines[#lines + 1] = "Shared with the guild."
+    if got.fame then lines[#lines + 1] = "Hall of Fame: NGM Peon's leaderboards, for the whole guild" end
     -- Upcoming Events: what changed, then how many there are
     local changes = {}
     if (got.eventsNew or 0) > 0 then changes[#changes + 1] = n(got.eventsNew, "new event", "new events") end

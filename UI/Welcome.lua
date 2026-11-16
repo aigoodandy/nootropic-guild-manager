@@ -46,7 +46,7 @@ local function Pages()
               .. (ns.GOLD .. "When we play|r is a week heatmap from the hours guildmates share: hover a block to see who usually plays then. Click any bar to list those members on the Find tab.") },
         { key = "hof", icon = TAB_ICONS[6], title = "Hall of Fame",
           text = ("Guild leaderboards from everyone's character statistics: quests, kills, dungeon bosses, honorable kills, deaths, flights, fish, hugs and more, plus " .. ns.GOLD .. "Social Butterfly|r, the time spent chatting with guildmates.\n\n")
-              .. ("Each card's leader for the month is its " .. ns.GOLD .. "champion|r, shown on the card all next month; titles add up on " .. ns.GOLD .. "Most Champion Wins|r. Each member's own addon shares their numbers (never gold), the same ones Blizzard publishes.") },
+              .. ("Each card's leader for the month is its " .. ns.GOLD .. "champion|r, shown on the card all next month; titles add up on " .. ns.GOLD .. "Most Champion Wins|r. Each member's own addon shares their numbers (never gold), the same ones Blizzard publishes. With " .. ns.GOLD .. "NGM Peon|r, the boards cover the whole guild, the same as on Discord.") },
         { key = "together", icon = TAB_ICONS[2], title = "Play Together",
           text = "Who to play with right now: guildmates online within a few levels of you (people in your zone first), and guildmates who usually play at this hour.\n\n"
               .. "Usual hours are learned from when people actually play, so this list grows over the first few days." },
