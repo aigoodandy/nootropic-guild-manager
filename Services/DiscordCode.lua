@@ -430,7 +430,68 @@ function DC:Remind(now)
     return true
 end
 
+------------------------------------------------------------------------
+-- NGM Desktop (ngm-hub docs/DESKTOP.md): when the app is installed (its
+-- companion addon, NootropicGuildManager_Peon, defines NGMPeonDesktop), the
+-- addon leaves the update code in its saved data at every logout and
+-- /reload (g.desktopCode), for the app to send. Same content as
+-- /ngm discord, but it changes nothing in the addon (the reminder and
+-- what /ngm discord sends next stay as they were), and:
+--   the Guild Master's and officers' carry everything (NGM Peon still
+--   leaves an officer's ranks out);
+--   anyone else's only main/alt and Tank/Healer/DPS records about their
+--   own characters (the player's mains and alts), written by them.
+-- NGM Peon decides what it takes by who the app belongs to, never by this.
+------------------------------------------------------------------------
+function DC:ForDesktop()
+    if type(_G.NGMPeonDesktop) ~= "table" then return nil end -- no app on this computer
+    local guild = GetGuildInfo and GetGuildInfo("player")
+    local region = self:Region()
+    local g = ns.DB:Guild()
+    if not (guild and region and g) then return nil end
+    local gm = ns.DB.IsGuildMaster and ns.DB:IsGuildMaster() or false
+    local officer = gm or (ns.IsOfficer and ns.IsOfficer()) or false
+    local ranks = self:MyRanks(not gm)
+    if not ranks then return nil end
+    local peon = g.peon or {}
+    local since = 0
+    if peon.has then since = math.max(0, peon.has - self.ARRIVAL)
+    elseif peon.made then since = math.max(0, peon.made - self.OVERLAP) end
+    local records = self:Changes(since)
+    local hours, tabard
+    if officer then
+        hours = self:Hours()
+        if hours and since > 0 and peon.hoursHash and ns.Sync.Hash(self.HoursValue(hours)) == peon.hoursHash then hours = nil end
+        local bg, border, emblem
+        if ns.Accent then bg, border, emblem = ns.Accent:Tabard() end
+        tabard = (bg and border) and { bg = bg, border = border, emblem = emblem } or nil
+    else
+        -- the player's own characters: this one, its main and the main's alts
+        local me = ns.PlayerFullName()
+        local own = { [me] = true }
+        local root = ns.DB.RootOf and ns.DB:RootOf(me) or me
+        own[root] = true
+        for _, alt in ipairs(ns.DB.GetAltsOf and ns.DB:GetAltsOf(root) or {}) do own[alt] = true end
+        local mine = {}
+        for _, r in ipairs(records) do
+            local member = r.key:match("^%u+:(.+)$")
+            if member and own[member] and own[r.a] then mine[#mine + 1] = r end
+        end
+        records = mine
+    end
+    return self:MakeUpdate(region, guild, ranks, { since = since, upto = ns.DB:Now(), hours = hours, records = records, tabard = tabard })
+end
+
+-- At logout and /reload: the code for the app, or nothing (an old one goes).
+function DC:SaveForDesktop()
+    local g = ns.DB:Guild()
+    if not g then return end
+    local ok, code = pcall(self.ForDesktop, self)
+    g.desktopCode = ok and code or nil
+end
+
 function DC:Init()
+    ns:RegisterEvent("PLAYER_LOGOUT", function() DC:SaveForDesktop() end)
     local remind = ns.Safe and ns.Safe(function() DC:Remind() end, "DiscordCode") or function() DC:Remind() end
     C_Timer.After(60, remind) -- after login, once the roster and ranks are in
     -- ranks renamed or their permissions changed during the session
