@@ -4,7 +4,8 @@ Every release is on the [releases page](https://github.com/keasbeexd/nootropic-g
 
 ## 3.0.5
 
-- Screenshots for the WowUp Hub (WowUp's GitHub addon listing). Nothing changes in game.
+- **The Hall of Fame matches NGM Peon.** In a guild using NGM Peon, the Hall of Fame tab shows NGM Peon's leaderboards: Blizzard's statistics for the whole guild, addon or not, the same as on its dashboard and in Discord. They come in with `/ngm peon`, and an officer's copy shares them with the guild. Without NGM Peon, nothing changes.
+- Screenshots for the WowUp Hub (WowUp's GitHub addon listing).
 
 ## 3.0.4
 

@@ -300,6 +300,12 @@ end
 -- { people, sharing, noAddon, hidden, flagged, totals, boards = { key = { { e, n, key }... } } }
 function HF:Boards(period, month)
     month = month or HF.Month()
+    -- a guild using NGM Peon shows NGM Peon's boards (Blizzard's numbers for
+    -- everyone), so the game, the dashboard and Discord agree
+    if self:PeonCrowns() then
+        local peon = self:PeonBoards(period, month)
+        if peon then return peon end
+    end
     local groups, order = {}, {}
     for _, e in ipairs(ns.Roster.members) do
         local key = e.main or e.full
@@ -358,6 +364,62 @@ function HF:Boards(period, month)
     end
     return { people = #order, sharing = sharing, noAddon = noAddon, hidden = hidden, flagged = flagged,
              totals = totals, boards = boards }
+end
+
+-- NGM Peon's boards for a period (HB:<period>, shared by the officer who
+-- brought in NGM Peon's code; else your own copy of it), in HF:Boards' shape
+-- plus peon = { at }. nil when there's none, or "this month" and "last
+-- month" were worked out in an earlier month (then the addon's own show).
+function HF.DecodePeon(v)
+    local m, rest = (v or ""):match("^(%d%d%d%d%d%d);(.*)$")
+    if not m then return nil end
+    local out = { month = tonumber(m), boards = {}, totals = {} }
+    for card in (rest .. "/"):gmatch("([^/]*)/") do
+        local key, list = card:match("^([%w_]+):(.*)$")
+        if key then
+            local entries = {}
+            for name, n in list:gmatch("([^,~]+)~(%w+)") do
+                entries[#entries + 1] = { name = name, n = tonumber(n, 36) or 0 }
+            end
+            if key == "_t" then
+                for _, x in ipairs(entries) do out.totals[x.name] = x.n end
+            else
+                out.boards[key] = entries
+            end
+        end
+    end
+    return out
+end
+
+function HF:PeonBoards(period, month)
+    local rec = ns.Sync:Get("HB:" .. period)
+    local g = ns.DB:Guild()
+    local mine = g and g.peon and g.peon.fame
+    local v, at = rec and rec.v, rec and rec.t
+    if (not v or v == "") and mine and mine[period] then v, at = mine[period], mine.at end
+    local d = HF.DecodePeon(v)
+    if not d then return nil end
+    if period ~= "all" and d.month ~= month then return nil end
+    local boards = {}
+    local people = {}
+    for _, s in ipairs(self.STATS) do
+        boards[s.key] = {}
+        for _, x in ipairs(d.boards[s.key] or {}) do
+            local e = ns.Roster.byName[x.name] or (ns.NormalizeName and ns.Roster.byName[ns.NormalizeName(x.name) or ""])
+            if not (e and self:Hidden(e.full)) then
+                local key = e and (e.main or e.full) or x.name
+                people[key] = true
+                table.insert(boards[s.key], { e = e or { short = ns.ShortName and ns.ShortName(x.name) or x.name, full = x.name }, n = x.n, key = key })
+            end
+        end
+    end
+    local groups = {}
+    for _, e in ipairs(ns.Roster.members) do groups[e.main or e.full] = true end
+    local n = 0
+    for _ in pairs(groups) do n = n + 1 end
+    local shown = 0
+    for _ in pairs(people) do shown = shown + 1 end
+    return { people = n, sharing = shown, noAddon = 0, hidden = 0, flagged = 0, totals = d.totals, boards = boards, peon = { at = at } }
 end
 
 -- Last month's champion of each card: winner takes all, and a tie makes

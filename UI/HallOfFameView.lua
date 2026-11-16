@@ -319,7 +319,11 @@ function HV:Refresh()
     local HF = ns.HallOfFame
     self.announceButton:SetShown(HF:CanAnnounce())
     self.announceButton:SetEnabled(HF:AnnounceLines(HF.PrevMonth(HF.Month())) ~= nil)
-    self.title:SetText(("Hall of Fame  " .. GRAY .. "- %d of %d people sharing|r"):format(data.sharing, data.people))
+    if data.peon then
+        self.title:SetText("Hall of Fame  " .. GRAY .. "- from NGM Peon, for the whole guild|r")
+    else
+        self.title:SetText(("Hall of Fame  " .. GRAY .. "- %d of %d people sharing|r"):format(data.sharing, data.people))
+    end
 
     local width = math.max(300, math.floor(self.scroll:GetWidth()))
     local parts = {}
@@ -362,17 +366,21 @@ function HV:Refresh()
     local y = top + rows * (CARD_H + CARD_GAP)
 
     local note
-    if not ns.HallOfFame:Available() then
+    if data.peon then
+        note = "From Blizzard's statistics for everyone in the guild, worked out by NGM Peon (the same as on its dashboard and in Discord)"
+            .. (data.peon.at and (" and brought in " .. date("%d %b", data.peon.at)) or "")
+            .. ". It updates when an officer brings in a newer code (|cffffffff/ngm peon|r). Top 5 of each card."
+    elseif not ns.HallOfFame:Available() then
         note = "This game client doesn't give addons character statistics, so there's nothing to show."
     elseif data.sharing == 0 then
         note = "Nobody has shared their statistics yet. Each member's own addon shares them a little after they log in."
     else
         note = "From the game's own statistics (the Statistics page of the achievement window), shared by each member's addon. "
-            .. "Members without the addon, or who turned off \"Share my statistics\" (Options > Sharing), aren't listed. Gold is never shared."
+            .. "Members without the addon aren't listed. Gold is never shared."
     end
     note = note .. " A person's main and alts count as one."
     if period ~= "all" then
-        note = note .. " Months run in UTC; a member's first month counts from when they installed the addon."
+        note = note .. (data.peon and " Months run in UTC." or " Months run in UTC; a member's first month counts from when they installed the addon.")
     end
     if (data.hidden or 0) > 0 then
         note = note .. (" %d left out by officers."):format(data.hidden)

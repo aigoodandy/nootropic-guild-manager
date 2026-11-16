@@ -33,6 +33,8 @@
       HX:<member>          left out of the Hall of Fame: "1" ("" = shown)
       HW:<month>           that month's champions: "quests=Name,Name;kills=Name"
       HA:<month>           that month's champions were announced: "<time>"
+      HB:<period>          NGM Peon's Hall of Fame for all, month or last (from
+                           /ngm peon): "<month>;<card>:<name>~<n>,.../_t:..."
       EV:<id>              an upcoming event from NGM Peon (Services/Events.lua):
                            "kind;starts;minutes;coming;channel;server;title;description"
                            (numbers base 36; "" = gone)
@@ -83,6 +85,7 @@ S.TYPES = {
     HX = { scope = "guild",   officer = true, label = "Hidden from Hall of Fame" },
     HW = { scope = "guild",   officer = true, noAudit = true, label = "Hall of Fame champions" },
     HA = { scope = "guild",   officer = true, noAudit = true, label = "Champions announced" },
+    HB = { scope = "guild",   officer = true, noAudit = true, label = "NGM Peon's Hall of Fame" },
     EV = { scope = "guild",   officer = true, noAudit = true, label = "Upcoming event" },
     HC = { scope = "officer", officer = true, noAudit = true, label = "Hall of Fame check" },
     JN = { scope = "officer", officer = true, noAudit = true, label = "Joined" },
@@ -102,7 +105,7 @@ function S.EventSig(typ, member, new)
     return typ .. "|" .. (member or "") .. "|" .. (new or "")
 end
 -- Types whose key is not about one member.
-local NO_MEMBER = { A = true, GS = true, HW = true, HA = true, EV = true }
+local NO_MEMBER = { A = true, GS = true, HW = true, HA = true, HB = true, EV = true }
 
 S.storeVersion = 0
 S.officers = {} -- name -> rank index when seen sending on the officer channel this session
@@ -589,6 +592,8 @@ function S.ValidValue(typ, v)
         return true
     elseif typ == "M" then
         return v == "" or (#v <= 40 and not v:find("[,:\t]"))
+    elseif typ == "HB" then
+        return v == "" or (not v:find("[\t\n|]") and v:match("^%d%d%d%d%d%d;") ~= nil)
     elseif typ == "EV" then
         if v == "" then return true end
         if #v > 600 or v:find("[\t\n]") then return false end
@@ -604,6 +609,7 @@ function S:WithinLimits(typ, member, rest, rec, ctx, store)
     if not S.ValidValue(typ, rec.v) then return false end
     if (typ == "HW" or typ == "HA") and not rest:match("^%d%d%d%d%d%d$") then return false end
     if typ == "EV" and not rest:match("^%w+$") then return false end
+    if typ == "HB" and rest ~= "all" and rest ~= "month" and rest ~= "last" then return false end
     -- reminders only about guildmates, holding the time they were sent
     if typ == "IR" then
         if not RosterEntry(member) then return false end
@@ -874,7 +880,7 @@ function S:Materialize(typ, key, member, rec)
     elseif typ == "RP" then
         ns.Debounce("recipeschanged", 0.3, function() ns:Fire("RECIPES_CHANGED") end)
         return
-    elseif typ == "HF" or typ == "HX" or typ == "HW" or typ == "HA" or typ == "HC" then
+    elseif typ == "HF" or typ == "HX" or typ == "HW" or typ == "HA" or typ == "HB" or typ == "HC" then
         ns.Debounce("hofchanged", 0.5, function() ns:Fire("HALL_OF_FAME_CHANGED") end)
         return
     elseif typ == "IR" then

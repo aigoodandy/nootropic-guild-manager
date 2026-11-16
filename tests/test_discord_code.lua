@@ -165,6 +165,11 @@ do
     ns.Roster = { IsRelease = function(v) return v:match("^%d+%.%d+[%.%d]*$") ~= nil end, CheckVersion = function() checked = checked + 1 end }
     assert(DC:ApplyPeon("NGMP1." .. DC.Base64Url(p4) .. "." .. DC.Adler32(p4)))
     assert(guildData.peon.release == "3.0.9" and checked == 1)
+    -- NGM Peon's Hall of Fame rides on the has line too (after the release)
+    local fame = "all=202611;quests:Pip Moss~2s/_t:quests~2s|month=202611;quests:/_t:quests~0|bogus=1"
+    local p6 = "us\nNootropic\nhas\t" .. DC.B36(1794540000) .. "\t\t" .. fame .. "\nhours\t" .. DC.B36(pc.hoursHash)
+    local parsed = DC:ParsePeon("NGMP1." .. DC.Base64Url(p6) .. "." .. DC.Adler32(p6))
+    assert(parsed.release == nil and parsed.fame.all:find("Pip Moss~2s", 1, true) and parsed.fame.month and not parsed.fame.bogus, "fame parsed")
     local p5 = "us\nNootropic\nhas\t" .. DC.B36(1794540000) .. "\t3.1.0-beta1\nhours\t" .. DC.B36(pc.hoursHash)
     assert(DC:ApplyPeon("NGMP1." .. DC.Base64Url(p5) .. "." .. DC.Adler32(p5)))
     assert(guildData.peon.release == "3.0.9" and checked == 1, "a test build isn't a release")
