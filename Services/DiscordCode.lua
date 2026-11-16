@@ -482,6 +482,65 @@ function DC:ForDesktop()
     return self:MakeUpdate(region, guild, ranks, { since = since, upto = ns.DB:Now(), hours = hours, records = records, tabard = tabard })
 end
 
+-- NGM Desktop's news: the app keeps NGM Peon's code (the same one the
+-- dashboard's Sync tab shows for /ngm peon) in its companion addon,
+-- NGMPeonDesktop.codes, one per guild. At login and /reload it's brought in
+-- exactly like a pasted code (same rules: an officer's copy passes it on to
+-- the guild, anyone else's takes only their own); a code already brought in
+-- isn't brought in again. -> the result (as ApplyPeon) or nil.
+function DC:FromDesktop()
+    local d = _G.NGMPeonDesktop
+    if type(d) ~= "table" or type(d.codes) ~= "table" then return nil end
+    local g = ns.DB:Guild()
+    local guild = GetGuildInfo and GetGuildInfo("player")
+    if not (g and guild) then return nil end
+    for _, code in ipairs(d.codes) do
+        local c = type(code) == "string" and #code <= 200000 and self:ParsePeon(code)
+        if c and c.guild:lower() == guild:lower() then
+            local seen = ns.Sync.Hash(code)
+            g.peon = g.peon or {}
+            if g.peon.desktopIn == seen then return nil end
+            local got = self:ApplyPeon(code)
+            if got then g.peon.desktopIn = seen end
+            return got
+        end
+    end
+    return nil
+end
+
+-- After login: bring the app's news in (once the guild is known), and say
+-- so in chat only when something changed.
+function DC:DesktopAtLogin(tries)
+    tries = tries or 0
+    if not (GetGuildInfo and GetGuildInfo("player")) then
+        if tries < 6 then C_Timer.After(10, function() DC:DesktopAtLogin(tries + 1) end) end
+        return
+    end
+    local got = self:FromDesktop()
+    if not got then return end
+    local parts = {}
+    if got.taken > 0 then parts[#parts + 1] = ("%d change%s"):format(got.taken, got.taken == 1 and "" or "s") end
+    if (got.eventsNew or 0) > 0 then parts[#parts + 1] = ("%d new event%s"):format(got.eventsNew, got.eventsNew == 1 and "" or "s") end
+    if (got.eventsRemoved or 0) > 0 then parts[#parts + 1] = ("%d event%s removed"):format(got.eventsRemoved, got.eventsRemoved == 1 and "" or "s") end
+    if #parts > 0 then ns:Print(ns.GOLD .. "NGM Peon|r (desktop app): " .. table.concat(parts, ", ") .. ".") end
+end
+
+-- Reload and Sync (the main window's button, /ngm reload): a /reload, which
+-- saves NGM's update for the app to send and loads the app's newest news.
+-- Only with the app installed, never in combat.
+function DC:DesktopInstalled() return type(_G.NGMPeonDesktop) == "table" end
+function DC:ReloadAndSync()
+    if not self:DesktopInstalled() then
+        ns:Print("Reload and Sync needs NGM Desktop (ngmpeon.app). Without it, use the dashboard's Sync tab.")
+        return
+    end
+    if InCombatLockdown and InCombatLockdown() then
+        ns:Print("Not in combat. Try again after the fight.")
+        return
+    end
+    ReloadUI()
+end
+
 -- At logout and /reload: the code for the app, or nothing (an old one goes).
 function DC:SaveForDesktop()
     local g = ns.DB:Guild()
@@ -492,6 +551,8 @@ end
 
 function DC:Init()
     ns:RegisterEvent("PLAYER_LOGOUT", function() DC:SaveForDesktop() end)
+    local fromApp = ns.Safe and ns.Safe(function() DC:DesktopAtLogin() end, "DiscordCode") or function() DC:DesktopAtLogin() end
+    C_Timer.After(8, fromApp)
     local remind = ns.Safe and ns.Safe(function() DC:Remind() end, "DiscordCode") or function() DC:Remind() end
     C_Timer.After(60, remind) -- after login, once the roster and ranks are in
     -- ranks renamed or their permissions changed during the session

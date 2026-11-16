@@ -372,6 +372,9 @@ local function PrintHelp()
     if gm then ns:Print("  |cffffffff/ngm discord setup|r  - once: the code for /ngm-guild setup in Discord") end
     if officer then ns:Print("  |cffffffff/ngm discord|r  - what changed in game, for the Sync tab, step 2 (/ngm dashboard in Discord); add |cffffffffall|r for everything") end
     if officer then ns:Print("  |cffffffff/ngm peon|r  - bring in the Sync tab's step 3 code, for the whole guild") end
+    if ns.DiscordCode and ns.DiscordCode:DesktopInstalled() then
+        ns:Print("  |cffffffff/ngm reload|r  - Reload and Sync: reloads your UI so NGM Desktop sends your changes and brings NGM Peon's news in")
+    end
     ns:Print("  |cffffffff/ngm diag|r  - troubleshooting: version, sync, and the addon's hooks into game windows")
     ns:Print("  |cffffffff/ngm reset|r  - reset the window size and position")
 end
@@ -429,6 +432,8 @@ SlashCmdList.NOOTROPICGM = function(msg)
         ns:Print(("|cffffffff/ngm %s|r is an NGM Peon command: type it in your guild's Discord server, not in game."):format(cmd))
     elseif cmd == "events" or cmd == "calendar" or cmd == "cal" then
         ns.UI:OpenTab(ns.UI.TAB_EVENTS)
+    elseif cmd == "reload" then
+        ns.DiscordCode:ReloadAndSync()
     elseif cmd == "discord" then
         local mode = rest and rest:lower():match("^%s*(%a+)")
         ns.DiscordCodeView:Open((mode == "setup" or mode == "all") and mode or nil)
