@@ -400,7 +400,11 @@ end
 -- and GS:recruiters: rank names, only the current Guild Master may write
 -- them), for copies the game doesn't tell.
 ------------------------------------------------------------------------
-S.FLAG_INVITE, S.FLAG_OFFICER = 5, 22 -- Blizzard_GuildControlUI: InviteCheckbox, OfficerCheckbox
+-- The rank permission numbers WoW: Forever's GuildControlGetRankFlags uses
+-- (checked in game, 2026-11-16): 7 Invite Member, 22 Is Officer. Not 5:
+-- that's Promote, even though Blizzard_GuildControlUI names checkbox 5
+-- "InviteCheckbox".
+S.FLAG_INVITE, S.FLAG_OFFICER = 7, 22
 
 -- { officer = bool, invite = bool } for a rank (0 = Guild Master), or nil
 -- when the game won't say. Cached a minute.

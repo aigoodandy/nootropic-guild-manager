@@ -115,7 +115,10 @@ check("a member can't name officer ranks", BOB.S:Value("GS:officers") == "Captai
 -- Master's copy may read them)
 C_GuildInfo = {}
 g.ranks = { { index = 0, name = "Guild Master" }, { index = 1, name = "Captain" }, { index = 3, name = "Member" } }
-local FLAGS = { [1] = { [22] = true, [5] = true }, [3] = { [5] = true } } -- by rank index
+-- by rank index, as WoW: Forever reports them: 5 Promote, 7 Invite Member,
+-- 15 Guild Bank Repair, 21 Recruitment, 22 Is Officer (Member here: like a
+-- Raid Leader, Invite without Promote; the GM's ranks in game, 2026-11-16)
+local FLAGS = { [1] = { [22] = true, [5] = true, [7] = true }, [3] = { [7] = true, [15] = true, [21] = true } }
 C_GuildInfo.GuildControlGetRankFlags = function(order)
   local c = g:Current()
   if not c or c.entry.rankIndex ~= 0 then return { false, false } end -- others: all off (not told)
@@ -130,7 +133,7 @@ g:Settle()
 check("the Guild Master's copy writes down the game's officer ranks", GM.S:Value("GS:officers") == "Captain" and BOB.S:Value("GS:officers") == "Captain")
 check("and its recruiting ranks", BOB.S:Value("GS:recruiters") == "Captain;Member")
 check("members use them: Ann may recruit, Ola is an officer", BOB.S:MayRecruitName("Ann Member") and BOB.S:KnownOfficer("Ola Officer"))
-FLAGS[3] = {}
+FLAGS[3] = { [5] = true } -- Promote alone isn't Invite
 for _, c in ipairs({ GM, OLA, ANN, BOB }) do c.S.flagCache = {} end
 g:As(GM, function() GM.S:PublishRanks() end)
 g:Settle()
