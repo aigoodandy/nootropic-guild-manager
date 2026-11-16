@@ -5,6 +5,7 @@ Every release is on the [releases page](https://github.com/keasbeexd/nootropic-g
 ## 3.0.8
 
 - **Options shows only what your rank can use.** The Recruiting page is for ranks that can invite, and the Officers page for officers; everyone else sees one line saying who uses it, instead of settings they can't change.
+- **New license from this version: PolyForm Shield 1.0.0.** NGM stays free, and its code stays public for anyone to read and check. It may be used and changed for anything except building a competing product. Versions up to 3.0.7 stay MIT, as does aigoodandy's original code.
 
 ## 3.0.7
 

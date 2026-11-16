@@ -576,7 +576,7 @@ function O:BuildAbout()
     tag:SetText("Your whole guild, in one window. Built for WoW: Forever.")
     local ver = banner:CreateFontString(nil, "OVERLAY", "NGMFontDimSmall")
     ver:SetPoint("TOPLEFT", tag, "BOTTOMLEFT", 0, -5)
-    ver:SetText(("Version %s  -  free and open source (MIT)"):format(ns.version))
+    ver:SetText(("Version %s  -  free, source on GitHub (PolyForm Shield)"):format(ns.version))
 
     L:Space(6)
     L:Header("What's Inside")

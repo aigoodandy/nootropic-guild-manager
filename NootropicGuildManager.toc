@@ -4,7 +4,7 @@
 ## Author: Nootropic
 ## Version: 3.0.8
 ## X-Website: https://ngmpeon.app
-## X-License: MIT
+## X-License: PolyForm Shield 1.0.0
 ## X-Curse-Project-ID: 1793021
 ## X-Wago-ID: 4N2baaNL
 ## SavedVariables: NootropicGuildManagerDB

@@ -364,4 +364,4 @@ Nootropic Guild Manager was created by [aigoodandy](https://github.com/aigoodand
 
 ## Licence
 
-MIT, see [LICENSE](LICENSE).
+From 3.0.8 on: the [PolyForm Shield License 1.0.0](LICENSE). It's free to use, read, change and share, but not to build a product that competes with it, like another guild manager addon. Versions up to 3.0.7 were released under the MIT License and stay under it. The original Nootropic Guild Manager (1.x) by aigoodandy is MIT licensed ([LICENSE-MIT](LICENSE-MIT)).
