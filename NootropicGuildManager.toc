@@ -2,7 +2,7 @@
 ## Title: |cffffd100Nootropic|r Guild Manager
 ## Notes: Guild roster for WoW: Forever with mains and alts, professions, specs, contact info, a guild census and play-time heatmap, a Hall of Fame, an officer log, a roster change log and recruiting tools. Synced between guildmates.
 ## Author: Nootropic
-## Version: 3.0.4
+## Version: 3.0.5
 ## X-Website: https://ngmpeon.app
 ## X-License: MIT
 ## X-Curse-Project-ID: 1793021
