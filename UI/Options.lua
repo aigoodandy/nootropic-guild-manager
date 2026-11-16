@@ -235,7 +235,7 @@ function O:BuildMain()
     -- Install reminder: the whisper "Remind to install the addon" sends
     L:Header("Install Reminder")
     L:Text(("What guildmates without the addon get when you click " .. ns.GOLD .. "Remind to install the addon|r on their profile or right-click menu. ")
-        .. (ns.GOLD .. "$first|r, " .. ns.GOLD .. "$name|r and " .. ns.GOLD .. "$guild|r are filled in. Add your Discord invite if you'd like it to cover that too. Saved as you type."))
+        .. (ns.GOLD .. "$first|r, " .. ns.GOLD .. "$name|r and " .. ns.GOLD .. "$guild|r are filled in. Add your Discord invite if you'd like it to cover that too. Once per 30 days per player (alts count), for the whole guild. Saved as you type."))
     local ry = L:Row(84)
     local ef, box = W.ScrollEditor(L.panel, 255)
     ef:SetPoint("TOPLEFT", 22, ry)
