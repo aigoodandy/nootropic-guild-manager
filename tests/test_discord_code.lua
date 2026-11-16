@@ -248,4 +248,37 @@ gm = true
 guildData = {}
 assert(DC:ReminderText(1000000 + 30 * 86400) == nil, "a guild not using NGM Peon: nothing")
 
+-- NGM Desktop: the code left at logout for the app
+store = {
+    ["M:Ann Alt"] = { v = "Ann Main", t = now - 10, a = "Ann Main" },  -- hers, by her
+    ["RL:Ann Main"] = { v = "healer", t = now - 9, a = "Ann Main" },   -- hers, by her
+    ["RL:Zed"] = { v = "tank", t = now - 8, a = "Zed" },               -- someone else's
+    ["RL:Ann Alt"] = { v = "tank", t = now - 7, a = "Off" },           -- hers, by someone else
+}
+local body = function(code) return DC.Base64UrlDecode(code:match("^NGM2%.([^.]+)%.")) end
+guildData = { peon = { made = 5 } }
+_G.NGMPeonDesktop = nil
+DC:SaveForDesktop()
+assert(guildData.desktopCode == nil, "no app: nothing left in the saved data")
+_G.NGMPeonDesktop = { app = "0.1.0" }
+gm, flags[2] = true, { officer = false, invite = false }
+DC:SaveForDesktop()
+local gmBody = body(assert(guildData.desktopCode, "the Guild Master's code"))
+assert(gmBody:find("RL:Zed", 1, true) and gmBody:find("RL:Ann Alt", 1, true), "the Guild Master's carries everyone's")
+assert(guildData.peon.made == 5 and guildData.peon.ranks == nil, "leaving it changes nothing else (the reminder, /ngm discord's window)")
+gm = false
+ns.IsOfficer = function() return false end
+ns.PlayerFullName = function() return "Ann Alt" end
+ns.DB.RootOf = function(_, n) return n == "Ann Alt" and "Ann Main" or n end
+ns.DB.GetAltsOf = function(_, n) return n == "Ann Main" and { "Ann Alt" } or {} end
+DC:SaveForDesktop()
+local memberBody = body(assert(guildData.desktopCode, "a member's code"))
+assert(memberBody:find("M:Ann Alt", 1, true) and memberBody:find("RL:Ann Main", 1, true), memberBody)
+assert(not memberBody:find("RL:Zed", 1, true) and not memberBody:find("RL:Ann Alt", 1, true), "a member's carries only their own, by them")
+assert(not memberBody:find("\nhours\t") and not memberBody:find("\naccent\t"), "and no When we play or tabard")
+GetGuildInfo = function() return nil end
+DC:SaveForDesktop()
+assert(guildData.desktopCode == nil, "no guild: an old code goes")
+_G.NGMPeonDesktop, ns.IsOfficer, ns.DB.RootOf, ns.DB.GetAltsOf = nil, nil, nil, nil
+
 print(a); print("OK")
