@@ -62,6 +62,7 @@ function UI:Create()
     self.version:SetPoint("BOTTOMRIGHT", -14, 8)
     self.version:SetText("v" .. ns.version)
     self:BuildSyncDot(f)
+    self:BuildReloadSync(f)
 
     ns.RosterView.LIST_WIDTH = math.floor(f:GetWidth() - ns.RosterView.LIST_INSET)
     ns.RosterView:Build(f)
@@ -498,6 +499,18 @@ function UI:BuildSyncDot(f)
     end
     ns:On("SYNC_STATUS", refresh)
     refresh()
+end
+
+-- Reload and Sync: only with NGM Desktop installed (its companion addon).
+-- Says plainly that it reloads the UI.
+function UI:BuildReloadSync(f)
+    if not ns.DiscordCode:DesktopInstalled() then return end
+    local b = ns.Widgets.Button(f, "Reload and Sync", 118, 18)
+    b:SetPoint("RIGHT", self.syncDot, "LEFT", -8, 0)
+    ns.Widgets.Tooltip(b, "Reload and Sync",
+        "Reloads your UI (the same as /reload), which:\n- sends your changes to NGM Peon (through NGM Desktop)\n- brings in NGM Peon's newest events, mains, roles and Hall of Fame\n\nTakes a few seconds. Not in combat.")
+    b:SetScript("OnClick", function() ns.DiscordCode:ReloadAndSync() end)
+    self.reloadSync = b
 end
 
 -- Roster tab, Version column on, only members running the addon.

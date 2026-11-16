@@ -281,4 +281,40 @@ DC:SaveForDesktop()
 assert(guildData.desktopCode == nil, "no guild: an old code goes")
 _G.NGMPeonDesktop, ns.IsOfficer, ns.DB.RootOf, ns.DB.GetAltsOf = nil, nil, nil, nil
 
+-- NGM Desktop's news, at login: brought in like a pasted code, once
+do
+    GetGuildInfo = function() return "Nootropic" end
+    region = 1
+    local held2 = {}
+    ns.Sync.Get = function(_, k) return held2[k] end
+    ns.Sync.Intake = function(_, key, t, a, b, v) held2[key] = { v = v, t = t, a = a }; return true, key end
+    ns.Sync.Broadcast = function() end
+    ns.Sync.Hash = ns.Sync.Hash or function(x) return #x .. x:sub(-8) end
+    guildData = {}
+    local code = "NGMP1.dXMKTm9vdHJvcGljCmhhcwl0b2Y3eGMKaG91cnMJMW8xbnQxMwpSCU06Wm_DqyBBc2gJdG9naTgwCU1hcmMgUHJpZXN0CU1hcmMgUHJpZXN0ClIJUkw6TWFyYyBQcmllc3QJdG9naTgxCU1hcmMgUHJpZXN0CWhlYWxlcg.2a542997"
+    _G.NGMPeonDesktop = nil
+    assert(DC:FromDesktop() == nil and not DC:DesktopInstalled(), "no app: nothing")
+    local printed = {}
+    ns.Print = function(_, m) printed[#printed + 1] = m end
+    DC:DesktopAtLogin()
+    assert(#printed == 0, "no app: no line")
+    local other = "NGMP1." .. DC.Base64Url("us\nElsewhere\nhas\t1") .. "." .. DC.Adler32("us\nElsewhere\nhas\t1")
+    _G.NGMPeonDesktop = { app = "0.1.0", codes = { other } }
+    DC:DesktopAtLogin()
+    assert(#printed == 0, "nothing for this guild: no line")
+    _G.NGMPeonDesktop.codes = { other, 5, code }
+    assert(DC:DesktopInstalled())
+    DC:DesktopAtLogin()
+    assert(printed[#printed] == "|cffffd100NGM Desktop sync complete:|r 2 changes." or printed[#printed]:find("sync complete:|r 2 changes.", 1, true), tostring(printed[#printed]))
+    assert(held2["M:Zo\195\171 Ash"], "through the usual rules")
+    assert(DC:FromDesktop() == false, "the same code isn't brought in twice")
+    DC:DesktopAtLogin()
+    assert(printed[#printed]:find("sync complete:|r nothing new.", 1, true), "every login says so")
+    ReloadUI = function() end
+    InCombatLockdown = function() return true end
+    DC:ReloadAndSync()
+    assert(printed[#printed]:find("combat", 1, true), "not in combat")
+    _G.NGMPeonDesktop = nil
+end
+
 print(a); print("OK")

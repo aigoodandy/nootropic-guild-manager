@@ -325,6 +325,7 @@ A note on trust: every copy of the addon checks each change it receives against 
 | `/ngm options` | open the options |
 | `/ngm diag` | report what the Guild & Communities shortcut, the guild roster hooks and the /who whisper buttons and the Invite prompt can see, and which name and version the addon uses for you |
 | `/ngm sync` | sync now and show sync stats |
+| `/ngm reload` | With NGM Desktop installed: Reload and Sync (a `/reload` that sends your changes to NGM Peon and brings its news in) |
 | `/ngm discord` | Guild Master or an officer: the update code for NGM Peon (in Discord: `/ngm dashboard`, Sync tab, step 2; an officer's leaves the ranks out); `/ngm discord all` sends everything |
 | `/ngm discord setup` | the short code for `/ngm-guild setup` in Discord |
 | `/ngm peon` | bring in the code from NGM Peon (in Discord: `/ngm dashboard`, Sync tab, step 3) |

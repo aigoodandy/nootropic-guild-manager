@@ -5,6 +5,7 @@ Every release is on the [releases page](https://github.com/keasbeexd/nootropic-g
 ## 3.0.8
 
 - **Ready for NGM Desktop** (NGM Peon's desktop app, coming soon). With the app installed, NGM leaves its update for NGM Peon in its saved data at every logout and `/reload`, and the app sends it by itself: the same as `/ngm discord`, without the copy and paste. A member's carries only their own characters' mains and roles. Without the app, nothing changes.
+- **NGM Peon's news comes in by itself** with NGM Desktop: events, mains and roles, Discord names and the Hall of Fame load at every login and `/reload`, as if pasted into `/ngm peon` (same rules), and chat says "NGM Desktop sync complete". **Reload and Sync** (bottom right of the window, or `/ngm reload`) does a `/reload` to send your changes and bring the news in now.
 - **Options shows only what your rank can use.** The Recruiting page is for ranks that can invite, and the Officers page for officers; everyone else sees one line saying who uses it, instead of settings they can't change.
 - **New license from this version: PolyForm Shield 1.0.0.** NGM stays free, and its code stays public for anyone to read and check. It may be used and changed for anything except building a competing product. Versions up to 3.0.7 stay MIT, as does aigoodandy's original code.
 
