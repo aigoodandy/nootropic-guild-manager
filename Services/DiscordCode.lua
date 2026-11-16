@@ -487,7 +487,9 @@ end
 -- NGMPeonDesktop.codes, one per guild. At login and /reload it's brought in
 -- exactly like a pasted code (same rules: an officer's copy passes it on to
 -- the guild, anyone else's takes only their own); a code already brought in
--- isn't brought in again. -> the result (as ApplyPeon) or nil.
+-- isn't brought in again.
+-- -> the result (as ApplyPeon); false when it was already in; nil when the
+-- app has nothing for this guild.
 function DC:FromDesktop()
     local d = _G.NGMPeonDesktop
     if type(d) ~= "table" or type(d.codes) ~= "table" then return nil end
@@ -499,43 +501,33 @@ function DC:FromDesktop()
         if c and c.guild:lower() == guild:lower() then
             local seen = ns.Sync.Hash(code)
             g.peon = g.peon or {}
-            if g.peon.desktopIn == seen then return nil end
+            if g.peon.desktopIn == seen then return false end
             local got = self:ApplyPeon(code)
-            if got then g.peon.desktopIn = seen end
+            if not got then return nil end
+            g.peon.desktopIn = seen
             return got
         end
     end
     return nil
 end
 
--- After login: bring the app's news in (once the guild is known), and say
--- so in chat only when something changed.
+-- After every login and /reload: bring the app's news in (once the guild is
+-- known) and say how it went.
 function DC:DesktopAtLogin(tries)
     tries = tries or 0
     if not (GetGuildInfo and GetGuildInfo("player")) then
         if tries < 6 then C_Timer.After(10, function() DC:DesktopAtLogin(tries + 1) end) end
         return
     end
-    -- after Reload and Sync, always say how it went (a plain /reload or
-    -- login stays quiet when there's nothing new)
-    local g = ns.DB:Guild()
-    local asked = g and g.peon and g.peon.reloadSync
-    if asked then g.peon.reloadSync = nil end
-    asked = asked and (ns.DB:Now() - asked) < 300
     local got = self:FromDesktop()
-    if not got then
-        if asked then ns:Print(ns.GOLD .. "NGM Peon|r (desktop app): nothing new to bring in. Your changes are on their way to NGM Peon.") end
-        return
-    end
+    if got == nil then return end -- no app, or nothing for this guild
     local parts = {}
-    if got.taken > 0 then parts[#parts + 1] = ("%d change%s"):format(got.taken, got.taken == 1 and "" or "s") end
-    if (got.eventsNew or 0) > 0 then parts[#parts + 1] = ("%d new event%s"):format(got.eventsNew, got.eventsNew == 1 and "" or "s") end
-    if (got.eventsRemoved or 0) > 0 then parts[#parts + 1] = ("%d event%s removed"):format(got.eventsRemoved, got.eventsRemoved == 1 and "" or "s") end
-    if #parts > 0 then
-        ns:Print(ns.GOLD .. "NGM Peon|r (desktop app): " .. table.concat(parts, ", ") .. "." .. (asked and " Your changes are on their way to NGM Peon." or ""))
-    elseif asked then
-        ns:Print(ns.GOLD .. "NGM Peon|r (desktop app): nothing new to bring in. Your changes are on their way to NGM Peon.")
+    if got then
+        if got.taken > 0 then parts[#parts + 1] = ("%d change%s"):format(got.taken, got.taken == 1 and "" or "s") end
+        if (got.eventsNew or 0) > 0 then parts[#parts + 1] = ("%d new event%s"):format(got.eventsNew, got.eventsNew == 1 and "" or "s") end
+        if (got.eventsRemoved or 0) > 0 then parts[#parts + 1] = ("%d event%s removed"):format(got.eventsRemoved, got.eventsRemoved == 1 and "" or "s") end
     end
+    ns:Print(ns.GOLD .. "NGM Desktop sync complete:|r " .. (#parts > 0 and table.concat(parts, ", ") or "nothing new") .. ".")
 end
 
 -- Reload and Sync (the main window's button, /ngm reload): a /reload, which
@@ -550,11 +542,6 @@ function DC:ReloadAndSync()
     if InCombatLockdown and InCombatLockdown() then
         ns:Print("Not in combat. Try again after the fight.")
         return
-    end
-    local g = ns.DB:Guild()
-    if g then
-        g.peon = g.peon or {}
-        g.peon.reloadSync = ns.DB:Now() -- so the next login says how it went
     end
     ReloadUI()
 end

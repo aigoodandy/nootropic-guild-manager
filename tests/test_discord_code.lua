@@ -294,29 +294,26 @@ do
     local code = "NGMP1.dXMKTm9vdHJvcGljCmhhcwl0b2Y3eGMKaG91cnMJMW8xbnQxMwpSCU06Wm_DqyBBc2gJdG9naTgwCU1hcmMgUHJpZXN0CU1hcmMgUHJpZXN0ClIJUkw6TWFyYyBQcmllc3QJdG9naTgxCU1hcmMgUHJpZXN0CWhlYWxlcg.2a542997"
     _G.NGMPeonDesktop = nil
     assert(DC:FromDesktop() == nil and not DC:DesktopInstalled(), "no app: nothing")
-    local other = "NGMP1." .. DC.Base64Url("us\nElsewhere\nhas\t1") .. "." .. DC.Adler32("us\nElsewhere\nhas\t1")
-    _G.NGMPeonDesktop = { app = "0.1.0", codes = { other, 5, code } }
-    assert(DC:DesktopInstalled())
-    local got = assert(DC:FromDesktop(), "this guild's code is brought in")
-    assert(got.taken == 2 and held2["M:Zo\195\171 Ash"], "through the usual rules")
-    assert(DC:FromDesktop() == nil, "the same code isn't brought in twice")
     local printed = {}
     ns.Print = function(_, m) printed[#printed + 1] = m end
-    guildData.peon.desktopIn = nil
-    held2 = {}
     DC:DesktopAtLogin()
-    assert(printed[#printed] and printed[#printed]:find("2 changes", 1, true), tostring(printed[#printed]))
-    -- after Reload and Sync it always answers, even with nothing new
-    local n = #printed
+    assert(#printed == 0, "no app: no line")
+    local other = "NGMP1." .. DC.Base64Url("us\nElsewhere\nhas\t1") .. "." .. DC.Adler32("us\nElsewhere\nhas\t1")
+    _G.NGMPeonDesktop = { app = "0.1.0", codes = { other } }
     DC:DesktopAtLogin()
-    assert(#printed == n, "a plain reload with nothing new: quiet")
+    assert(#printed == 0, "nothing for this guild: no line")
+    _G.NGMPeonDesktop.codes = { other, 5, code }
+    assert(DC:DesktopInstalled())
+    DC:DesktopAtLogin()
+    assert(printed[#printed] == "|cffffd100NGM Desktop sync complete:|r 2 changes." or printed[#printed]:find("sync complete:|r 2 changes.", 1, true), tostring(printed[#printed]))
+    assert(held2["M:Zo\195\171 Ash"], "through the usual rules")
+    assert(DC:FromDesktop() == false, "the same code isn't brought in twice")
+    DC:DesktopAtLogin()
+    assert(printed[#printed]:find("sync complete:|r nothing new.", 1, true), "every login says so")
     ReloadUI = function() end
-    InCombatLockdown = function() return false end
-    _G.NGMPeonDesktop.codes = { code }
+    InCombatLockdown = function() return true end
     DC:ReloadAndSync()
-    DC:DesktopAtLogin()
-    assert(#printed == n + 1 and printed[#printed]:find("nothing new", 1, true), tostring(printed[#printed]))
-    assert(guildData.peon.reloadSync == nil, "said once")
+    assert(printed[#printed]:find("combat", 1, true), "not in combat")
     _G.NGMPeonDesktop = nil
 end
 
