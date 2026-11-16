@@ -2,6 +2,10 @@
 
 Every release is on the [releases page](https://github.com/keasbeexd/nootropic-guild-manager/releases) with a `-forever.zip` that WowUp installs. Versions 2.12 and newer sync with each other; older versions use older sync protocols and don't exchange data with them (2.12 still shows their version, so they're told to update).
 
+## 3.0.8
+
+- **Options shows only what your rank can use.** The Recruiting page is for ranks that can invite, and the Officers page for officers; everyone else sees one line saying who uses it, instead of settings they can't change.
+
 ## 3.0.7
 
 - **Invite permission read correctly.** The addon read each rank's "Invite Member" setting from the wrong checkbox (Promote), so ranks that can invite but not promote, like a Raid Leader or Recruiter, counted as unable to recruit for everyone else. Their recruiting (who was whispered, who replied, Do Not Whisper removals) now syncs with the rest of the recruiters, and NGM Peon's Ranks tab shows Invites correctly after the Guild Master's next `/ngm discord` code (Sync tab, step 2). Your own Recruitment tab was never affected.

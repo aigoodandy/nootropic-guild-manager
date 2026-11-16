@@ -239,7 +239,7 @@ Options has four pages in the game's AddOns list:
   - **Reset**: window size and position, and list columns (roster and recruitment list).
   - **Sync and Commands**: sync stats with a **Sync Now** button, **Open Guild Manager**, and the most useful commands.
 - **Recruiting** (saved per guild, except the hourly cap): the **recruitment whisper button on /who results** (on by default), **Whispers per hour** (40 by default, for all your characters), **Auto-Invite** (Invite popup on a keyword reply, up to 6 keywords) and **Do Not Whisper** (on/off, up to 6 words, and the shared list). The Recruitment tab shows how these are set under **Replies**, with a **Reply Settings...** button that opens this page.
-- **Officers**: **Permissions** (Guild Master, whole guild) and **Audit History** (keep 30, 60 or 90 days on your copy). Members see this page but can't change it.
+- **Officers**: **Permissions** (Guild Master, whole guild) and **Audit History** (keep 30, 60 or 90 days on your copy). Shown to officers; everyone else sees a line saying who uses it. The **Recruiting** page works the same way, for ranks with Invite Member.
 - **About**: what the addon does, credits, and links to copy (the game can't open web pages): **ngmpeon.app** and **Bugs and ideas** (the GitHub forms for bug reports and feature ideas).
 
 The window's tabs run down its right side like the character panel's; hover one for its name. Tabs you can't use (Recruitment without your rank's Invite Member setting, Audit for non-officers) are hidden.

@@ -109,7 +109,10 @@ end
 
 function Layout:Space(n) self.y = self.y - (n or 10) end
 
-function Layout:Finish() self.panel:SetHeight(-self.y + 30) end
+function Layout:Finish()
+    self.panel:SetHeight(-self.y + 30)
+    if self.root then self.root:SetHeight(-self.y + 30) end
+end
 
 -- A scrolling page with a title. Returns the outer frame and a layout.
 local function NewPage(key, name, subtitle)
@@ -139,7 +142,19 @@ local function NewPage(key, name, subtitle)
     outer.Sub = sub
     O.logos = O.logos or {}
     O.logos[#O.logos + 1] = logo
-    return outer, setmetatable({ panel = panel, y = -66 }, Layout)
+    -- everything below the title goes in Body, so a page a rank can't use
+    -- hides it and shows one line (Locked) instead
+    local body = CreateFrame("Frame", nil, panel)
+    body:SetPoint("TOPLEFT")
+    body:SetPoint("TOPRIGHT")
+    body:SetHeight(800)
+    local locked = panel:CreateFontString(nil, "OVERLAY", "NGMFontText")
+    locked:SetPoint("TOPLEFT", 16, -66)
+    locked:SetPoint("RIGHT", panel, "RIGHT", -16, 0)
+    locked:SetJustifyH("LEFT")
+    locked:Hide()
+    outer.Body, outer.Locked = body, locked
+    return outer, setmetatable({ panel = body, root = panel, y = -66 }, Layout)
 end
 
 -- Small dropdown-style button that picks one of D.MINIMAP_ACTIONS.
@@ -635,6 +650,9 @@ function O:Refresh()
 
     -- officers
     local officer = ns.IsOfficer()
+    -- only what your rank can use: the page explains instead of showing locked settings
+    self:ShowFor("officers", officer or ns.DB:IsGuildMaster(),
+        "Only officers use this page: who may do what (the Guild Master's permissions) and how long the Audit keeps history.")
     self.officerNote:SetShown(not officer)
     self:RefreshPermControls()
     for _, rb in ipairs(self.auditRadios) do
@@ -643,7 +661,19 @@ function O:Refresh()
     end
 end
 
+-- Shows a page's settings, or only a line saying who uses it.
+function O:ShowFor(key, may, why)
+    local page = self.pages[key]
+    if not (page and page.Body) then return end
+    page.Body:SetShown(may and true or false)
+    page.Locked:SetText(why)
+    page.Locked:SetShown(not may)
+end
+
 function O:RefreshRecruiting()
+    self:ShowFor("recruiting", ns.Recruit:MayRecruit(), IsInGuild() and
+        "Your rank can't recruit. Ranks the Guild Master gives Invite Member (in the game's Guild Control) set up recruiting here and on the Recruitment tab."
+        or "Join a guild to set up recruiting.")
     local s = ns.DB:Settings()
     self.whoWhisperCheck:SetChecked(s.whoWhisperButton ~= false)
     self.hourButton:SetText(self.hourButton.HourText(s.whisperPerHour or 40))
