@@ -44,6 +44,23 @@ assert(HF.Parse("12|TInterface\\MoneyFrame\\UI-GoldIcon:0|t") == nil, "money is 
 assert(HF.Parse("282 (Humanoid)") == 282)
 assert(HF.PrevMonth(202601) == 202512 and HF.PrevMonth(202611) == 202610)
 
+-- WoW: Forever's launch month counts from zero, not from the first read
+do
+  local st = {}
+  local this = HF.Advance(st, { quests = 300 }, 202611)
+  assert(this.quests == 300, "November: everything so far")
+  this = HF.Advance(st, { quests = 340 }, 202611)
+  assert(this.quests == 340)
+  local dec, nov = HF.Advance(st, { quests = 360 }, 202612)
+  assert(next(dec) == nil and nov.quests == 360 and st.lastMonth == 202611, "December: November is all of it")
+  dec = HF.Advance(st, { quests = 375 }, 202612)
+  assert(dec.quests == 15, "December counts from its own first read")
+  local old = { month = 202611, base = { quests = 280 } } -- a base saved before this fix
+  assert(HF.Advance(old, { quests = 300 }, 202611).quests == 300, "an older November base is dropped")
+end
+-- the rest: any month after the launch
+HF.LAUNCH_MONTH = 0
+
 -- your own statistics
 local stats = { [98] = "100", [60] = "10", [1197] = "1,000", [15031] = "2", [1098] = "3" }
 GetStatistic = function(id) return stats[id] or "--" end

@@ -144,6 +144,10 @@ local function Minus(a, b)
     return out
 end
 
+-- WoW: Forever opened on 4 November 2026: everyone started that month at
+-- zero, so it counts from zero, not from the NGM Addon's first read.
+HF.LAUNCH_MONTH = 202611
+
 -- Updates the snapshots in `state` for statistics `cur` read in `month`;
 -- returns this month's and last month's numbers.
 function HF.Advance(state, cur, month)
@@ -157,6 +161,7 @@ function HF.Advance(state, cur, month)
         end
         state.month, state.base = month, cur
     end
+    if month <= HF.LAUNCH_MONTH then state.base = {} end
     -- a statistic that went down (reset by the game): start it over
     for k, v in pairs(cur) do
         if state.base[k] and v < state.base[k] then state.base[k] = v end

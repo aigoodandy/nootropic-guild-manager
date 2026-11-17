@@ -235,7 +235,7 @@ function HV:Build(frame)
         end
         W.ShowMenu(btn, items)
     end)
-    W.Tooltip(periodBtn, "Period", "All time, or just this month or last month (UTC). A member's first month counts from when they installed the NGM Addon.")
+    W.Tooltip(periodBtn, "Period", "All time, or just this month or last month (UTC). November 2026, when WoW: Forever opened, counts from zero. Without NGM Peon, a member's first month after that counts from when they installed the NGM Addon.")
     self.periodButton = periodBtn
 
     -- officers: post last month's champions to guild chat (one click, never automatic)
@@ -380,7 +380,7 @@ function HV:Refresh()
     end
     note = note .. " A person's main and alts count as one."
     if period ~= "all" then
-        note = note .. (data.peon and " Months run in UTC." or " Months run in UTC; a member's first month counts from when they installed the NGM Addon.")
+        note = note .. (data.peon and " Months run in UTC." or " Months run in UTC; after November 2026, a member's first month counts from when they installed the NGM Addon.")
     end
     if (data.hidden or 0) > 0 then
         note = note .. (" %d left out by officers."):format(data.hidden)
